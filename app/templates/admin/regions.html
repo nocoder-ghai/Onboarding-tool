@@ -1,0 +1,66 @@
+{% set page_title = "Regions" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Regions</h1>
+    <p class="muted small mb0">A tutor's region is set at signup. Components, steps,
+      documents and links tagged with a region are only shown to that region;
+      untagged content is shown to everyone.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Region</th><th>Key</th><th class="num">Tutors</th>
+        <th class="num">Tagged content</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for r in regions %}
+          <tr>
+            <td><strong>{{ r.name }}</strong></td>
+            <td class="tiny"><code>{{ r.key }}</code></td>
+            <td class="num">{{ r.tutor_count }}</td>
+            <td class="num">{{ r.content_count }}</td>
+            <td>{% if r.is_active %}<span class="badge done">Active</span>{% else %}<span class="badge locked">Hidden</span>{% endif %}</td>
+            <td class="right">
+              {% if can_write %}
+                <details class="editor" style="border:0; margin:0; padding:0">
+                  <summary>Edit</summary>
+                  <div style="text-align:left; min-width:240px">
+                    <form method="post" action="/admin/regions/{{ r.id }}/edit">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <div class="field"><label>Name</label>
+                        <input name="name" type="text" value="{{ r.name }}" required></div>
+                      <label class="check"><input type="checkbox" name="is_active" value="1"
+                        {% if r.is_active %}checked{% endif %}>
+                        <span>Offer this region at signup</span></label>
+                      <div class="btn-row mt">
+                        <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                      </div>
+                    </form>
+                  </div>
+                </details>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if can_write %}
+    <div class="card mt">
+      <h3>Add a region</h3>
+      <form method="post" action="/admin/regions/new">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="field"><label>Name</label>
+          <input name="name" type="text" placeholder="e.g. Southeast Asia" required></div>
+        <button class="btn btn-primary" type="submit">Add region</button>
+      </form>
+      <p class="hint mt">After adding a region, attach its training material in
+        Journey → Region-Specific Training.</p>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

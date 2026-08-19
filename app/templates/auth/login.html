@@ -1,0 +1,46 @@
+{% set page_title = "Admin sign in" if admin_mode else "Sign in" %}
+{% include "partials/head.html" %}
+<div class="wrap auth-card">
+  {% if admin_mode %}
+    <h1>Admin sign in</h1>
+    <p class="muted small">Content and tutor management. Tutors sign in
+      <a href="/login">here</a>.</p>
+  {% else %}
+    <div class="tabs">
+      <a href="/login" class="on">Sign in</a>
+      <a href="/signup">Create account</a>
+    </div>
+    <h1>Welcome back</h1>
+    <p class="muted small">Pick up exactly where you left off.</p>
+  {% endif %}
+
+  <div class="card">
+    <form method="post" action="{{ '/admin/login' if admin_mode else '/login' }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="field">
+        <label for="identifier">{{ "Work email" if admin_mode else "Email or mobile number" }}</label>
+        <input id="identifier" name="identifier" type="text" value="{{ identifier }}"
+               autocomplete="username" autofocus required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password"
+               autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" name="action" value="password">
+        Sign in
+      </button>
+      {% if not admin_mode %}
+        <p class="small muted center mt">or</p>
+        <button class="btn btn-block" type="submit" name="action" value="otp">
+          Email me a one-time code
+        </button>
+      {% endif %}
+    </form>
+  </div>
+  {% if not admin_mode %}
+    <p class="tiny muted center">Cuemath staff? <a href="/admin/login">Admin sign in</a></p>
+  {% endif %}
+</div>
+{% include "partials/foot.html" %}

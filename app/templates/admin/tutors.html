@@ -1,0 +1,106 @@
+{% set page_title = "Tutors" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Tutors</h1>
+    <p class="muted small mb0">{{ plural(len(tutors), "tutor") }} matching your filters.</p>
+  </div>
+
+  <div class="card card-tight">
+    <form method="get" action="/admin/tutors" class="filters">
+      <div class="field">
+        <label for="q">Search</label>
+        <input id="q" name="q" type="text" value="{{ q }}" placeholder="name, email, phone">
+      </div>
+      <div class="field">
+        <label for="region_id">Region</label>
+        <select id="region_id" name="region_id">
+          <option value="">All</option>
+          {% for r in regions_all %}
+            <option value="{{ r.id }}"{% if r.id == region_id %} selected{% endif %}>{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="stage_id">Currently on</label>
+        <select id="stage_id" name="stage_id">
+          <option value="">Any stage</option>
+          {% for s in stages %}
+            <option value="{{ s.id }}"{% if s.id == stage_id %} selected{% endif %}>{{ s.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="">Any</option>
+          <option value="in_progress"{% if status == "in_progress" %} selected{% endif %}>In progress</option>
+          <option value="complete"{% if status == "complete" %} selected{% endif %}>Fully onboarded</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="stalled">Stalled ≥ days</label>
+        <input id="stalled" name="stalled" type="number" min="1"
+               value="{{ stalled if stalled else '' }}" placeholder="{{ default_stalled }}">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" type="submit">Filter</button>
+        <a class="btn btn-sm" href="/admin/tutors">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="btn-row" style="margin-bottom:.7rem">
+    <a class="btn btn-sm" href="/admin/tutors.csv?q={{ q }}&region_id={{ region_id if region_id else '' }}&stage_id={{ stage_id if stage_id else '' }}&status={{ status }}&stalled={{ stalled if stalled else '' }}">
+      ⬇ Export this view as CSV</a>
+    <a class="btn btn-sm" href="/admin/attendance/import">Import attendance CSV</a>
+  </div>
+
+  {% if tutors %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tutor</th><th>Region</th><th>Current stage</th>
+          <th>Progress</th><th>Last active</th><th></th></tr></thead>
+        <tbody>
+          {% for t in tutors %}
+            <tr>
+              <td>
+                <a href="/admin/tutors/{{ t.id }}"><strong>{{ t.name }}</strong></a>
+                <div class="tiny muted">{{ t.email or t.phone }}</div>
+              </td>
+              <td class="tiny">{{ t.region_label }}</td>
+              <td class="tiny">
+                {% if t.summary.all_complete %}<span class="badge done">Onboarded</span>
+                {% else %}{{ t.current_stage_title }}{% endif %}
+              </td>
+              <td class="nowrap">
+                <span class="mini-bar"><span class="{{ 'done' if t.summary.percent == 100 else '' }}"
+                      style="width:{{ t.summary.percent }}%"></span></span>
+                <span class="tiny muted">{{ t.summary.percent }}%</span>
+              </td>
+              <td class="tiny nowrap">
+                {{ ago(t.last_activity_at or t.created_at) }}
+                {% if t.stalled_days is not None and t.stalled_days >= default_stalled and not t.summary.all_complete %}
+                  <span class="badge pending">stalled</span>
+                {% endif %}
+              </td>
+              <td class="right"><a class="btn btn-xs" href="/admin/tutors/{{ t.id }}">Open</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="empty">
+        <div class="big">🔍</div>
+        <h3>No tutors match</h3>
+        <p class="muted">Try clearing the filters.</p>
+      </div>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

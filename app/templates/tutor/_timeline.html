@@ -1,0 +1,17 @@
+<div class="timeline">
+  {% for i, s in enumerate(states, 1) %}
+    <div class="timeline-item {{ 'is-done' if s.status == 'completed' else ('is-locked' if s.status == 'locked' else ('is-overdue' if s.overdue else 'is-open')) }}">
+      <div class="timeline-dot">{% if s.status == "completed" %}✓{% else %}{{ i }}{% endif %}</div>
+      <div class="timeline-body">
+        <div class="timeline-title">{{ s.title }}</div>
+        <div class="timeline-meta">
+          {% if s.status == "completed" %}Done
+          {% elif s.status == "locked" %}Locked
+          {% elif s.overdue %}⏰ Overdue{% if s.due_date %} · was due {{ fmt_date(s.due_date) }}{% endif %}
+          {% elif s.due_date %}Due {{ fmt_date(s.due_date) }}
+          {% else %}In progress{% endif %}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>

@@ -1,0 +1,114 @@
+{% set page_title = "Links" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Links</h1>
+    <p class="muted small mb0">Zoom links, the profile builder, app downloads, external
+      forms — anything a tutor clicks.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Label</th><th>URL</th><th>Attached to</th><th>Region</th>
+        <th>On</th><th></th></tr></thead>
+      <tbody>
+        {% for link in links %}
+          <tr>
+            <td><strong>{{ link.label }}</strong>
+              {% if link.description %}<div class="tiny muted">{{ truncate(link.description, 70) }}</div>{% endif %}</td>
+            <td class="tiny"><a href="{{ link.url }}" target="_blank" rel="noopener">{{ truncate(link.url, 44) }}</a></td>
+            <td class="tiny">{{ link.target }}</td>
+            <td class="tiny">{{ link.region_label }}</td>
+            <td>{% if link.is_active %}<span class="badge done">Live</span>{% else %}<span class="badge locked">Off</span>{% endif %}</td>
+            <td class="right">
+              {% if can_write %}
+                <details class="editor" style="border:0; margin:0; padding:0">
+                  <summary>Edit</summary>
+                  <div style="min-width:280px; text-align:left">
+                    <form method="post" action="/admin/links/{{ link.id }}/edit">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <div class="field"><label>Label</label>
+                        <input name="label" type="text" value="{{ link.label }}" required></div>
+                      <div class="field"><label>URL</label>
+                        <input name="url" type="text" value="{{ link.url }}" required></div>
+                      <div class="field"><label>Description</label>
+                        <input name="description" type="text" value="{{ link.description }}"></div>
+                      <div class="field"><label>Region</label>
+                        <select name="region_id">
+                          <option value="">All regions</option>
+                          {% for r in regions_all %}
+                            <option value="{{ r.id }}"{% if r.id == link.region_id %} selected{% endif %}>{{ r.name }}</option>
+                          {% endfor %}
+                        </select></div>
+                      <label class="check"><input type="checkbox" name="is_active" value="1"
+                        {% if link.is_active %}checked{% endif %}><span>Live for tutors</span></label>
+                      <div class="btn-row mt">
+                        <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                      </div>
+                    </form>
+                    <form method="post" action="/admin/links/{{ link.id }}/delete" class="mt">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <button class="btn btn-sm btn-danger" type="submit">Delete link</button>
+                    </form>
+                  </div>
+                </details>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if can_write %}
+    <div class="card mt">
+      <h3>Add a link</h3>
+      <form method="post" action="/admin/links/new">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row2">
+          <div class="field"><label>Label tutors see</label>
+            <input name="label" type="text" required></div>
+          <div class="field"><label>URL</label>
+            <input name="url" type="url" placeholder="https://…" required></div>
+        </div>
+        <div class="field"><label>Description</label>
+          <input name="description" type="text"></div>
+        <div class="row3">
+          <div class="field">
+            <label>Attach to</label>
+            <select name="target_type">
+              <option value="global">Nothing — show on the dashboard</option>
+              <option value="stage">A stage</option>
+              <option value="component">A component</option>
+              <option value="sub_item">A step</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Which one</label>
+            <select name="target_id">
+              <option value="">—</option>
+              {% for s in stages %}<option value="{{ s.id }}">Stage: {{ s.title }}</option>{% endfor %}
+              {% for c in components %}<option value="{{ c.id }}">Component: {{ c.title }}</option>{% endfor %}
+              {% for i in items %}<option value="{{ i.id }}">Step: {{ i.title }}</option>{% endfor %}
+            </select>
+            <div class="hint">Pick the entry matching the type on the left.</div>
+          </div>
+          <div class="field">
+            <label>Region</label>
+            <select name="region_id">
+              <option value="">All regions</option>
+              {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" name="is_active" value="1" checked>
+          <span>Live for tutors straight away</span></label>
+        <div class="btn-row mt"><button class="btn btn-primary" type="submit">Add link</button></div>
+      </form>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

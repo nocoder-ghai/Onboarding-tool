@@ -1,0 +1,39 @@
+<details class="editor">
+  <summary>Add a document</summary>
+  <div>
+    <form method="post" action="/admin/documents/new" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="target_type" value="{{ doc_target_type }}">
+      <input type="hidden" name="target_id" value="{{ doc_target_id }}">
+      <input type="hidden" name="back" value="{{ doc_back }}">
+      <div class="row2">
+        <div class="field"><label>Title</label>
+          <input name="title" type="text" required></div>
+        <div class="field">
+          <label>Kind</label>
+          <select name="kind">
+            <option value="video">Training video</option>
+            <option value="policy">Policy (read &amp; acknowledge)</option>
+            <option value="guide">Guide</option>
+            <option value="sample">Sample for tutors</option>
+            <option value="deck">Slide deck</option>
+          </select>
+        </div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>File</label>
+          <input name="file" type="file"></div>
+        <div class="field"><label>Effective from</label>
+          <input name="effective_from" type="date">
+          <div class="hint">Blank = live immediately.</div></div>
+        <div class="field"><label>Version note</label>
+          <input name="notes" type="text"></div>
+      </div>
+      <label class="check"><input type="checkbox" name="is_active" value="1" checked>
+        <span>Visible to tutors</span></label>
+      <div class="btn-row mt">
+        <button class="btn btn-sm btn-primary" type="submit">Add document to “{{ doc_target_label }}”</button>
+      </div>
+    </form>
+  </div>
+</details>

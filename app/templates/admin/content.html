@@ -1,0 +1,151 @@
+{% set page_title = "Journey content" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Journey content</h1>
+    <p class="muted small mb0">Stages, components and steps. Everything here is what
+      tutors see — reorder, edit or archive without touching code.</p>
+  </div>
+
+  <div class="card card-tight">
+    <div class="split">
+      <span class="small muted">Showing {{ "archived and active" if show_archived else "active" }} content</span>
+      <span class="split-end">
+        <a class="btn btn-sm" href="/admin/content{{ '' if show_archived else '?archived=1' }}">
+          {{ "Hide archived" if show_archived else "Show archived" }}
+        </a>
+      </span>
+    </div>
+  </div>
+
+  {% for stage in stages %}
+    <div class="tree-stage{% if stage.archived_at %} archived{% endif %}">
+      <div class="tree-head">
+        <strong>{{ stage.title }}</strong>
+        {% if stage.archived_at %}<span class="badge locked">Archived</span>{% endif %}
+        {% if not stage.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
+        {% if stage.completion_rule == "admin_marked" %}<span class="badge pending">Admin marks</span>{% endif %}
+        {% if stage.unlock_after_stage_id %}
+          <span class="badge plain">Unlocks after #{{ stage.unlock_after_stage_id }}</span>
+        {% else %}
+          <span class="badge active">Open from day 1</span>
+        {% endif %}
+        {% if stage.deadline_days %}<span class="badge plain">{{ stage.deadline_days }}d deadline</span>{% endif %}
+        <span class="split-end btn-row">
+          <form method="post" action="/admin/stages/{{ stage.id }}/move" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="dir" value="up">
+            <input type="hidden" name="back" value="/admin/content">
+            <button class="btn btn-xs" type="submit" title="Move up">↑</button>
+          </form>
+          <form method="post" action="/admin/stages/{{ stage.id }}/move" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="dir" value="down">
+            <input type="hidden" name="back" value="/admin/content">
+            <button class="btn btn-xs" type="submit" title="Move down">↓</button>
+          </form>
+          <a class="btn btn-xs btn-primary" href="/admin/stages/{{ stage.id }}">Edit</a>
+          <form method="post" action="/admin/stages/{{ stage.id }}/archive" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="back" value="/admin/content{{ '?archived=1' if show_archived else '' }}">
+            {% if stage.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+            <button class="btn btn-xs{% if not stage.archived_at %} btn-danger{% endif %}" type="submit">
+              {{ "Restore" if stage.archived_at else "Archive" }}
+            </button>
+          </form>
+        </span>
+      </div>
+      <div class="tree-body">
+        {% if stage.agenda %}
+          <div class="small muted">Agenda: {{ ", ".join([a.title for a in stage.agenda]) }}</div>
+        {% endif %}
+        {% for comp in stage.comps %}
+          <div class="tree-comp{% if comp.archived_at %} archived{% endif %}">
+            <div class="split">
+              <a href="/admin/components/{{ comp.id }}"><strong>{{ comp.title }}</strong></a>
+              {% if comp.archived_at %}<span class="badge locked">Archived</span>{% endif %}
+              {% if comp.region_id %}<span class="badge region">{{ comp.region_label }}</span>{% endif %}
+              <span class="badge plain">{{ comp.completion_rule }}</span>
+              {% if not comp.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
+            </div>
+            {% for node in comp.tree %}
+              <div class="tree-item{% if node.archived_at %} archived{% endif %}">
+                <span class="k">{{ node.kind }}</span>
+                <span>{{ node.title }}</span>
+                {% if node.region_id %}<span class="badge region">region-only</span>{% endif %}
+              </div>
+              {% for child in node.children %}
+                <div class="tree-item{% if child.archived_at %} archived{% endif %}" style="padding-left:2rem">
+                  <span class="k">{{ child.kind }}</span>
+                  <span>{{ child.title }}</span>
+                  {% if child.region_id %}<span class="badge region">region-only</span>{% endif %}
+                </div>
+              {% endfor %}
+            {% endfor %}
+            {% if not comp.tree %}
+              <div class="tree-item muted">No steps — tutors tick this component itself.</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        {% if not stage.comps %}
+          <p class="small muted mb0">No components. Tutors see the description, agenda
+            and any links; completion is {{ stage.completion_rule }}.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+
+  {% if can_write %}
+    <div class="card">
+      <h3>Add a stage</h3>
+      <form method="post" action="/admin/stages/new">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row2">
+          <div class="field">
+            <label for="ns_title">Title</label>
+            <input id="ns_title" name="title" type="text" required>
+          </div>
+          <div class="field">
+            <label for="ns_sub">Subtitle</label>
+            <input id="ns_sub" name="subtitle" type="text">
+          </div>
+        </div>
+        <div class="field">
+          <label for="ns_desc">Description tutors read</label>
+          <textarea id="ns_desc" name="description"></textarea>
+        </div>
+        <div class="row3">
+          <div class="field">
+            <label for="ns_rule">Completion</label>
+            <select id="ns_rule" name="completion_rule">
+              <option value="components">All mandatory components</option>
+              <option value="admin_marked">An admin marks it</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ns_after">Unlocks after</label>
+            <select id="ns_after" name="unlock_after_stage_id">
+              <option value="">Open from day 1</option>
+              {% for s in stages %}
+                {% if not s.archived_at %}<option value="{{ s.id }}">{{ s.title }}</option>{% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="ns_dl">Deadline (days)</label>
+            <input id="ns_dl" name="deadline_days" type="number" min="1">
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" name="is_mandatory" value="1" checked>
+          <span>Mandatory — must be finished to complete onboarding</span></label>
+        <div class="btn-row mt">
+          <button class="btn btn-primary" type="submit">Add stage</button>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

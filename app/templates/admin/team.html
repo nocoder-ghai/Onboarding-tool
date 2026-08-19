@@ -1,0 +1,85 @@
+{% set page_title = "Team & roles" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Team &amp; roles</h1>
+    <p class="muted small mb0">Admins can change content and tutor progress. Viewers
+      see every admin screen but cannot change anything.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th>
+        <th>Last sign-in</th><th></th></tr></thead>
+      <tbody>
+        {% for member in team %}
+          <tr>
+            <td><strong>{{ member.name }}</strong></td>
+            <td class="tiny">{{ member.email }}</td>
+            <td><span class="badge {{ 'active' if member.role_key == 'admin' else 'plain' }}">{{ member.role_name }}</span></td>
+            <td>{% if member.is_active %}<span class="badge done">Active</span>{% else %}<span class="badge locked">Disabled</span>{% endif %}</td>
+            <td class="tiny nowrap">{{ ago(member.last_login_at) }}</td>
+            <td class="right">
+              {% if can_write and member.id != user.id %}
+                <details class="editor" style="border:0; margin:0; padding:0">
+                  <summary>Change</summary>
+                  <div style="text-align:left; min-width:220px">
+                    <form method="post" action="/admin/team/{{ member.id }}/role">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <div class="field"><label>Role</label>
+                        <select name="role_key">
+                          {% for r in roles %}
+                            <option value="{{ r.key }}"{% if r.key == member.role_key %} selected{% endif %}>{{ r.name }}</option>
+                          {% endfor %}
+                        </select></div>
+                      <label class="check"><input type="checkbox" name="is_active" value="1"
+                        {% if member.is_active %}checked{% endif %}><span>Account active</span></label>
+                      <div class="btn-row mt">
+                        <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                      </div>
+                    </form>
+                  </div>
+                </details>
+              {% elif member.id == user.id %}
+                <span class="tiny muted">that's you</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if can_write %}
+    <div class="card mt">
+      <h3>Add a team member</h3>
+      <form method="post" action="/admin/team/new">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row2">
+          <div class="field"><label>Name</label>
+            <input name="name" type="text" required></div>
+          <div class="field"><label>Work email</label>
+            <input name="email" type="email" required></div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Role</label>
+            <select name="role_key">
+              {% for r in roles %}
+                <option value="{{ r.key }}">{{ r.name }} — {{ r.description }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field"><label>Temporary password</label>
+            <input name="password" type="text" required>
+            <div class="hint">Share it once; they can change it later.</div></div>
+        </div>
+        <button class="btn btn-primary" type="submit">Add member</button>
+      </form>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

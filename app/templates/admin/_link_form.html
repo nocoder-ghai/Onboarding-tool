@@ -1,0 +1,31 @@
+<details class="editor">
+  <summary>Add a link</summary>
+  <div>
+    <form method="post" action="/admin/links/new">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="target_type" value="{{ link_target_type }}">
+      <input type="hidden" name="target_id" value="{{ link_target_id }}">
+      <input type="hidden" name="back" value="{{ link_back }}">
+      <div class="row2">
+        <div class="field"><label>Label</label>
+          <input name="label" type="text" required></div>
+        <div class="field"><label>URL</label>
+          <input name="url" type="url" required placeholder="https://…"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Description</label>
+          <input name="description" type="text"></div>
+        <div class="field"><label>Region</label>
+          <select name="region_id">
+            <option value="">All regions</option>
+            {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <label class="check"><input type="checkbox" name="is_active" value="1" checked>
+        <span>Visible to tutors</span></label>
+      <div class="btn-row mt">
+        <button class="btn btn-sm btn-primary" type="submit">Add link to “{{ link_target_label }}”</button>
+      </div>
+    </form>
+  </div>
+</details>

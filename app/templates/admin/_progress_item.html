@@ -1,0 +1,26 @@
+<div class="split" style="padding:.22rem 0 .22rem .8rem; font-size:.85rem">
+  <span>
+    {% if item.done %}<span style="color:var(--green)">✓</span>
+    {% elif item.status == "rejected" %}<span style="color:var(--red)">✗</span>
+    {% elif item.status == "submitted" %}<span style="color:var(--gold)">◔</span>
+    {% else %}<span class="muted">○</span>{% endif %}
+    {{ item.title }}
+    <span class="k badge plain">{{ item.kind }}</span>
+    {% if item.kind == "policy" and item.acknowledgement %}
+      <span class="tiny muted">ack {{ fmt_date(item.acknowledgement.acknowledged_at) }}</span>
+      {% if item.stale_ack %}<span class="badge pending">older version</span>{% endif %}
+    {% endif %}
+    {% if item.kind == "upload" and item.submission %}
+      <a class="tiny" href="/file/submission/{{ item.submission.id }}" target="_blank" rel="noopener">{{ item.submission.filename }}</a>
+    {% endif %}
+    {% if item.status == "rejected" and item.rejected_reason %}
+      <span class="tiny" style="color:var(--red)">— {{ truncate(item.rejected_reason, 60) }}</span>
+    {% endif %}
+  </span>
+  <span class="split-end">
+    {% if can_write %}
+      {% set tt = "sub_item" %}{% set ti = item.id %}{% set done_now = item.done %}
+      {% include "admin/_actions.html" %}
+    {% endif %}
+  </span>
+</div>

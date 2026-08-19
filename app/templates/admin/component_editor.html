@@ -1,0 +1,267 @@
+{% set page_title = comp.title %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <div class="crumb">
+      <a href="/admin/content">Journey</a> ·
+      <a href="/admin/stages/{{ stage.id }}">{{ stage.title }}</a>
+    </div>
+    <h1>{{ comp.title }}</h1>
+    <p class="muted small mb0">Key <code>{{ comp.key }}</code></p>
+  </div>
+
+  <div class="card">
+    <h3>Component details</h3>
+    <form method="post" action="/admin/components/{{ comp.id }}/edit">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="field">
+        <label for="title">Title</label>
+        <input id="title" name="title" type="text" value="{{ comp.title }}" required>
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description">{{ comp.description }}</textarea>
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label for="completion_rule">Completion</label>
+          <select id="completion_rule" name="completion_rule">
+            <option value="sub_items"{% if comp.completion_rule == "sub_items" %} selected{% endif %}>All mandatory steps done</option>
+            <option value="self_marked"{% if comp.completion_rule == "self_marked" %} selected{% endif %}>Tutor ticks the component</option>
+            <option value="admin_marked"{% if comp.completion_rule == "admin_marked" %} selected{% endif %}>Mentor/admin marks it</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="region_id">Region</label>
+          <select id="region_id" name="region_id">
+            <option value="">All regions</option>
+            {% for r in regions_all %}
+              <option value="{{ r.id }}"{% if r.id == comp.region_id %} selected{% endif %}>{{ r.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field" style="align-self:end">
+          <label class="check"><input type="checkbox" name="is_mandatory" value="1"
+            {% if comp.is_mandatory %}checked{% endif %}><span>Mandatory</span></label>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">Save component</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Steps</h3>
+    <p class="small muted">A <strong>group</strong> is a heading with steps nested under
+      it. A <strong>policy</strong> step needs a document attached and is acknowledged by
+      the tutor. An <strong>upload</strong> step collects a file.</p>
+
+    {% for node in tree %}
+      <div class="item{% if node.archived_at %} archived{% endif %}">
+        <div class="split">
+          <span class="k badge plain">{{ node.kind }}</span>
+          <strong>{{ node.title }}</strong>
+          {% if node.region_id %}<span class="badge region">{{ node.region_label }}</span>{% endif %}
+          {% if not node.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
+          {% if node.archived_at %}<span class="badge locked">Archived</span>{% endif %}
+          <span class="split-end btn-row">
+            <form method="post" action="/admin/items/{{ node.id }}/move" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="dir" value="up">
+              <button class="btn btn-xs" type="submit">↑</button>
+            </form>
+            <form method="post" action="/admin/items/{{ node.id }}/move" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="dir" value="down">
+              <button class="btn btn-xs" type="submit">↓</button>
+            </form>
+            <form method="post" action="/admin/items/{{ node.id }}/archive" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              {% if node.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+              <button class="btn btn-xs{% if not node.archived_at %} btn-danger{% endif %}" type="submit">
+                {{ "Restore" if node.archived_at else "Archive" }}</button>
+            </form>
+          </span>
+        </div>
+        {% if node.description %}<div class="item-desc">{{ node.description }}</div>{% endif %}
+        {% for doc in node.docs %}
+          <div class="item-meta">📄 <a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a>
+            {% if doc.current %}· v{{ doc.current.version_no }}{% else %}· <span style="color:var(--red)">no file uploaded</span>{% endif %}</div>
+        {% endfor %}
+        {% for link in node.item_links %}
+          <div class="item-meta">↗ {{ link.label }} — <span class="muted">{{ link.url }}</span></div>
+        {% endfor %}
+        {% if can_write %}
+          <details class="editor">
+            <summary>Edit this step</summary>
+            <div>{% set item = node %}{% include "admin/_item_form.html" %}</div>
+          </details>
+          {% set doc_target_type = "sub_item" %}
+          {% set doc_target_id = node.id %}
+          {% set doc_target_label = node.title %}
+          {% set doc_back = "/admin/components/" + str(comp.id) %}
+          {% include "admin/_document_upload_form.html" %}
+          {% set link_target_type = "sub_item" %}
+          {% set link_target_id = node.id %}
+          {% set link_target_label = node.title %}
+          {% set link_back = "/admin/components/" + str(comp.id) %}
+          {% include "admin/_link_form.html" %}
+        {% endif %}
+        {% if node.kind == "policy" %}
+          {% set item = node %}
+          {% include "admin/_quiz_editor.html" %}
+        {% endif %}
+
+        {% if node.children %}
+          <div class="nest mt">
+            {% for child in node.children %}
+              <div class="item{% if child.archived_at %} archived{% endif %}">
+                <div class="split">
+                  <span class="k badge plain">{{ child.kind }}</span>
+                  <strong>{{ child.title }}</strong>
+                  {% if child.region_id %}<span class="badge region">{{ child.region_label }}</span>{% endif %}
+                  {% if child.archived_at %}<span class="badge locked">Archived</span>{% endif %}
+                  <span class="split-end btn-row">
+                    <form method="post" action="/admin/items/{{ child.id }}/move" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <input type="hidden" name="dir" value="up">
+                      <button class="btn btn-xs" type="submit">↑</button>
+                    </form>
+                    <form method="post" action="/admin/items/{{ child.id }}/move" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <input type="hidden" name="dir" value="down">
+                      <button class="btn btn-xs" type="submit">↓</button>
+                    </form>
+                    <form method="post" action="/admin/items/{{ child.id }}/archive" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      {% if child.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+                      <button class="btn btn-xs{% if not child.archived_at %} btn-danger{% endif %}" type="submit">
+                        {{ "Restore" if child.archived_at else "Archive" }}</button>
+                    </form>
+                  </span>
+                </div>
+                {% if child.description %}<div class="item-desc">{{ child.description }}</div>{% endif %}
+                {% for doc in child.docs %}
+                  <div class="item-meta">📄 <a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a>
+                    {% if doc.current %}· v{{ doc.current.version_no }}{% else %}· <span style="color:var(--red)">no file uploaded</span>{% endif %}</div>
+                {% endfor %}
+                {% for link in child.item_links %}
+                  <div class="item-meta">↗ {{ link.label }}</div>
+                {% endfor %}
+                {% if can_write %}
+                  <details class="editor">
+                    <summary>Edit this step</summary>
+                    <div>{% set item = child %}{% include "admin/_item_form.html" %}</div>
+                  </details>
+                  {% set doc_target_type = "sub_item" %}
+                  {% set doc_target_id = child.id %}
+                  {% set doc_target_label = child.title %}
+                  {% set doc_back = "/admin/components/" + str(comp.id) %}
+                  {% include "admin/_document_upload_form.html" %}
+                  {% set link_target_type = "sub_item" %}
+                  {% set link_target_id = child.id %}
+                  {% set link_target_label = child.title %}
+                  {% set link_back = "/admin/components/" + str(comp.id) %}
+                  {% include "admin/_link_form.html" %}
+                {% endif %}
+                {% if child.kind == "policy" %}
+                  {% set item = child %}
+                  {% include "admin/_quiz_editor.html" %}
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if can_write %}
+      <details class="editor" open>
+        <summary>Add a step</summary>
+        <div>
+          <form method="post" action="/admin/components/{{ comp.id }}/items/new">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <div class="row2">
+              <div class="field"><label>Title</label>
+                <input name="title" type="text" required></div>
+              <div class="field">
+                <label>Type</label>
+                <select name="kind">
+                  <option value="task">Task — tutor ticks it off</option>
+                  <option value="policy">Policy — read &amp; acknowledge</option>
+                  <option value="upload">Upload — tutor submits a file</option>
+                  <option value="link">Link — visit, then tick</option>
+                  <option value="group">Group — a heading for nested steps</option>
+                </select>
+              </div>
+            </div>
+            <div class="field"><label>Description</label>
+              <textarea name="description"></textarea></div>
+            <div class="field"><label>Instructions (shown until it's done)</label>
+              <textarea name="instructions"></textarea></div>
+            <div class="row3">
+              <div class="field">
+                <label>Nest under</label>
+                <select name="parent_id">
+                  <option value="">Top level</option>
+                  {% for g in groups %}<option value="{{ g.id }}">{{ g.title }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label>Region</label>
+                <select name="region_id">
+                  <option value="">All regions</option>
+                  {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label>Upload accepts</label>
+                <select name="accept_mime">
+                  <option value="">n/a</option>
+                  <option value="image/*">Images</option>
+                  <option value="video/*">Video</option>
+                  <option value="application/pdf">PDF</option>
+                </select>
+              </div>
+            </div>
+            <label class="check"><input type="checkbox" name="is_mandatory" value="1" checked>
+              <span>Mandatory</span></label>
+            <div class="btn-row mt">
+              <button class="btn btn-primary" type="submit">Add step</button>
+            </div>
+          </form>
+        </div>
+      </details>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Links &amp; documents on this component</h3>
+    {% for link in comp_links %}
+      <div class="linkrow"><span class="ico">↗</span>
+        <span class="grow">{{ link.label }} — <span class="muted tiny">{{ link.url }}</span></span></div>
+    {% endfor %}
+    {% for doc in documents %}
+      <div class="linkrow"><span class="ico">📄</span>
+        <span class="grow"><a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a></span></div>
+    {% endfor %}
+    {% if not comp_links and not documents %}
+      <p class="small muted">Nothing attached yet.</p>
+    {% endif %}
+    {% if can_write %}
+      {% set link_target_type = "component" %}
+      {% set link_target_id = comp.id %}
+      {% set link_target_label = comp.title %}
+      {% set link_back = "/admin/components/" + str(comp.id) %}
+      {% include "admin/_link_form.html" %}
+      {% set doc_target_type = "component" %}
+      {% set doc_target_id = comp.id %}
+      {% set doc_target_label = comp.title %}
+      {% set doc_back = "/admin/components/" + str(comp.id) %}
+      {% include "admin/_document_upload_form.html" %}
+    {% endif %}
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

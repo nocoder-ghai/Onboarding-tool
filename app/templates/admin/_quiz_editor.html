@@ -1,0 +1,56 @@
+<div class="mt">
+  <div class="tiny muted" style="font-weight:650">
+    CFU quiz — {{ plural(len([q for q in item.quiz if not q.archived_at]), "question") }}
+  </div>
+  {% for q in item.quiz %}
+    <div class="item{% if q.archived_at %} archived{% endif %}" style="margin-top:.4rem">
+      <div class="split">
+        <span class="small">{{ q.question }}</span>
+        {% if can_write and not q.archived_at %}
+          <form method="post" action="/admin/quiz-questions/{{ q.id }}/archive" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <button class="btn btn-xs btn-danger" type="submit">Remove</button>
+          </form>
+        {% endif %}
+      </div>
+      <ul class="tiny" style="margin:.3rem 0 0 1.1rem">
+        {% for c in q.choices %}
+          <li{% if c.is_correct %} style="font-weight:650; color:var(--green)"{% endif %}>
+            {{ c.label }}{% if c.is_correct %} ✓{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+  {% if can_write %}
+    <details class="editor">
+      <summary>Add a quiz question</summary>
+      <div>
+        <form method="post" action="/admin/items/{{ item.id }}/quiz/new">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="field"><label>Question</label>
+            <input name="question" type="text" required></div>
+          <div class="row2">
+            <div class="field"><label>Choice 1</label>
+              <input name="choice_1" type="text" required></div>
+            <div class="field"><label>Choice 2</label>
+              <input name="choice_2" type="text" required></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Choice 3 (optional)</label>
+              <input name="choice_3" type="text"></div>
+            <div class="field"><label>Choice 4 (optional)</label>
+              <input name="choice_4" type="text"></div>
+          </div>
+          <div class="field"><label>Correct choice</label>
+            <select name="correct">
+              <option value="1">Choice 1</option>
+              <option value="2">Choice 2</option>
+              <option value="3">Choice 3</option>
+              <option value="4">Choice 4</option>
+            </select></div>
+          <button class="btn btn-sm btn-primary mt" type="submit">Add question</button>
+        </form>
+      </div>
+    </details>
+  {% endif %}
+</div>

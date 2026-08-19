@@ -1,0 +1,32 @@
+{% set page_title = "Updates" %}
+{% include "partials/head.html" %}
+<div class="wrap">
+  <div class="page-head">
+    <div class="crumb"><a href="/dashboard">← Your onboarding</a></div>
+    <h1>Updates</h1>
+    <p class="muted small mb0">Stage unlocks, deadlines and mentor feedback.</p>
+  </div>
+
+  {% if items %}
+    {% for note in items %}
+      <div class="card card-tight">
+        <div class="split">
+          <strong>{{ note.title }}</strong>
+          <span class="split-end tiny muted">{{ ago(note.created_at) }}</span>
+        </div>
+        {% if note.body %}<p class="small muted" style="margin:.35rem 0 0">{{ nl2br(note.body)|safe }}</p>{% endif %}
+        {% if note.url %}<p class="small mb0" style="margin-top:.4rem"><a href="{{ note.url }}">Open →</a></p>{% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="card">
+      <div class="empty">
+        <div class="big">🔔</div>
+        <h2>Nothing new</h2>
+        <p class="muted">We'll drop a note here when a stage unlocks or a deadline is close.</p>
+        <a class="btn btn-primary" href="/dashboard">Back to your dashboard</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% include "partials/foot.html" %}

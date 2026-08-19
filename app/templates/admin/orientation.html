@@ -1,0 +1,145 @@
+{% set page_title = "Orientation" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Orientation</h1>
+    <p class="muted small mb0">Zoom link, date, host and deck for the Day 1 call.
+      Attendance here is what unlocks Stage 2.</p>
+  </div>
+
+  {% if stage %}
+    <div class="card card-tight">
+      <div class="split">
+        <span class="small">Agenda is managed on the stage:
+          <a href="/admin/stages/{{ stage.id }}">{{ stage.title }}</a></span>
+        <span class="split-end tiny muted">{{ plural(len(agenda), "agenda item") }}</span>
+      </div>
+    </div>
+  {% endif %}
+
+  {% for s in sessions %}
+    <div class="card">
+      <div class="card-row">
+        <div>
+          <h3 class="mb0">{{ s.title }}</h3>
+          <p class="small muted mb0">
+            {{ fmt_datetime(s.starts_at) }} · {{ s.duration_minutes }} min ·
+            {{ s.host_name or "no host set" }} · {{ s.region_label }}
+          </p>
+        </div>
+        <div>
+          {% if s.is_active %}<span class="badge done">Active</span>
+          {% else %}<span class="badge locked">Inactive</span>{% endif %}
+        </div>
+      </div>
+      <dl class="kv mt">
+        <dt>Zoom link</dt>
+        <dd>{% if s.zoom_link %}<a href="{{ s.zoom_link }}" target="_blank" rel="noopener">{{ truncate(s.zoom_link, 56) }}</a>{% else %}<span style="color:var(--red)">not set</span>{% endif %}</dd>
+        <dt>Invited</dt><dd>{{ s.invited }}</dd>
+        <dt>Attended</dt><dd>{{ s.attended }}</dd>
+        {% if s.deck %}<dt>Deck</dt><dd><a href="/admin/documents/{{ s.deck.id }}">{{ s.deck.title }}</a></dd>{% endif %}
+      </dl>
+      {% if s.notes %}<p class="small muted mt">{{ s.notes }}</p>{% endif %}
+
+      {% if can_write %}
+        <div class="btn-row mt">
+          <form method="post" action="/admin/orientation/{{ s.id }}/invite" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <button class="btn btn-sm btn-primary" type="submit">Invite tutors who haven't attended</button>
+          </form>
+          <a class="btn btn-sm" href="/admin/attendance/import">Import attendance CSV</a>
+        </div>
+        <details class="editor">
+          <summary>Edit this session</summary>
+          <div>
+            <form method="post" action="/admin/orientation/{{ s.id }}/edit">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <div class="row2">
+                <div class="field"><label>Title</label>
+                  <input name="title" type="text" value="{{ s.title }}" required></div>
+                <div class="field"><label>Zoom link</label>
+                  <input name="zoom_link" type="url" value="{{ s.zoom_link }}"></div>
+              </div>
+              <div class="row3">
+                <div class="field"><label>Starts at</label>
+                  <input name="starts_at" type="datetime-local"
+                         value="{{ s.starts_at.replace(' ', 'T') if s.starts_at else '' }}"></div>
+                <div class="field"><label>Duration (min)</label>
+                  <input name="duration_minutes" type="number" min="15" value="{{ s.duration_minutes }}"></div>
+                <div class="field"><label>Host</label>
+                  <input name="host_name" type="text" value="{{ s.host_name }}"></div>
+              </div>
+              <div class="row3">
+                <div class="field"><label>Region</label>
+                  <select name="region_id">
+                    <option value="">All regions</option>
+                    {% for r in regions_all %}
+                      <option value="{{ r.id }}"{% if r.id == s.region_id %} selected{% endif %}>{{ r.name }}</option>
+                    {% endfor %}
+                  </select></div>
+                <div class="field"><label>Slide deck</label>
+                  <select name="deck_document_id">
+                    <option value="">None</option>
+                    {% for d in decks %}
+                      <option value="{{ d.id }}"{% if d.id == s.deck_document_id %} selected{% endif %}>{{ d.title }}</option>
+                    {% endfor %}
+                  </select></div>
+                <div class="field" style="align-self:end">
+                  <label class="check"><input type="checkbox" name="is_active" value="1"
+                    {% if s.is_active %}checked{% endif %}><span>Active</span></label>
+                </div>
+              </div>
+              <div class="field"><label>Note for tutors</label>
+                <textarea name="notes">{{ s.notes }}</textarea></div>
+              <button class="btn btn-sm btn-primary" type="submit">Save session</button>
+            </form>
+          </div>
+        </details>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  {% if can_write %}
+    <div class="card">
+      <h3>Schedule a session</h3>
+      <form method="post" action="/admin/orientation/new">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row2">
+          <div class="field"><label>Title</label>
+            <input name="title" type="text" value="Cuemath Tutor Orientation" required></div>
+          <div class="field"><label>Zoom link</label>
+            <input name="zoom_link" type="url" placeholder="https://…"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Starts at</label>
+            <input name="starts_at" type="datetime-local"></div>
+          <div class="field"><label>Duration (min)</label>
+            <input name="duration_minutes" type="number" min="15" value="60"></div>
+          <div class="field"><label>Host</label>
+            <input name="host_name" type="text"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Region</label>
+            <select name="region_id">
+              <option value="">All regions</option>
+              {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+            </select></div>
+          <div class="field"><label>Slide deck</label>
+            <select name="deck_document_id">
+              <option value="">None</option>
+              {% for d in decks %}<option value="{{ d.id }}">{{ d.title }}</option>{% endfor %}
+            </select></div>
+        </div>
+        <div class="field"><label>Note for tutors</label>
+          <textarea name="notes"></textarea></div>
+        <label class="check"><input type="checkbox" name="is_active" value="1" checked>
+          <span>Active</span></label>
+        <div class="btn-row mt"><button class="btn btn-primary" type="submit">Create session</button></div>
+      </form>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

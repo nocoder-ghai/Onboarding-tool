@@ -1,0 +1,243 @@
+{% set page_title = stage.title %}
+{% include "partials/head.html" %}
+<div class="wrap">
+  <div class="page-head">
+    <div class="crumb"><a href="/dashboard">← Your onboarding</a></div>
+    <div class="split">
+      <h1>{{ stage.title }}</h1>
+      <span class="split-end">
+        {% if stage.status == "completed" %}<span class="badge done">Done</span>
+        {% elif stage.status == "locked" %}<span class="badge locked">Locked</span>
+        {% else %}<span class="badge active">In progress</span>{% endif %}
+      </span>
+    </div>
+    {% if stage.subtitle %}<p class="small muted mb0">{{ stage.subtitle }}</p>{% endif %}
+  </div>
+
+  {% include "tutor/_timeline.html" %}
+
+  {% if stage.status == "locked" %}
+    <div class="card">
+      <div class="empty">
+        <div class="big">🔒</div>
+        <h2>Not open yet</h2>
+        <p class="muted">{{ stage.lock_reason }}</p>
+        <a class="btn btn-primary" href="/dashboard">Back to your dashboard</a>
+      </div>
+    </div>
+  {% else %}
+
+    <div class="card">
+      {% if stage.description %}<p>{{ stage.description }}</p>{% endif %}
+      <div class="stage-foot">
+        <div class="bar"><div class="bar-fill{% if stage.complete %} done{% endif %}"
+             style="width:{{ stage.percent }}%"></div></div>
+        <div class="pctn">{{ stage.percent }}%</div>
+      </div>
+      {% if stage.due_in_days is not None %}
+        <p class="item-meta mb0">
+          {% if stage.overdue %}⏰ This was due {{ -stage.due_in_days }} day(s) ago.
+          {% elif stage.due_in_days == 0 %}⏰ Due today.
+          {% else %}⏰ Due in {{ stage.due_in_days }} day(s).{% endif %}
+        </p>
+      {% endif %}
+      {% if stage.links %}
+        <div class="linkset">
+          {% for link in stage.links %}
+            <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
+              <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if stage.documents %}
+        <div class="linkset">
+          {% for doc in stage.documents %}
+            {% if doc.current %}
+              <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
+                <span class="ico">📄</span><span class="grow">{{ doc.title }}</span>
+                <span class="tiny muted">v{{ doc.current.version_no }}</span>
+              </a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Orientation: agenda + live session details -->
+    {% if stage.agenda %}
+      <div class="card">
+        <h2>What we'll cover</h2>
+        {% for i, row in enumerate(stage.agenda, 1) %}
+          <div class="item">
+            <div class="item-top">
+              <div class="item-mark" style="background:var(--light-bg); border-color:var(--line); color:var(--blue)">{{ i }}</div>
+              <div class="item-body">
+                <div class="item-title">{{ row.title }}</div>
+                {% if row.description %}<div class="item-desc">{{ row.description }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if stage.session and stage.completion_rule == "admin_marked" %}
+      <div class="card">
+        <h2>Joining details</h2>
+        <dl class="kv">
+          <dt>Session</dt><dd>{{ stage.session.title }}</dd>
+          <dt>When</dt><dd>{{ fmt_datetime(stage.session.starts_at) }} ({{ stage.session.duration_minutes }} min)</dd>
+          <dt>Host</dt><dd>{{ stage.session.host_name or "Cuemath team" }}</dd>
+        </dl>
+        {% if stage.session.notes %}<p class="small muted mt">{{ stage.session.notes }}</p>{% endif %}
+        <div class="btn-row mt">
+          {% if stage.session.zoom_link %}
+            <a class="btn btn-go" href="{{ stage.session.zoom_link }}" target="_blank" rel="noopener">Join on Zoom</a>
+          {% endif %}
+          {% if stage.session.deck and stage.session.deck.current %}
+            <a class="btn" href="/file/document/{{ stage.session.deck.current.id }}" target="_blank" rel="noopener">Slide deck</a>
+          {% endif %}
+        </div>
+        {% if stage.complete %}
+          <p class="small mt mb0">✓ Your attendance is recorded — the next stage is open.</p>
+        {% else %}
+          <p class="small muted mt mb0">Your mentor marks attendance after the call.
+            The next stage opens automatically once they do.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <!-- Components and their checklists -->
+    {% for comp in stage.components %}
+      <div class="comp{% if comp.complete %} is-done{% endif %}">
+        <div class="comp-head">
+          <h3>{{ comp.title }}</h3>
+          {% if comp.complete %}<span class="badge done">Done</span>
+          {% elif comp.awaiting_admin %}<span class="badge submitted">With your mentor</span>
+          {% elif comp.effective_rule == "admin_marked" %}<span class="badge pending">Mentor marks this</span>
+          {% else %}<span class="badge plain">{{ comp.done_units }}/{{ comp.total_units }}</span>{% endif %}
+        </div>
+        {% if comp.description %}<p class="small muted">{{ comp.description }}</p>{% endif %}
+
+        {% if comp.rejected_reason %}
+          <div class="flash error small">{{ comp.rejected_reason }}</div>
+        {% endif %}
+
+        {% if comp.links %}
+          <div class="linkset">
+            {% for link in comp.links %}
+              <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
+                <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if comp.documents %}
+          <div class="linkset">
+            {% for doc in comp.documents %}
+              {% if doc.current %}
+                <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
+                  <span class="ico">📄</span><span class="grow">{{ doc.title }}</span>
+                </a>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if comp.key == "actual_class" %}
+          {% if comp.prep_tips %}
+            <div class="card-tight" style="margin-top:.6rem; background:var(--light-bg)">
+              <div class="small" style="font-weight:650">Quick prep before you teach</div>
+              <ul class="tiny" style="margin:.4rem 0 0 1.1rem">
+                {% for tip in comp.prep_tips %}<li>{{ tip }}</li>{% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {% if comp.class_slot %}
+            <div class="card-tight mt">
+              <div class="small" style="font-weight:650">Your class is scheduled</div>
+              <dl class="kv">
+                <dt>Student</dt><dd>{{ comp.class_slot.student_name or "To be confirmed" }}{% if comp.class_slot.grade_subject %} · {{ comp.class_slot.grade_subject }}{% endif %}</dd>
+                <dt>When</dt><dd>{{ fmt_datetime(comp.class_slot.starts_at) }} ({{ comp.class_slot.duration_minutes }} min)</dd>
+                {% if comp.class_slot.notes %}<dt>Note</dt><dd>{{ comp.class_slot.notes }}</dd>{% endif %}
+              </dl>
+              <div class="btn-row mt">
+                <a class="btn btn-sm btn-go" href="/class-slot/{{ comp.class_slot.id }}/calendar.ics">Add to calendar</a>
+                {% if comp.class_slot.status == "booked" %}
+                  <form method="post" action="/class-slot/{{ comp.class_slot.id }}/release" class="inline-form">
+                    <input type="hidden" name="_csrf" value="{{ csrf }}">
+                    <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+                    <button class="btn btn-sm" type="submit">Pick a different time</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% elif comp.open_slots %}
+            <div class="card-tight mt">
+              <div class="small" style="font-weight:650">Pick a time</div>
+              {% for slot in comp.open_slots %}
+                <div class="item-top" style="margin-top:.5rem">
+                  <div class="item-body">
+                    <div class="item-title">{{ fmt_datetime(slot.starts_at) }} ({{ slot.duration_minutes }} min)</div>
+                    <div class="item-desc">{{ slot.student_name or "Student to be confirmed" }}{% if slot.grade_subject %} · {{ slot.grade_subject }}{% endif %}</div>
+                  </div>
+                  <form method="post" action="/class-slot/{{ slot.id }}/book">
+                    <input type="hidden" name="_csrf" value="{{ csrf }}">
+                    <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+                    <button class="btn btn-sm btn-primary" type="submit">Book this</button>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="small muted mt">No slots are open yet — check back soon, or ask your mentor.</p>
+          {% endif %}
+        {% endif %}
+
+        {% for node in comp.tree %}
+          {% if node.is_group %}
+            {% set group_done = node.children and len([c for c in node.children if not c.done]) == 0 %}
+            <details class="group-block"{% if not group_done %} open{% endif %}>
+              <summary class="group-title">{{ node.title }}
+                {% if group_done %}<span class="badge done">Done</span>{% endif %}</summary>
+              {% if node.description %}<p class="small muted">{{ node.description }}</p>{% endif %}
+              <div class="nest">
+                {% for child in node.children %}
+                  {% set item = child %}
+                  {% include "tutor/_item.html" %}
+                {% endfor %}
+              </div>
+            </details>
+          {% else %}
+            {% set item = node %}
+            {% include "tutor/_item.html" %}
+          {% endif %}
+        {% endfor %}
+
+        {% if comp.effective_rule == "self_marked" and not comp.complete %}
+          <form method="post" action="/component/{{ comp.id }}/complete" class="mt">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+            <input type="hidden" name="done" value="1">
+            <button class="btn btn-ok btn-sm" type="submit">Mark “{{ comp.title }}” complete</button>
+          </form>
+        {% elif comp.effective_rule == "self_marked" and comp.complete %}
+          <form method="post" action="/component/{{ comp.id }}/complete" class="mt">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+            <button class="btn btn-sm" type="submit">Reopen this</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if stage.complete %}
+      <div class="card center">
+        <p class="mb0">✓ This stage is complete. <a href="/dashboard">Back to your dashboard</a></p>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% include "partials/foot.html" %}

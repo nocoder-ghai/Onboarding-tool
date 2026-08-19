@@ -1,0 +1,35 @@
+<span class="btn-row" style="display:inline-flex">
+  {% if not done_now %}
+    <form method="post" action="/admin/tutors/{{ tutor.id }}/status" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="target_type" value="{{ tt }}">
+      <input type="hidden" name="target_id" value="{{ ti }}">
+      <input type="hidden" name="action" value="approve">
+      <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+      <button class="btn btn-xs btn-ok" type="submit">Approve</button>
+    </form>
+  {% endif %}
+  <form method="post" action="/admin/tutors/{{ tutor.id }}/status" class="inline-form">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <input type="hidden" name="target_type" value="{{ tt }}">
+    <input type="hidden" name="target_id" value="{{ ti }}">
+    <input type="hidden" name="action" value="reset">
+    <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+    <button class="btn btn-xs" type="submit">Reset</button>
+  </form>
+  <details class="editor" style="border:0; margin:0; padding:0; display:inline-block">
+    <summary style="font-size:.72rem">Reject</summary>
+    <div style="min-width:240px; text-align:left">
+      <form method="post" action="/admin/tutors/{{ tutor.id }}/status">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="target_type" value="{{ tt }}">
+        <input type="hidden" name="target_id" value="{{ ti }}">
+        <input type="hidden" name="action" value="reject">
+        <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+        <div class="field"><label>Reason the tutor will see</label>
+          <textarea name="reason" required placeholder="What should they change?"></textarea></div>
+        <button class="btn btn-xs btn-danger" type="submit">Send back</button>
+      </form>
+    </div>
+  </details>
+</span>

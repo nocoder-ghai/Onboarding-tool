@@ -1,0 +1,119 @@
+{% set page_title = doc.title %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <div class="crumb"><a href="/admin/documents">← Documents</a></div>
+    <h1>{{ doc.title }}</h1>
+    <p class="muted small mb0">
+      <span class="badge plain">{{ doc.kind }}</span>
+      {% if doc.archived_at %}<span class="badge locked">Archived</span>{% endif %}
+      · {{ ack_count }} acknowledgement(s) recorded across all versions
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Current version</h3>
+    {% if doc.current %}
+      <dl class="kv">
+        <dt>Version</dt><dd>v{{ doc.current.version_no }}</dd>
+        <dt>File</dt><dd><a href="/admin/versions/{{ doc.current.id }}/download" target="_blank" rel="noopener">{{ doc.current.filename }}</a></dd>
+        <dt>Effective from</dt><dd>{{ fmt_date(doc.current.effective_from) }}</dd>
+        <dt>Type</dt><dd>{{ doc.current.mime_type }}</dd>
+      </dl>
+    {% else %}
+      <div class="flash error">No file has been uploaded yet. Tutors see a friendly
+        “coming soon” message and cannot acknowledge this document.</div>
+    {% endif %}
+  </div>
+
+  {% if can_write %}
+    <div class="card">
+      <h3>Upload a new version</h3>
+      <p class="small muted">The old file stays on record. Tutors who already
+        acknowledged an earlier version keep that record, and see a note that a newer
+        version exists.</p>
+      <form method="post" action="/admin/documents/{{ doc.id }}/version"
+            enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row3">
+          <div class="field"><label>File</label>
+            <input name="file" type="file" required></div>
+          <div class="field"><label>Effective from</label>
+            <input name="effective_from" type="date"></div>
+          <div class="field"><label>What changed?</label>
+            <input name="notes" type="text"></div>
+        </div>
+        <button class="btn btn-primary" type="submit">Upload version</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <h3>Version history</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Version</th><th>File</th><th>Effective from</th><th>Size</th>
+          <th>Note</th><th>Uploaded</th></tr></thead>
+        <tbody>
+          {% for v in versions %}
+            <tr>
+              <td>v{{ v.version_no }}
+                {% if doc.current and v.id == doc.current.id %}<span class="badge done">Current</span>{% endif %}</td>
+              <td class="tiny"><a href="/admin/versions/{{ v.id }}/download" target="_blank" rel="noopener">{{ v.filename }}</a></td>
+              <td class="tiny nowrap">{{ fmt_date(v.effective_from) }}</td>
+              <td class="tiny nowrap">{{ round(v.size_bytes / 1024) }} KB</td>
+              <td class="tiny">{{ v.notes }}</td>
+              <td class="tiny nowrap">{{ ago(v.created_at) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if can_write %}
+    <div class="card">
+      <h3>Document settings</h3>
+      <form method="post" action="/admin/documents/{{ doc.id }}/edit">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row2">
+          <div class="field"><label>Title</label>
+            <input name="title" type="text" value="{{ doc.title }}" required></div>
+          <div class="field">
+            <label>Kind</label>
+            <select name="kind">
+              {% for k in ["policy", "deck", "video", "sample", "guide"] %}
+                <option value="{{ k }}"{% if doc.kind == k %} selected{% endif %}>{{ k }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Description</label>
+          <input name="description" type="text" value="{{ doc.description }}"></div>
+        <div class="field"><label>Region</label>
+          <select name="region_id">
+            <option value="">All regions</option>
+            {% for r in regions_all %}
+              <option value="{{ r.id }}"{% if r.id == doc.region_id %} selected{% endif %}>{{ r.name }}</option>
+            {% endfor %}
+          </select></div>
+        <label class="check"><input type="checkbox" name="is_active" value="1"
+          {% if doc.is_active %}checked{% endif %}><span>Visible to tutors</span></label>
+        <div class="btn-row mt">
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
+      <form method="post" action="/admin/documents/{{ doc.id }}/archive" class="mt">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="/admin/documents">
+        {% if doc.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+        <button class="btn btn-sm{% if not doc.archived_at %} btn-danger{% endif %}" type="submit">
+          {{ "Restore document" if doc.archived_at else "Archive document" }}</button>
+      </form>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

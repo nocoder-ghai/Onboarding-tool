@@ -1,0 +1,99 @@
+{% set page_title = "Admin overview" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Overview</h1>
+    <p class="muted small mb0">Where every tutor stands right now.</p>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="stat accent"><div class="n">{{ funnel.total_tutors }}</div>
+      <div class="l">Active tutors</div></div>
+    <div class="stat good"><div class="n">{{ completed }}</div>
+      <div class="l">Fully onboarded</div></div>
+    <div class="stat warn"><div class="n">{{ stalled_count }}</div>
+      <div class="l">Stalled {{ stalled_days }}d+</div></div>
+    <div class="stat"><div class="n">{{ pending_email }}</div>
+      <div class="l">Emails queued</div></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-row">
+      <h2 class="mb0">Funnel</h2>
+      <a class="btn btn-sm" href="/admin/reports">Full report →</a>
+    </div>
+    {% for row in funnel.stages %}
+      {% set total = funnel.total_tutors or 1 %}
+      <div class="funnel-row">
+        <div class="funnel-label">{{ row.title }}</div>
+        <div class="funnel-track">
+          <i class="done" style="width:{{ pct(row.completed, total) }}%"></i>
+          <i class="prog" style="width:{{ pct(row.in_progress, total) }}%"></i>
+        </div>
+        <div class="funnel-num">{{ row.completed }} done · {{ row.reached }} reached</div>
+      </div>
+    {% endfor %}
+    <div class="legend">
+      <span><i style="background:var(--green)"></i>Complete</span>
+      <span><i style="background:var(--mid-blue)"></i>In progress</span>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>Needs a nudge</h3>
+      <p class="small muted">No activity for {{ stalled_days }}+ days.</p>
+      {% if stalled %}
+        {% for tutor in stalled %}
+          <div class="split" style="padding:.35rem 0; border-bottom:1px solid var(--line)">
+            <a href="/admin/tutors/{{ tutor.id }}">{{ tutor.name }}</a>
+            <span class="split-end tiny muted">{{ tutor.current_stage_title }} ·
+              {{ tutor.stalled_days }}d quiet</span>
+          </div>
+        {% endfor %}
+        <a class="btn btn-sm mt" href="/admin/tutors?stalled={{ stalled_days }}">See all {{ stalled_count }}</a>
+      {% else %}
+        <p class="small mb0">Nobody is stuck. 🎉</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Newest tutors</h3>
+      {% if recent %}
+        {% for tutor in recent %}
+          <div class="split" style="padding:.35rem 0; border-bottom:1px solid var(--line)">
+            <a href="/admin/tutors/{{ tutor.id }}">{{ tutor.name }}</a>
+            <span class="split-end tiny muted">{{ ago(tutor.created_at) }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="small mb0">No tutors have signed up yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-row">
+      <h3 class="mb0">Latest changes</h3>
+      <a class="btn btn-sm" href="/admin/audit">Audit log →</a>
+    </div>
+    <div class="table-wrap mt">
+      <table>
+        <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+        <tbody>
+          {% for row in audit_rows %}
+            <tr>
+              <td class="nowrap tiny muted">{{ ago(row['created_at']) }}</td>
+              <td class="tiny">{{ row['actor_label'] }}</td>
+              <td>{{ row['summary'] or row['action'] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

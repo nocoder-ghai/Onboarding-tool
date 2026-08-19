@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ page_title }} · {{ brand }}</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="/"><span class="brand-dot"></span>
+      <span>{{ brand }}<small>Coach onboarding</small></span></a>
+    <nav class="nav">
+      {% if user %}
+        {% if is_admin %}
+          <a href="/admin"{% if path == '/admin' %} class="on"{% endif %}>Overview</a>
+          <a href="/admin/content">Content</a>
+          <a href="/admin/tutors">Tutors</a>
+          <a href="/admin/reports">Reports</a>
+          <span class="role-chip">{{ role.name }}</span>
+        {% else %}
+          <a href="/dashboard"{% if path == '/dashboard' %} class="on"{% endif %}>Dashboard</a>
+          <a href="/notifications">Updates{% if nav_unread %}<span class="dot">{{ nav_unread }}</span>{% endif %}</a>
+          <a href="/profile"{% if path == '/profile' %} class="on"{% endif %}>You</a>
+        {% endif %}
+        <form method="post" action="/logout" class="inline-form">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <button type="submit">Sign out</button>
+        </form>
+      {% else %}
+        <a href="/login">Sign in</a>
+        <a href="/signup">Create account</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+{% if flashes %}
+<div class="wrap wrap-wide" style="padding-bottom:0">
+  {% for f in flashes %}
+    <div class="flash {{ f['level'] }}"><span>{% if f['level'] == 'ok' %}✓{% else %}!{% endif %}</span><span>{{ f['message'] }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}

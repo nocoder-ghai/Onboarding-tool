@@ -1,0 +1,78 @@
+{% set page_title = "Settings & copy" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Settings &amp; copy</h1>
+    <p class="muted small mb0">One-off wording and behaviour toggles, so none of it
+      lives in code.</p>
+  </div>
+
+  <div class="card">
+    <form method="post" action="/admin/settings">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      {% for s in settings %}
+        <div class="field">
+          <label for="{{ s.key }}">{{ s.label }}</label>
+          {% if s.kind == "textarea" %}
+            <textarea id="{{ s.key }}" name="{{ s.key }}">{{ s.value }}</textarea>
+          {% elif s.kind == "number" %}
+            <input id="{{ s.key }}" name="{{ s.key }}" type="number" value="{{ s.value }}">
+          {% else %}
+            <input id="{{ s.key }}" name="{{ s.key }}" type="text" value="{{ s.value }}">
+          {% endif %}
+          <div class="hint"><code>{{ s.key }}</code></div>
+        </div>
+      {% endfor %}
+      {% if can_write %}
+        <button class="btn btn-primary" type="submit">Save settings</button>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-row">
+      <div>
+        <h3 class="mb0">Deadline reminders</h3>
+        <p class="small muted mb0">Queues a nudge for every tutor whose current stage
+          is due within two days.</p>
+      </div>
+      {% if can_write %}
+        <form method="post" action="/admin/notifications/sweep">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <button class="btn btn-sm btn-primary" type="submit">Run now</button>
+        </form>
+      {% endif %}
+    </div>
+    <p class="hint">In production, run <code>python3 run.py sweep</code> daily from cron
+      instead of clicking this.</p>
+  </div>
+
+  <div class="card">
+    <h3>Email outbox</h3>
+    <p class="small muted">Mail is queued in the database rather than sent inline.
+      Point your SMTP worker at the <code>email_outbox</code> table, or inspect it with
+      <code>python3 run.py outbox</code>.</p>
+    {% if outbox %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>To</th><th>Subject</th><th>Queued</th></tr></thead>
+          <tbody>
+            {% for mail in outbox %}
+              <tr>
+                <td class="tiny">{{ mail.to_address }}</td>
+                <td class="tiny">{{ mail.subject }}</td>
+                <td class="tiny nowrap">{{ ago(mail.created_at) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small mb0">Nothing waiting to send.</p>
+    {% endif %}
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

@@ -1,0 +1,63 @@
+{% set page_title = "Audit log" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Audit log</h1>
+    <p class="muted small mb0">Who changed what content, and when. Every write goes
+      through here.</p>
+  </div>
+
+  <div class="card card-tight">
+    <form method="get" action="/admin/audit" class="filters">
+      <div class="field">
+        <label for="entity_type">Entity</label>
+        <select id="entity_type" name="entity_type">
+          <option value="">All</option>
+          {% for et in entity_types %}
+            <option value="{{ et }}"{% if et == entity_type %} selected{% endif %}>{{ et }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="action">Action contains</label>
+        <input id="action" name="action" type="text" value="{{ action }}"
+               placeholder="e.g. archive">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-sm btn-primary" type="submit">Filter</button>
+        <a class="btn btn-sm" href="/admin/audit">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What changed</th>
+        <th>IP</th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="tiny nowrap">{{ fmt_datetime(row.created_at) }}</td>
+            <td class="tiny">{{ row.actor_label }}</td>
+            <td class="tiny"><code>{{ row.action }}</code>
+              {% if row.entity_type %}<div class="muted">{{ row.entity_type }}
+                {% if row.entity_id %}#{{ row.entity_id }}{% endif %}</div>{% endif %}</td>
+            <td>
+              <div class="small">{{ row.summary }}</div>
+              {% if row.diff %}<pre class="diff">{{ row.diff }}</pre>{% endif %}
+            </td>
+            <td class="tiny muted">{{ row.ip_address }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not rows %}
+    <div class="card"><div class="empty"><div class="big">📜</div>
+      <h3>Nothing logged yet</h3></div></div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

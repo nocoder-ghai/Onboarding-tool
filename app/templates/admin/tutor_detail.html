@@ -1,0 +1,175 @@
+{% set page_title = tutor.name %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <div class="crumb"><a href="/admin/tutors">← All tutors</a></div>
+    <h1>{{ tutor.name }}</h1>
+    <p class="muted small mb0">
+      {{ tutor.email or "no email" }}{% if tutor.phone %} · {{ tutor.phone }}{% endif %}
+      · {{ region_label }} · joined {{ fmt_date(tutor.created_at) }}
+      · last active {{ ago(tutor.last_activity_at or tutor.created_at) }}
+    </p>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="stat accent"><div class="n">{{ summary.percent }}%</div>
+      <div class="l">Complete</div></div>
+    <div class="stat"><div class="n">{{ summary.stages_done }}/{{ summary.stages_total }}</div>
+      <div class="l">Stages done</div></div>
+    <div class="stat{% if stalled_days and stalled_days >= 7 %} warn{% endif %}">
+      <div class="n">{{ stalled_days if stalled_days is not None else "–" }}</div>
+      <div class="l">Days quiet</div></div>
+    <div class="stat{% if tutor.completed_at %} good{% endif %}">
+      <div class="n">{{ "Yes" if tutor.completed_at else "No" }}</div>
+      <div class="l">Onboarded</div></div>
+  </div>
+
+  {% if can_write %}
+    <div class="card">
+      <h3>Region</h3>
+      <form method="post" action="/admin/tutors/{{ tutor.id }}/region" class="btn-row">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+        <select name="region_id" style="max-width:260px">
+          <option value="">Not set</option>
+          {% for r in regions_all %}
+            <option value="{{ r.id }}"{% if r.id == tutor.region_id %} selected{% endif %}>{{ r.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-primary" type="submit">Change region</button>
+      </form>
+      <p class="hint">Changing this swaps which Region-Specific Training they see.</p>
+    </div>
+  {% endif %}
+
+  <h2 class="mt2">Progress</h2>
+  {% for stage in states %}
+    <div class="card">
+      <div class="card-row">
+        <div>
+          <h3 class="mb0">{{ stage.title }}</h3>
+          <p class="small muted mb0">
+            {% if stage.status == "completed" %}Completed {{ fmt_date(stage.completed_at) }}
+            {% elif stage.status == "locked" %}Locked — {{ stage.lock_reason }}
+            {% else %}Open since {{ fmt_date(stage.unlocked_at) }}
+              {% if stage.due_in_days is not None %}· due in {{ stage.due_in_days }}d{% endif %}
+            {% endif %}
+          </p>
+        </div>
+        <div class="btn-row">
+          {% if stage.status == "completed" %}<span class="badge done">Done</span>
+          {% elif stage.status == "locked" %}<span class="badge locked">Locked</span>
+          {% else %}<span class="badge active">{{ stage.percent }}%</span>{% endif %}
+          {% if can_write and stage.completion_rule == "admin_marked" %}
+            {% set tt = "stage" %}{% set ti = stage.id %}{% set done_now = stage.complete %}
+            {% include "admin/_actions.html" %}
+          {% endif %}
+        </div>
+      </div>
+
+      {% for comp in stage.components %}
+        <div class="item" style="margin-top:.6rem">
+          <div class="split">
+            <strong>{{ comp.title }}</strong>
+            {% if comp.complete %}<span class="badge done">Done</span>
+            {% elif comp.awaiting_admin %}<span class="badge submitted">Waiting on you</span>
+            {% else %}<span class="badge plain">{{ comp.done_units }}/{{ comp.total_units }}</span>{% endif %}
+            {% if comp.effective_rule != "sub_items" %}
+              <span class="badge plain">{{ comp.effective_rule }}</span>
+            {% endif %}
+            <span class="split-end">
+              {% if can_write and comp.effective_rule != "sub_items" %}
+                {% set tt = "component" %}{% set ti = comp.id %}{% set done_now = comp.complete %}
+                {% include "admin/_actions.html" %}
+              {% endif %}
+            </span>
+          </div>
+          {% if comp.rejected_reason %}
+            <div class="tiny" style="color:var(--red)">Sent back: {{ comp.rejected_reason }}</div>
+          {% endif %}
+
+          {% for node in comp.tree %}
+            {% if node.children %}
+              <div class="tiny muted" style="margin-top:.4rem">{{ node.title }}</div>
+              {% for child in node.children %}
+                {% set item = child %}
+                {% include "admin/_progress_item.html" %}
+              {% endfor %}
+            {% elif node.kind != "group" %}
+              {% set item = node %}
+              {% include "admin/_progress_item.html" %}
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+
+  <div class="card">
+    <h3>Uploads</h3>
+    {% if submissions %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Step</th><th>File</th><th>Status</th><th>Submitted</th><th>Note</th></tr></thead>
+          <tbody>
+            {% for sub in submissions %}
+              <tr{% if sub.superseded_at %} class="archived"{% endif %}>
+                <td>{{ sub.item_title }}</td>
+                <td class="tiny"><a href="/file/submission/{{ sub.id }}" target="_blank" rel="noopener">{{ sub.filename }}</a>
+                  <span class="muted">({{ round(sub.size_bytes / 1024) }} KB)</span></td>
+                <td><span class="badge {{ 'done' if sub.status == 'approved' else ('rejected' if sub.status == 'rejected' else 'submitted') }}">{{ sub.status }}</span>
+                  {% if sub.superseded_at %}<span class="badge locked">replaced</span>{% endif %}</td>
+                <td class="tiny nowrap">{{ fmt_datetime(sub.submitted_at) }}</td>
+                <td class="tiny">{{ sub.review_notes }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small muted mb0">Nothing uploaded yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Policy acknowledgements</h3>
+    {% if acks %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Policy</th><th>Document version</th><th>When</th><th>IP</th></tr></thead>
+          <tbody>
+            {% for ack in acks %}
+              <tr>
+                <td>{{ ack.item_title }}</td>
+                <td class="tiny">{% if ack.version_no %}v{{ ack.version_no }} · {{ ack.filename }}{% else %}—{% endif %}</td>
+                <td class="tiny nowrap">{{ fmt_datetime(ack.acknowledged_at) }}</td>
+                <td class="tiny muted">{{ ack.ip_address }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small muted mb0">No policies acknowledged yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Recent notifications sent</h3>
+    {% if notifications %}
+      {% for note in notifications %}
+        <div class="split" style="padding:.25rem 0; border-bottom:1px solid var(--line)">
+          <span class="small">{{ note.title }}</span>
+          <span class="split-end tiny muted">{{ ago(note.created_at) }}
+            {% if note.read_at %}· read{% else %}· unread{% endif %}</span>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="small muted mb0">None yet.</p>
+    {% endif %}
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

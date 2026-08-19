@@ -1,0 +1,115 @@
+{% set page_title = "Documents" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Documents</h1>
+    <p class="muted small mb0">Policy PDFs, slide decks, training videos and samples.
+      Every upload becomes a new version — tutors only see the current one, and old
+      versions stay on record with their effective dates.</p>
+  </div>
+
+  <div class="card card-tight">
+    <div class="split">
+      <span class="small muted">{{ plural(len(documents), "document") }}</span>
+      <span class="split-end">
+        <a class="btn btn-sm" href="/admin/documents{{ '' if show_archived else '?archived=1' }}">
+          {{ "Hide archived" if show_archived else "Show archived" }}</a>
+      </span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Document</th><th>Kind</th><th>Attached to</th><th>Region</th>
+        <th>Current</th><th>Versions</th><th></th></tr></thead>
+      <tbody>
+        {% for doc in documents %}
+          <tr{% if doc.archived_at %} class="archived"{% endif %}>
+            <td><a href="/admin/documents/{{ doc.id }}"><strong>{{ doc.title }}</strong></a>
+              {% if doc.description %}<div class="tiny muted">{{ truncate(doc.description, 64) }}</div>{% endif %}</td>
+            <td><span class="badge plain">{{ doc.kind }}</span></td>
+            <td class="tiny">{{ doc.target }}</td>
+            <td class="tiny">{{ doc.region_label }}</td>
+            <td class="tiny">
+              {% if doc.current %}
+                v{{ doc.current.version_no }} · {{ fmt_date(doc.current.effective_from) }}
+              {% else %}
+                <span style="color:var(--red)">No file yet</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ doc.version_count }}</td>
+            <td class="right"><a class="btn btn-xs" href="/admin/documents/{{ doc.id }}">Manage</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if can_write %}
+    <div class="card mt">
+      <h3>Add a document</h3>
+      <form method="post" action="/admin/documents/new" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row2">
+          <div class="field"><label>Title</label>
+            <input name="title" type="text" required></div>
+          <div class="field">
+            <label>Kind</label>
+            <select name="kind">
+              <option value="policy">Policy (read &amp; acknowledge)</option>
+              <option value="deck">Slide deck</option>
+              <option value="video">Training video</option>
+              <option value="sample">Sample for tutors</option>
+              <option value="guide">Guide</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Description</label>
+          <input name="description" type="text"></div>
+        <div class="row3">
+          <div class="field">
+            <label>Attach to</label>
+            <select name="target_type">
+              <option value="none">Nothing yet</option>
+              <option value="stage">A stage</option>
+              <option value="component">A component</option>
+              <option value="sub_item">A step (use this for policies)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Which one</label>
+            <select name="target_id">
+              <option value="">—</option>
+              {% for s in stages %}<option value="{{ s.id }}">Stage: {{ s.title }}</option>{% endfor %}
+              {% for c in components %}<option value="{{ c.id }}">Component: {{ c.title }}</option>{% endfor %}
+              {% for i in items %}<option value="{{ i.id }}">Step: {{ i.title }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Region</label>
+            <select name="region_id">
+              <option value="">All regions</option>
+              {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>File</label>
+            <input name="file" type="file"></div>
+          <div class="field"><label>Effective from</label>
+            <input name="effective_from" type="date">
+            <div class="hint">Blank = live immediately.</div></div>
+          <div class="field"><label>Version note</label>
+            <input name="notes" type="text"></div>
+        </div>
+        <label class="check"><input type="checkbox" name="is_active" value="1" checked>
+          <span>Visible to tutors</span></label>
+        <div class="btn-row mt"><button class="btn btn-primary" type="submit">Add document</button></div>
+      </form>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

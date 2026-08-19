@@ -1,0 +1,63 @@
+<form method="post" action="/admin/items/{{ item.id }}/edit">
+  <input type="hidden" name="_csrf" value="{{ csrf }}">
+  <input type="hidden" name="back" value="/admin/components/{{ comp.id }}">
+  <div class="row2">
+    <div class="field"><label>Title</label>
+      <input name="title" type="text" value="{{ item.title }}" required></div>
+    <div class="field">
+      <label>Type</label>
+      <select name="kind">
+        <option value="task"{% if item.kind == "task" %} selected{% endif %}>Task</option>
+        <option value="policy"{% if item.kind == "policy" %} selected{% endif %}>Policy</option>
+        <option value="upload"{% if item.kind == "upload" %} selected{% endif %}>Upload</option>
+        <option value="link"{% if item.kind == "link" %} selected{% endif %}>Link</option>
+        <option value="group"{% if item.kind == "group" %} selected{% endif %}>Group</option>
+      </select>
+    </div>
+  </div>
+  <div class="field"><label>Description</label>
+    <textarea name="description">{{ item.description }}</textarea></div>
+  <div class="field"><label>Instructions</label>
+    <textarea name="instructions">{{ item.instructions }}</textarea></div>
+  <div class="row3">
+    <div class="field">
+      <label>Nest under</label>
+      <select name="parent_id">
+        <option value="">Top level</option>
+        {% for g in groups %}
+          {% if g.id != item.id %}
+            <option value="{{ g.id }}"{% if g.id == item.parent_id %} selected{% endif %}>{{ g.title }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Region</label>
+      <select name="region_id">
+        <option value="">All regions</option>
+        {% for r in regions_all %}
+          <option value="{{ r.id }}"{% if r.id == item.region_id %} selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Upload accepts</label>
+      <select name="accept_mime">
+        <option value=""{% if not item.accept_mime %} selected{% endif %}>n/a</option>
+        <option value="image/*"{% if item.accept_mime == "image/*" %} selected{% endif %}>Images</option>
+        <option value="video/*"{% if item.accept_mime == "video/*" %} selected{% endif %}>Video</option>
+        <option value="application/pdf"{% if item.accept_mime == "application/pdf" %} selected{% endif %}>PDF</option>
+      </select>
+    </div>
+  </div>
+  <div class="row2">
+    <div class="field"><label>Max upload size (MB)</label>
+      <input name="max_upload_mb" type="number" min="1"
+             value="{{ item.max_upload_mb if item.max_upload_mb else '' }}"></div>
+    <div class="field" style="align-self:end">
+      <label class="check"><input type="checkbox" name="is_mandatory" value="1"
+        {% if item.is_mandatory %}checked{% endif %}><span>Mandatory</span></label>
+    </div>
+  </div>
+  <button class="btn btn-sm btn-primary" type="submit">Save step</button>
+</form>

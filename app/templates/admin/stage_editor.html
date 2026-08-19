@@ -1,0 +1,250 @@
+{% set page_title = stage.title %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <div class="crumb"><a href="/admin/content">← Journey content</a></div>
+    <h1>{{ stage.title }}</h1>
+    <p class="muted small mb0">Key <code>{{ stage.key }}</code> · created {{ fmt_date(stage.created_at) }}</p>
+  </div>
+
+  <div class="card">
+    <h3>Stage details</h3>
+    <form method="post" action="/admin/stages/{{ stage.id }}/edit">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="row2">
+        <div class="field">
+          <label for="title">Title</label>
+          <input id="title" name="title" type="text" value="{{ stage.title }}" required>
+        </div>
+        <div class="field">
+          <label for="subtitle">Subtitle</label>
+          <input id="subtitle" name="subtitle" type="text" value="{{ stage.subtitle }}">
+        </div>
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description">{{ stage.description }}</textarea>
+      </div>
+      <div class="field">
+        <label for="locked_hint">Message shown while this stage is locked</label>
+        <input id="locked_hint" name="locked_hint" type="text" value="{{ stage.locked_hint }}">
+        <div class="hint">Leave blank and we'll say “Finish [previous stage] first.”</div>
+      </div>
+      <fieldset>
+        <legend>Unlock rules</legend>
+        <div class="row3">
+          <div class="field">
+            <label for="unlock_after_stage_id">Unlocks after</label>
+            <select id="unlock_after_stage_id" name="unlock_after_stage_id">
+              <option value="">Open from day 1</option>
+              {% for s in other_stages %}
+                <option value="{{ s.id }}"{% if s.id == stage.unlock_after_stage_id %} selected{% endif %}>{{ s.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="completion_rule">Counts as complete when</label>
+            <select id="completion_rule" name="completion_rule">
+              <option value="components"{% if stage.completion_rule == "components" %} selected{% endif %}>All mandatory components are done</option>
+              <option value="admin_marked"{% if stage.completion_rule == "admin_marked" %} selected{% endif %}>An admin marks it (e.g. attendance)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="deadline_days">Deadline (days after unlock)</label>
+            <input id="deadline_days" name="deadline_days" type="number" min="1"
+                   value="{{ stage.deadline_days if stage.deadline_days else '' }}">
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" name="is_mandatory" value="1"
+          {% if stage.is_mandatory %}checked{% endif %}>
+          <span>Mandatory for onboarding completion</span></label>
+      </fieldset>
+      <button class="btn btn-primary" type="submit">Save stage</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Agenda</h3>
+    <p class="small muted">Shown to tutors on the stage page, in this order.</p>
+    {% for item in stage.agenda %}
+      <div class="item{% if item.archived_at %} archived{% endif %}">
+        <div class="item-top">
+          <div class="item-body">
+            <div class="split">
+              <span class="item-title">{{ item.title }}</span>
+              <span class="split-end btn-row">
+                <form method="post" action="/admin/agenda/{{ item.id }}/move" class="inline-form">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}">
+                  <input type="hidden" name="dir" value="up">
+                  <button class="btn btn-xs" type="submit">↑</button>
+                </form>
+                <form method="post" action="/admin/agenda/{{ item.id }}/move" class="inline-form">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}">
+                  <input type="hidden" name="dir" value="down">
+                  <button class="btn btn-xs" type="submit">↓</button>
+                </form>
+                <form method="post" action="/admin/agenda/{{ item.id }}/archive" class="inline-form">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}">
+                  {% if item.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+                  <button class="btn btn-xs{% if not item.archived_at %} btn-danger{% endif %}" type="submit">
+                    {{ "Restore" if item.archived_at else "Remove" }}</button>
+                </form>
+              </span>
+            </div>
+            {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
+            {% if can_write %}
+              <details class="editor">
+                <summary>Edit</summary>
+                <div>
+                  <form method="post" action="/admin/agenda/{{ item.id }}/edit">
+                    <input type="hidden" name="_csrf" value="{{ csrf }}">
+                    <div class="field"><label>Title</label>
+                      <input name="title" type="text" value="{{ item.title }}" required></div>
+                    <div class="field"><label>Description</label>
+                      <textarea name="description">{{ item.description }}</textarea></div>
+                    <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                  </form>
+                </div>
+              </details>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+    {% if can_write %}
+      <details class="editor" open>
+        <summary>Add an agenda item</summary>
+        <div>
+          <form method="post" action="/admin/stages/{{ stage.id }}/agenda/new">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <div class="row2">
+              <div class="field"><label>Title</label>
+                <input name="title" type="text" required></div>
+              <div class="field"><label>Description</label>
+                <input name="description" type="text"></div>
+            </div>
+            <button class="btn btn-sm btn-primary" type="submit">Add</button>
+          </form>
+        </div>
+      </details>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Components</h3>
+    {% for comp in stage.comps %}
+      <div class="item{% if comp.archived_at %} archived{% endif %}">
+        <div class="split">
+          <a href="/admin/components/{{ comp.id }}"><strong>{{ comp.title }}</strong></a>
+          <span class="badge plain">{{ comp.item_count }} step(s)</span>
+          {% if comp.region_id %}<span class="badge region">{{ comp.region_label }}</span>{% endif %}
+          {% if comp.archived_at %}<span class="badge locked">Archived</span>{% endif %}
+          <span class="split-end btn-row">
+            <form method="post" action="/admin/components/{{ comp.id }}/move" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="dir" value="up">
+              <input type="hidden" name="back" value="/admin/stages/{{ stage.id }}">
+              <button class="btn btn-xs" type="submit">↑</button>
+            </form>
+            <form method="post" action="/admin/components/{{ comp.id }}/move" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="dir" value="down">
+              <input type="hidden" name="back" value="/admin/stages/{{ stage.id }}">
+              <button class="btn btn-xs" type="submit">↓</button>
+            </form>
+            <a class="btn btn-xs btn-primary" href="/admin/components/{{ comp.id }}">Edit</a>
+            <form method="post" action="/admin/components/{{ comp.id }}/archive" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="back" value="/admin/stages/{{ stage.id }}">
+              {% if comp.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+              <button class="btn btn-xs{% if not comp.archived_at %} btn-danger{% endif %}" type="submit">
+                {{ "Restore" if comp.archived_at else "Archive" }}</button>
+            </form>
+          </span>
+        </div>
+      </div>
+    {% endfor %}
+    {% if can_write %}
+      <details class="editor" open>
+        <summary>Add a component</summary>
+        <div>
+          <form method="post" action="/admin/stages/{{ stage.id }}/components/new">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <div class="field"><label>Title</label>
+              <input name="title" type="text" required></div>
+            <div class="field"><label>Description</label>
+              <textarea name="description"></textarea></div>
+            <div class="row3">
+              <div class="field">
+                <label>Completion</label>
+                <select name="completion_rule">
+                  <option value="sub_items">All mandatory steps done</option>
+                  <option value="self_marked">Tutor ticks the component</option>
+                  <option value="admin_marked">Mentor/admin marks it</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Region</label>
+                <select name="region_id">
+                  <option value="">All regions</option>
+                  {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="field" style="align-self:end">
+                <label class="check"><input type="checkbox" name="is_mandatory" value="1" checked>
+                  <span>Mandatory</span></label>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary" type="submit">Add component</button>
+          </form>
+        </div>
+      </details>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Links &amp; documents on this stage</h3>
+    {% if stage_links %}
+      {% for link in stage_links %}
+        <div class="linkrow"><span class="ico">↗</span>
+          <span class="grow">{{ link.label }} — <span class="muted tiny">{{ link.url }}</span></span>
+          {% if not link.is_active %}<span class="badge locked">Off</span>{% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="small muted">No links yet.</p>
+    {% endif %}
+    {% for doc in documents %}
+      <div class="linkrow"><span class="ico">📄</span>
+        <span class="grow"><a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a></span>
+        <span class="tiny muted">{{ "v" + str(doc.current.version_no) if doc.current else "no file" }}</span>
+      </div>
+    {% endfor %}
+    <div class="btn-row mt">
+      <a class="btn btn-sm" href="/admin/links">Manage links</a>
+      <a class="btn btn-sm" href="/admin/documents">Manage documents</a>
+    </div>
+  </div>
+
+  {% if history %}
+    <div class="card">
+      <h3>Change history</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Who</th><th>Change</th></tr></thead>
+          <tbody>
+            {% for row in history %}
+              <tr><td class="nowrap tiny muted">{{ ago(row['created_at']) }}</td>
+                <td class="tiny">{{ row['actor_label'] }}</td>
+                <td class="tiny">{{ row['summary'] }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

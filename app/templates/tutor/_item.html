@@ -1,0 +1,114 @@
+<details class="item{% if item.done %} is-done{% elif item.status == 'rejected' %} is-rejected{% endif %}"{% if not item.done %} open{% endif %}>
+  <summary class="item-top">
+    <div class="item-mark">✓</div>
+    <div class="item-body">
+      <div class="split">
+        <div class="item-title">{{ item.title }}</div>
+        <span class="split-end">
+          {% if item.done %}<span class="badge done">Done</span>
+          {% elif item.status == "submitted" %}<span class="badge submitted">Checking</span>
+          {% elif item.status == "rejected" %}<span class="badge rejected">Redo</span>
+          {% elif not item.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
+        </span>
+      </div>
+    </div>
+    <span class="chevron">▾</span>
+  </summary>
+
+  <div class="item-content">
+    {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
+    {% if item.instructions and not item.done %}
+      <div class="item-instr">{{ nl2br(item.instructions)|safe }}</div>
+    {% endif %}
+    {% if item.status == "rejected" and item.rejected_reason %}
+      <div class="flash error small" style="margin-top:.5rem">{{ item.rejected_reason }}</div>
+    {% endif %}
+
+    {% for link in item.links %}
+      <div class="linkset">
+        <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
+          <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
+        </a>
+      </div>
+    {% endfor %}
+
+    {% if item.kind != "upload" and item.kind != "policy" %}
+      {% for doc in item.documents %}
+        {% if doc.current %}
+          <div class="linkset">
+            <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
+              <span class="ico">{% if doc.kind == "video" %}🎥{% else %}📄{% endif %}</span>
+              <span class="grow">{{ doc.title }}</span>
+            </a>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if item.kind == "policy" %}
+      <div class="item-actions">
+        <a class="btn btn-sm{% if not item.done %} btn-primary{% endif %}" href="/policy/{{ item.id }}">
+          {% if item.done %}Read again{% else %}Read &amp; acknowledge{% endif %}
+        </a>
+        {% if item.document and item.document.current %}
+          <a class="btn btn-sm" href="/file/document/{{ item.document.current.id }}" target="_blank" rel="noopener">Open document</a>
+        {% else %}
+          <span class="badge pending">Document coming soon</span>
+        {% endif %}
+      </div>
+      {% for doc in item.documents[1:] %}
+        {% if doc.current %}
+          <div class="linkset">
+            <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
+              <span class="ico">📄</span><span class="grow">{{ doc.title }}</span>
+            </a>
+          </div>
+        {% endif %}
+      {% endfor %}
+      {% if item.acknowledgement %}
+        <div class="item-meta">Acknowledged {{ fmt_datetime(item.acknowledgement.acknowledged_at) }}{% if item.stale_ack %} · a newer version is now available{% endif %}</div>
+      {% endif %}
+
+    {% elif item.kind == "upload" %}
+      {% for doc in item.documents %}
+        {% if doc.current %}
+          <div class="linkset">
+            <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
+              <span class="ico">👀</span><span class="grow">{{ doc.title }}</span>
+            </a>
+          </div>
+        {% endif %}
+      {% endfor %}
+      {% if item.submission %}
+        <div class="item-meta">
+          Uploaded {{ item.submission.filename }} · {{ fmt_datetime(item.submission.submitted_at) }} ·
+          <a href="/file/submission/{{ item.submission.id }}" target="_blank" rel="noopener">view</a>
+        </div>
+      {% endif %}
+      <form method="post" action="/item/{{ item.id }}/upload" enctype="multipart/form-data"
+            class="item-actions">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="{{ path }}">
+        <input type="file" name="file" required style="max-width:260px"
+               {% if item.accept_mime %}accept="{{ item.accept_mime }}"{% endif %}>
+        <button class="btn btn-sm btn-primary" type="submit">
+          {% if item.submission %}Replace{% else %}Upload{% endif %}
+        </button>
+      </form>
+
+    {% else %}
+      <form method="post" action="/item/{{ item.id }}/toggle" class="item-actions">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="{{ path }}">
+        {% if item.done %}
+          <button class="btn btn-sm" type="submit">Undo</button>
+        {% else %}
+          <input type="hidden" name="done" value="1">
+          <button class="btn btn-sm btn-ok" type="submit">
+            {% if item.kind == "link" %}I've done this{% else %}Mark done{% endif %}
+          </button>
+        {% endif %}
+      </form>
+    {% endif %}
+  </div>
+</details>

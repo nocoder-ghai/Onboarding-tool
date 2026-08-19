@@ -1,0 +1,31 @@
+{% set page_title = "Enter your code" %}
+{% include "partials/head.html" %}
+<div class="wrap auth-card">
+  <h1>Check your {{ "inbox" if kind == "email" else "messages" }}</h1>
+  <p class="muted small">We sent a 6-digit code to <strong>{{ identifier }}</strong>.
+    It's good for 10 minutes.</p>
+  <div class="card">
+    <form method="post" action="/login/otp">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="field">
+        <label for="code">Your code</label>
+        <input id="code" name="code" type="text" inputmode="numeric"
+               autocomplete="one-time-code" maxlength="6" required autofocus
+               style="font-size:1.3rem; letter-spacing:.35em; text-align:center">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" name="action" value="verify">
+        Continue
+      </button>
+    </form>
+    <form method="post" action="/login/otp" class="mt">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-block btn-sm" type="submit" name="action" value="resend">
+        Send a new code
+      </button>
+    </form>
+  </div>
+  <p class="tiny muted center"><a href="/login">Use a password instead</a></p>
+</div>
+{% include "partials/foot.html" %}

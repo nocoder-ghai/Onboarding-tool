@@ -1,0 +1,78 @@
+{% set page_title = "Your account" %}
+{% include "partials/head.html" %}
+<div class="wrap">
+  <div class="page-head">
+    <div class="crumb"><a href="/dashboard">← Your onboarding</a></div>
+    <h1>Your account</h1>
+  </div>
+
+  <div class="card">
+    <form method="post" action="/profile">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="field">
+        <label for="name">Your name</label>
+        <input id="name" name="name" type="text" value="{{ user.name }}">
+      </div>
+      <dl class="kv mt">
+        {% if user.email %}<dt>Email</dt><dd>{{ user.email }}</dd>{% endif %}
+        {% if user.phone %}<dt>Mobile</dt><dd>{{ user.phone }}</dd>{% endif %}
+        <dt>Region</dt><dd>{{ region.name if region else "Not set" }}</dd>
+        <dt>Joined</dt><dd>{{ fmt_date(user.created_at) }}</dd>
+      </dl>
+      <p class="hint">Email, mobile and region are managed by your mentor — ask them if
+        something needs changing.</p>
+      <div class="field mt">
+        <label for="password">Set a new password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password">
+        <div class="hint">Leave blank to keep signing in with one-time codes.</div>
+      </div>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Policies you've acknowledged</h3>
+    {% if acks %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Policy</th><th>Version</th><th>When</th></tr></thead>
+          <tbody>
+            {% for ack in acks %}
+              <tr>
+                <td>{{ ack.item_title }}</td>
+                <td>{% if ack.version_no %}v{{ ack.version_no }}{% else %}—{% endif %}</td>
+                <td class="nowrap">{{ fmt_datetime(ack.acknowledged_at) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small muted mb0">Nothing yet — policies show up during Training.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Your uploads</h3>
+    {% if submissions %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Step</th><th>File</th><th>Status</th><th>When</th></tr></thead>
+          <tbody>
+            {% for sub in submissions %}
+              <tr>
+                <td>{{ sub.item_title }}</td>
+                <td><a href="/file/submission/{{ sub.id }}" target="_blank" rel="noopener">{{ sub.filename }}</a></td>
+                <td><span class="badge {{ 'done' if sub.status == 'approved' else ('rejected' if sub.status == 'rejected' else 'submitted') }}">{{ sub.status }}</span></td>
+                <td class="nowrap">{{ fmt_date(sub.submitted_at) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small muted mb0">Your headshot and intro video will appear here.</p>
+    {% endif %}
+  </div>
+</div>
+{% include "partials/foot.html" %}

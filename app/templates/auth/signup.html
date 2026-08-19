@@ -1,0 +1,50 @@
+{% set page_title = "Create your account" %}
+{% include "partials/head.html" %}
+<div class="wrap auth-card">
+  <div class="tabs">
+    <a href="/login">Sign in</a>
+    <a href="/signup" class="on">Create account</a>
+  </div>
+  <h1>Let's get you started</h1>
+  <p class="muted small">{{ welcome or "Create your account and we'll walk you through onboarding one step at a time." }}</p>
+
+  <div class="card">
+    <form method="post" action="/signup">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="field">
+        <label for="name">Full name</label>
+        <input id="name" name="name" type="text" value="{{ form['name'] }}" required autofocus>
+      </div>
+      <div class="field">
+        <label for="email">Email address</label>
+        <input id="email" name="email" type="email" value="{{ form['email'] }}"
+               autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="phone">Mobile number</label>
+        <input id="phone" name="phone" type="tel" value="{{ form['phone'] }}"
+               autocomplete="tel">
+        <div class="hint">Give us at least one of email or mobile — that's how you'll sign in.</div>
+      </div>
+      {% if regions %}
+      <div class="field">
+        <label for="region_id">Where will you be teaching?</label>
+        <select id="region_id" name="region_id" required>
+          <option value="">Choose your region…</option>
+          {% for r in regions %}
+            <option value="{{ r.id }}"{% if str(r.id) == form['region_id'] %} selected{% endif %}>{{ r.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">This decides which region-specific training you'll see.</div>
+      </div>
+      {% endif %}
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password">
+        <div class="hint">Optional — leave blank and sign in with a one-time code instead.</div>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Create my account</button>
+    </form>
+  </div>
+</div>
+{% include "partials/foot.html" %}

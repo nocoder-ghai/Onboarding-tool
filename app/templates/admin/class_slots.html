@@ -1,0 +1,130 @@
+{% set page_title = "Class with a Student" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Class with a Student</h1>
+    <p class="muted small mb0">Feed real class slots here — tutors pick a preferred
+      time from what's open. Prep-tip copy lives in
+      <a href="/admin/settings">Settings &amp; copy</a>.</p>
+  </div>
+
+  {% set open_slots = [s for s in slots if s.status == "open"] %}
+  {% set booked_slots = [s for s in slots if s.status == "booked"] %}
+  {% set other_slots = [s for s in slots if s.status not in ("open", "booked")] %}
+
+  <div class="card">
+    <h3>Booked ({{ len(booked_slots) }})</h3>
+    {% if booked_slots %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Student</th><th>Tutor</th><th>Region</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for s in booked_slots %}
+              <tr>
+                <td class="nowrap">{{ fmt_datetime(s.starts_at) }} ({{ s.duration_minutes }}m)</td>
+                <td>{{ s.student_name or "—" }}{% if s.grade_subject %} <span class="tiny muted">· {{ s.grade_subject }}</span>{% endif %}</td>
+                <td>{{ s.tutor_name }}</td>
+                <td class="tiny">{{ s.region_label }}</td>
+                <td><span class="badge submitted">Booked</span></td>
+                <td>
+                  {% if can_write %}
+                    <form method="post" action="/admin/class-slots/{{ s.id }}/release" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <button class="btn btn-sm" type="submit">Reopen</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small muted mb0">No tutor has booked a class yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Open ({{ len(open_slots) }})</h3>
+    {% if open_slots %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Student</th><th>Region</th><th></th></tr></thead>
+          <tbody>
+            {% for s in open_slots %}
+              <tr>
+                <td class="nowrap">{{ fmt_datetime(s.starts_at) }} ({{ s.duration_minutes }}m)</td>
+                <td>{{ s.student_name or "—" }}{% if s.grade_subject %} <span class="tiny muted">· {{ s.grade_subject }}</span>{% endif %}</td>
+                <td class="tiny">{{ s.region_label }}</td>
+                <td>
+                  {% if can_write %}
+                    <form method="post" action="/admin/class-slots/{{ s.id }}/delete" class="inline-form">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <button class="btn btn-sm" type="submit">Delete</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small muted mb0">Nothing open for tutors to pick right now.</p>
+    {% endif %}
+  </div>
+
+  {% if other_slots %}
+    <div class="card">
+      <h3>Completed / cancelled ({{ len(other_slots) }})</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Student</th><th>Tutor</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for s in other_slots %}
+              <tr class="archived">
+                <td class="nowrap">{{ fmt_datetime(s.starts_at) }}</td>
+                <td>{{ s.student_name or "—" }}</td>
+                <td>{{ s.tutor_name or "—" }}</td>
+                <td><span class="badge done">{{ s.status }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if can_write %}
+    <div class="card">
+      <h3>Feed a new slot</h3>
+      <form method="post" action="/admin/class-slots/new">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="row3">
+          <div class="field"><label>Starts at</label>
+            <input name="starts_at" type="datetime-local" required></div>
+          <div class="field"><label>Duration (min)</label>
+            <input name="duration_minutes" type="number" min="15" value="60"></div>
+          <div class="field"><label>Region</label>
+            <select name="region_id">
+              <option value="">Any region</option>
+              {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+            </select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Student name</label>
+            <input name="student_name" type="text" placeholder="e.g. Aarav Mehta"></div>
+          <div class="field"><label>Grade / subject</label>
+            <input name="grade_subject" type="text" placeholder="e.g. Grade 5 Math"></div>
+        </div>
+        <div class="field"><label>Note for the tutor</label>
+          <textarea name="notes" placeholder="Anything the tutor should know beforehand"></textarea></div>
+        <div class="btn-row mt"><button class="btn btn-primary" type="submit">Add slot</button></div>
+      </form>
+    </div>
+  {% endif %}
+</main>
+</div>
+{% include "partials/foot.html" %}

@@ -1,0 +1,15 @@
+{% set page_title = headline %}
+{% include "partials/head.html" %}
+<div class="wrap wrap-narrow">
+  <div class="card center mt2">
+    <div class="empty">
+      <div class="big">{% if status == 404 %}🧭{% elif status == 403 %}🔒{% else %}🛠️{% endif %}</div>
+      <h1>{{ headline }}</h1>
+      <p class="muted">{{ message }}</p>
+      <div class="btn-row" style="justify-content:center">
+        <a class="btn btn-primary" href="/">Take me home</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% include "partials/foot.html" %}

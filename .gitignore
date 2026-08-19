@@ -1,0 +1,9 @@
+# Runtime data — database, uploads, session secret. Never commit these.
+var/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS/editor cruft
+.DS_Store

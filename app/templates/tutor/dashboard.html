@@ -1,0 +1,114 @@
+{% set page_title = "Your onboarding" %}
+{% include "partials/head.html" %}
+<div class="wrap">
+
+  <div class="banner">
+    <h1>Hi {{ user.name.split(' ')[0] }} 👋</h1>
+    <p>{{ intro or "Work through each stage in order — the next one opens as soon as you're ready." }}</p>
+    <div class="stage-foot" style="margin-top:1rem">
+      <div class="bar"><div class="bar-fill{% if summary.percent == 100 %} done{% endif %}"
+           style="width:{{ summary.percent }}%"></div></div>
+      <div class="pctn" style="color:#fff">{{ summary.percent }}%</div>
+    </div>
+    <p class="small" style="margin-top:.5rem">
+      {{ summary.stages_done }} of {{ summary.stages_total }} stages complete
+      {% if summary.current_stage %} · up next: <strong>{{ summary.current_stage.title }}</strong>{% endif %}
+    </p>
+  </div>
+
+  {% include "tutor/_timeline.html" %}
+
+  {% if summary.all_complete %}
+    <div class="card" style="border-left:4px solid var(--gold)">
+      <div class="card-row">
+        <div>
+          <h2>You're fully onboarded 🎓</h2>
+          <p class="small muted mb0">Every stage is done. Your certificate is ready.</p>
+        </div>
+        <a class="btn btn-go" href="/complete">View certificate</a>
+      </div>
+    </div>
+  {% endif %}
+
+  {% for i, stage in enumerate(states, 1) %}
+    {% set cls = "is-done" if stage.status == "completed" else ("is-locked" if stage.status == "locked" else "is-open") %}
+    {% if stage.status == "locked" %}
+      <div class="stage {{ cls }}">
+    {% else %}
+      <a class="stage {{ cls }}" href="/stage/{{ stage.id }}">
+    {% endif %}
+        <div class="stage-top">
+          <div class="stage-n">{% if stage.status == "completed" %}✓{% else %}{{ i }}{% endif %}</div>
+          <div style="flex:1; min-width:0">
+            <div class="split">
+              <h3>{{ stage.title }}</h3>
+              <span class="split-end">
+                {% if stage.status == "completed" %}<span class="badge done">Done</span>
+                {% elif stage.status == "locked" %}<span class="badge locked">Locked</span>
+                {% elif stage.awaiting_admin %}<span class="badge submitted">With your mentor</span>
+                {% else %}<span class="badge active">In progress</span>{% endif %}
+              </span>
+            </div>
+            {% if stage.subtitle %}<div class="sub">{{ stage.subtitle }}</div>{% endif %}
+            {% if stage.description %}<div class="desc">{{ stage.description }}</div>{% endif %}
+
+            {% if stage.status == "locked" %}
+              <div class="lock-note"><span>🔒</span><span>{{ stage.lock_reason }}</span></div>
+            {% else %}
+              {% if stage.due_in_days is not None %}
+                <div class="item-meta">
+                  {% if stage.overdue %}⏰ Was due {{ -stage.due_in_days }} day(s) ago — let's finish it.
+                  {% elif stage.due_in_days == 0 %}⏰ Due today.
+                  {% else %}⏰ Due in {{ stage.due_in_days }} day(s).{% endif %}
+                </div>
+              {% endif %}
+              {% if stage.pending_titles and stage.status != "completed" %}
+                <div class="item-meta">Pending: {{ truncate(", ".join(stage.pending_titles), 110) }}</div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+        {% if stage.status != "locked" %}
+          <div class="stage-foot">
+            <div class="bar bar-sm"><div class="bar-fill{% if stage.complete %} done{% endif %}"
+                 style="width:{{ stage.percent }}%"></div></div>
+            <div class="pctn">{{ stage.percent }}%</div>
+          </div>
+        {% endif %}
+    {% if stage.status == "locked" %}
+      </div>
+    {% else %}
+      </a>
+    {% endif %}
+  {% endfor %}
+
+  {% if class_slot and class_slot.status == "booked" %}
+    <div class="card" style="border-left:4px solid var(--blue)">
+      <h2>Your class with a student</h2>
+      <p class="small muted">{{ class_slot.student_name or "Student to be confirmed" }}{% if class_slot.grade_subject %} · {{ class_slot.grade_subject }}{% endif %}</p>
+      <dl class="kv">
+        <dt>When</dt><dd>{{ fmt_datetime(class_slot.starts_at) }} ({{ class_slot.duration_minutes }} min)</dd>
+        {% if class_slot.notes %}<dt>Note</dt><dd>{{ class_slot.notes }}</dd>{% endif %}
+      </dl>
+      <div class="btn-row mt">
+        <a class="btn btn-go" href="/class-slot/{{ class_slot.id }}/calendar.ics">Add to calendar</a>
+        {% if class_stage %}<a class="btn btn-sm" href="/stage/{{ class_stage.id }}">Prep tips</a>{% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if links %}
+    <div class="card">
+      <h3>Handy links</h3>
+      <div class="linkset">
+        {% for link in links %}
+          <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
+            <span class="ico">↗</span>
+            <span class="grow">{{ link.label }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% include "partials/foot.html" %}

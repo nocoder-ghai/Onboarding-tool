@@ -1,0 +1,101 @@
+{% set page_title = item.title %}
+{% include "partials/head.html" %}
+<div class="wrap">
+  <div class="page-head">
+    <div class="crumb"><a href="/stage/{{ stage.id }}">← {{ stage.title }}</a></div>
+    <h1>{{ item.title }}</h1>
+    {% if item.description %}<p class="muted small mb0">{{ item.description }}</p>{% endif %}
+  </div>
+
+  {% if version %}
+    <div class="card">
+      <div class="card-row">
+        <div>
+          <h3 class="mb0">{{ document.title }}</h3>
+          <p class="small muted mb0">
+            Version {{ version.version_no }} · in effect from {{ fmt_date(version.effective_from) }}
+            · {{ version.filename }}
+          </p>
+        </div>
+        <a class="btn btn-primary" href="/file/document/{{ version.id }}" target="_blank" rel="noopener">
+          Open the document
+        </a>
+      </div>
+      {% if item.instructions %}
+        <div class="item-instr mt">{{ nl2br(item.instructions)|safe }}</div>
+      {% endif %}
+    </div>
+
+    {% if links %}
+      <div class="card card-tight">
+        <div class="linkset">
+          {% for link in links %}
+            <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
+              <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      {% if ack %}
+        <h3>You've completed this ✓</h3>
+        <p class="small muted">
+          Recorded {{ fmt_datetime(ack.acknowledged_at) }} against version {{ version.version_no }}.
+          We keep this on record.
+        </p>
+        <a class="btn" href="/stage/{{ stage.id }}">Back to {{ stage.title }}</a>
+      {% elif questions %}
+        <h3>Quick check: {{ plural(len(questions), "question") }}</h3>
+        <p class="small muted">Answer every question correctly to mark
+          <strong>{{ item.title }}</strong> as read. You can try again if you don't get
+          them all right the first time.</p>
+        <form method="post" action="/policy/{{ item.id }}/quiz">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          {% for i, q in enumerate(questions, 1) %}
+            <div class="field mt">
+              <label>{{ i }}. {{ q.question }}</label>
+              {% for c in q.choices %}
+                <label class="check" style="display:block; margin-top:.3rem">
+                  <input type="radio" name="q_{{ q.id }}" value="{{ c.id }}" required>
+                  <span>{{ c.label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          {% endfor %}
+          <div class="btn-row mt">
+            <button class="btn btn-primary" type="submit">Submit answers</button>
+            <a class="btn" href="/stage/{{ stage.id }}">Not yet</a>
+          </div>
+        </form>
+      {% else %}
+        <h3>Confirm you've read it</h3>
+        <form method="post" action="/policy/{{ item.id }}/acknowledge">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="back" value="/policy/{{ item.id }}">
+          <label class="check mt">
+            <input type="checkbox" name="confirm" value="1" required>
+            <span>I've read <strong>{{ item.title }}</strong> (version {{ version.version_no }})
+              and I understand what it asks of me.</span>
+          </label>
+          <div class="btn-row mt">
+            <button class="btn btn-primary" type="submit">Acknowledge</button>
+            <a class="btn" href="/stage/{{ stage.id }}">Not yet</a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="empty">
+        <div class="big">📄</div>
+        <h2>This document isn't up yet</h2>
+        <p class="muted">Your mentor still has to upload it. Nothing for you to do —
+          we'll let you know the moment it's ready.</p>
+        <a class="btn btn-primary" href="/stage/{{ stage.id }}">Back to {{ stage.title }}</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% include "partials/foot.html" %}
