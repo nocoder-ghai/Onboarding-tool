@@ -1,19 +1,26 @@
 <aside class="side print-hide">
   <div class="side-nav">
     <a href="/admin"{% if path == '/admin' %} class="on"{% endif %}>Overview</a>
-    <div class="side-label">Content</div>
-    <a href="/admin/content"{% if path == '/admin/content' %} class="on"{% endif %}>Journey</a>
-    <a href="/admin/class-slots"{% if path == '/admin/class-slots' %} class="on"{% endif %}>Class with a Student</a>
-    <a href="/admin/links"{% if path == '/admin/links' %} class="on"{% endif %}>Links</a>
-    <a href="/admin/documents"{% if path.startswith('/admin/documents') %} class="on"{% endif %}>Documents</a>
-    <a href="/admin/regions"{% if path == '/admin/regions' %} class="on"{% endif %}>Regions</a>
+    {% if not (role and role["key"] == "viewer") %}
+      <div class="side-label">Content</div>
+      <a href="/admin/content"{% if path == '/admin/content' %} class="on"{% endif %}>Journey</a>
+      <a href="/admin/class-slots"{% if path == '/admin/class-slots' %} class="on"{% endif %}>Class with a Student</a>
+      <a href="/admin/links"{% if path == '/admin/links' %} class="on"{% endif %}>Links</a>
+      <a href="/admin/documents"{% if path.startswith('/admin/documents') %} class="on"{% endif %}>Documents</a>
+      <a href="/admin/regions"{% if path == '/admin/regions' %} class="on"{% endif %}>Regions</a>
+    {% endif %}
     <div class="side-label">Tutors</div>
-    <a href="/admin/tutors"{% if path.startswith('/admin/tutors') %} class="on"{% endif %}>All tutors</a>
-    <div class="side-label">Insight</div>
-    <a href="/admin/reports"{% if path == '/admin/reports' %} class="on"{% endif %}>Reports</a>
-    <a href="/admin/audit"{% if path == '/admin/audit' %} class="on"{% endif %}>Audit log</a>
-    <div class="side-label">Setup</div>
-    <a href="/admin/team"{% if path == '/admin/team' %} class="on"{% endif %}>Team &amp; roles</a>
-    <a href="/admin/settings"{% if path == '/admin/settings' %} class="on"{% endif %}>Settings &amp; copy</a>
+    <a href="/admin/tutors"{% if path.startswith('/admin/tutors') and path != '/admin/tutors/bulk-create' %} class="on"{% endif %}>{% if role and role["key"] == "viewer" %}My candidates{% else %}All tutors{% endif %}</a>
+    {% if not (role and role["key"] == "viewer") %}
+      <a href="/admin/tutors/bulk-create"{% if path == '/admin/tutors/bulk-create' %} class="on"{% endif %}>Bulk-create logins</a>
+    {% endif %}
+    {% if not (role and role["key"] == "viewer") %}
+      <div class="side-label">Insight</div>
+      <a href="/admin/reports"{% if path == '/admin/reports' %} class="on"{% endif %}>Reports</a>
+      <a href="/admin/audit"{% if path == '/admin/audit' %} class="on"{% endif %}>Audit log</a>
+      <div class="side-label">Setup</div>
+      <a href="/admin/team"{% if path == '/admin/team' %} class="on"{% endif %}>Team &amp; roles</a>
+      <a href="/admin/settings"{% if path == '/admin/settings' %} class="on"{% endif %}>Settings &amp; copy</a>
+    {% endif %}
   </div>
 </aside>

@@ -41,6 +41,15 @@
       </select>
     </div>
     <div class="field">
+      <label>Grade cohort</label>
+      <select name="grade_cohort_id">
+        <option value="">All grade cohorts</option>
+        {% for g in grade_cohorts_all %}
+          <option value="{{ g.id }}"{% if g.id == item.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
       <label>Upload accepts</label>
       <select name="accept_mime">
         <option value=""{% if not item.accept_mime %} selected{% endif %}>n/a</option>

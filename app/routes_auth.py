@@ -102,12 +102,15 @@ def register(app):
     @app.route("/signup", methods=["GET", "POST"])
     def signup(request):
         regions = content.regions()
+        grade_cohorts = content.grade_cohorts()
         if request.user is not None:
             return redirect(auth.home_for(request.user))
-        form = {"name": "", "email": "", "phone": "", "region_id": ""}
+        form = {"name": "", "email": "", "phone": "", "region_id": "",
+                "grade_cohort_id": ""}
         if request.method == "GET":
             return app.render(request, "auth/signup.html", regions=regions,
-                              form=form, welcome=db.setting("signup_intro", ""))
+                              grade_cohorts=grade_cohorts, form=form,
+                              welcome=db.setting("signup_intro", ""))
 
         request.verify_csrf()
         form = {
@@ -115,6 +118,7 @@ def register(app):
             "email": security.normalise_email(request.get("email", "")),
             "phone": security.normalise_phone(request.get("phone", "")),
             "region_id": request.get("region_id", ""),
+            "grade_cohort_id": request.get("grade_cohort_id", ""),
         }
         password = request.get("password", "")
         errors = []
@@ -127,6 +131,9 @@ def register(app):
         region_id = request.get_int("region_id")
         if regions and not region_id:
             errors.append("Choose the region you'll be teaching in.")
+        grade_cohort_id = request.get_int("grade_cohort_id")
+        if grade_cohorts and not grade_cohort_id:
+            errors.append("Choose the grade cohort you'll be teaching.")
         if password:
             problem = security.password_problem(password)
             if problem:
@@ -141,7 +148,8 @@ def register(app):
             for message in errors:
                 request.flash(message, "error")
             return app.render(request, "auth/signup.html", regions=regions,
-                              form=form, welcome=db.setting("signup_intro", ""))
+                              grade_cohorts=grade_cohorts, form=form,
+                              welcome=db.setting("signup_intro", ""))
 
         user_id = db.insert("users", {
             "name": form["name"],
@@ -150,6 +158,7 @@ def register(app):
             "password_hash": security.hash_password(password) if password else None,
             "role_key": "tutor",
             "region_id": region_id,
+            "grade_cohort_id": grade_cohort_id,
             "created_at": db.now(),
             "last_activity_at": db.now(),
         })

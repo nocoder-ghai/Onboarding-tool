@@ -15,7 +15,7 @@ Derived completions are written back to tutor_progress so that reporting
 
 import datetime
 
-from . import content, db, notify, storage, util
+from . import audit, content, db, notify, storage, util
 from .util import AttrDict, wrap, wrap_all
 
 DONE = "completed"
@@ -94,16 +94,18 @@ class ContentCache:
             self._stages = content.stages()
         return self._stages
 
-    def components(self, stage_id, region_id):
-        key = (stage_id, region_id)
+    def components(self, stage_id, region_id, grade_cohort_id):
+        key = (stage_id, region_id, grade_cohort_id)
         if key not in self._components:
-            self._components[key] = content.components(stage_id, region_id)
+            self._components[key] = content.components(stage_id, region_id,
+                                                        grade_cohort_id)
         return self._components[key]
 
-    def leaves(self, component_id, region_id):
-        key = (component_id, region_id)
+    def leaves(self, component_id, region_id, grade_cohort_id):
+        key = (component_id, region_id, grade_cohort_id)
         if key not in self._leaves:
-            self._leaves[key] = content.leaf_sub_items(component_id, region_id)
+            self._leaves[key] = content.leaf_sub_items(component_id, region_id,
+                                                        grade_cohort_id)
         return self._leaves[key]
 
 
@@ -125,7 +127,7 @@ def _sub_item_state(item, pmap):
 
 def component_state(user, comp, pmap, cache=None):
     cache = cache or ContentCache()
-    leaves = cache.leaves(comp.id, user["region_id"])
+    leaves = cache.leaves(comp.id, user["region_id"], user["grade_cohort_id"])
     states = [_sub_item_state(item, pmap) for item in leaves]
     rule = comp.completion_rule
     if rule == "sub_items" and not leaves:
@@ -168,7 +170,7 @@ def stage_states(user, cache=None, pmap=None):
 
     computed = []
     for st in stages:
-        comps = cache.components(st.id, user["region_id"])
+        comps = cache.components(st.id, user["region_id"], user["grade_cohort_id"])
         comp_states = [component_state(user, c, pmap, cache) for c in comps]
         row = pmap.get(("stage", st.id))
         if st.completion_rule == "admin_marked":
@@ -303,47 +305,96 @@ def stage_detail(user, stage_id, states=None):
     if state is None:
         return None
     region_id = user["region_id"]
+    grade_cohort_id = user["grade_cohort_id"]
     state.agenda = content.agenda_items(state.id)
-    state.links = content.links_for("stage", state.id, region_id)
-    state.documents = content.documents_for("stage", state.id, region_id)
+    state.links = content.links_for("stage", state.id, region_id, grade_cohort_id)
+    state.documents = content.documents_for("stage", state.id, region_id,
+                                            grade_cohort_id)
     state.session = orientation_session_for(user)
     for comp in state.components:
-        comp.links = content.links_for("component", comp.id, region_id)
-        comp.documents = content.documents_for("component", comp.id, region_id)
-        comp.tree = _hydrate_tree(user, comp, region_id)
+        comp.links = content.links_for("component", comp.id, region_id,
+                                       grade_cohort_id)
+        comp.documents = content.documents_for("component", comp.id, region_id,
+                                               grade_cohort_id)
+        comp.tree = _hydrate_tree(user, comp, region_id, grade_cohort_id)
+        comp.current_item_id = _first_incomplete_leaf_id(comp.tree)
         if comp.key == CLASS_SLOT_COMPONENT_KEY:
             comp.class_slot = class_slot_for(user)
             comp.open_slots = [] if comp.class_slot else open_class_slots(region_id)
             comp.prep_tips = prep_tips()
+
+    # Reveal components one at a time so a multi-part stage doesn't dump every
+    # part on the tutor at once. The class-with-a-student component "passes"
+    # as soon as a slot is picked — completion needs a mentor's review, which
+    # can take days, and shouldn't hold up the rest of the stage.
+    previous_passed = True
+    for comp in state.components:
+        comp.visible = previous_passed
+        if comp.key == CLASS_SLOT_COMPONENT_KEY:
+            previous_passed = bool(comp.class_slot)
+        else:
+            previous_passed = comp.complete
     return state
 
 
-def _hydrate_tree(user, comp, region_id):
+def _hydrate_tree(user, comp, region_id, grade_cohort_id=None):
     pmap = progress_map(user["id"])
-    tree = content.sub_item_tree(comp.id, region_id)
+    tree = content.sub_item_tree(comp.id, region_id, grade_cohort_id)
     out = []
     for node in tree:
         node_state = _sub_item_state(node, pmap)
         node_state.children = []
         for child in node.children:
             child_state = _sub_item_state(child, pmap)
-            _attach_item_extras(user, child_state, region_id)
+            _attach_item_extras(user, child_state, region_id, grade_cohort_id)
             node_state.children.append(child_state)
-        _attach_item_extras(user, node_state, region_id)
+        _attach_item_extras(user, node_state, region_id, grade_cohort_id)
         node_state.is_group = node.kind == "group" or bool(node_state.children)
         out.append(node_state)
     return out
 
 
-def hydrate_tree(user, comp, region_id):
+def hydrate_tree(user, comp, region_id, grade_cohort_id=None):
     """Public alias — the admin tutor view renders the same tree a tutor sees."""
-    return _hydrate_tree(user, comp, region_id)
+    return _hydrate_tree(user, comp, region_id, grade_cohort_id)
 
 
-def _attach_item_extras(user, item, region_id):
-    item.links = content.links_for("sub_item", item.id, region_id)
-    item.documents = content.documents_for("sub_item", item.id, region_id)
+def _first_incomplete_leaf_id(tree):
+    """The one step a tutor should see expanded: the earliest not-done leaf,
+    reading top to bottom and into group children. None once everything's done."""
+    for node in tree:
+        for leaf in (node.children if node.is_group else [node]):
+            if not leaf.done:
+                return leaf.id
+    return None
+
+
+def video_watched(user_id, document_id):
+    return bool(db.one(
+        "SELECT 1 FROM video_views WHERE user_id = ? AND document_id = ?",
+        (user_id, document_id)))
+
+
+def mark_video_watched(user_id, document_id):
+    db.execute(
+        "INSERT OR IGNORE INTO video_views (user_id, document_id, watched_at) "
+        "VALUES (?, ?, ?)", (user_id, document_id, db.now()))
+
+
+def unwatched_videos(user, item_documents):
+    """Video documents with an actual playable video uploaded (not a seeded
+    stand-in PDF) that the user hasn't watched yet."""
+    return [d for d in item_documents if d.kind == "video" and d.current
+            and (d.current.mime_type or "").startswith("video/")
+            and not video_watched(user["id"], d.id)]
+
+
+def _attach_item_extras(user, item, region_id, grade_cohort_id=None):
+    item.links = content.links_for("sub_item", item.id, region_id, grade_cohort_id)
+    item.documents = content.documents_for("sub_item", item.id, region_id,
+                                           grade_cohort_id)
     item.document = item.documents[0] if item.documents else None
+    item.video_locked = bool(unwatched_videos(user, item.documents))
     item.acknowledgement = None
     item.submission = None
     if item.kind == "policy":
@@ -413,6 +464,9 @@ def toggle_sub_item(user, item, done):
         raise ValidationError("Please open the policy and acknowledge it instead.")
     if item.kind == "upload":
         raise ValidationError("Please upload your file to complete this step.")
+    if done and unwatched_videos(user, content.documents_for(
+            "sub_item", item.id, user["region_id"], user["grade_cohort_id"])):
+        raise ValidationError("Please watch the video above before marking this done.")
     if done:
         set_progress(user["id"], "sub_item", item.id, DONE, rejected_reason="")
     else:
@@ -425,7 +479,7 @@ def acknowledge_policy(user, item, ip_address=""):
     assert_item_actionable(user, item)
     if item.kind != "policy":
         raise ValidationError("That step isn't a policy.")
-    doc = content.primary_document(item.id, user["region_id"])
+    doc = content.primary_document(item.id, user["region_id"], user["grade_cohort_id"])
     version = doc.current if doc else None
     if version is None:
         raise ValidationError(
@@ -463,7 +517,7 @@ def submit_quiz(user, item, answers):
         "total": total, "passed": 1 if passed else 0, "submitted_at": db.now(),
     })
     if passed:
-        doc = content.primary_document(item.id, user["region_id"])
+        doc = content.primary_document(item.id, user["region_id"], user["grade_cohort_id"])
         version = doc.current if doc else None
         if version:
             db.execute(
@@ -723,13 +777,19 @@ def admin_reset(actor, tutor, target_type, target_id):
 # Reporting
 # --------------------------------------------------------------------------- #
 
-def tutors(region_id=None, stage_id=None, status=None, search="",
-           stalled_days=None):
+def tutors(region_id=None, grade_cohort_id=None, stage_id=None, status=None,
+           search="", stalled_days=None, captain_id=None):
     sql = ["SELECT * FROM users WHERE role_key = 'tutor'"]
     args = []
     if region_id:
         sql.append("AND region_id = ?")
         args.append(region_id)
+    if grade_cohort_id:
+        sql.append("AND grade_cohort_id = ?")
+        args.append(grade_cohort_id)
+    if captain_id:
+        sql.append("AND captain_id = ?")
+        args.append(captain_id)
     if search:
         sql.append("AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)")
         args.extend(["%%%s%%" % search] * 3)
@@ -765,14 +825,18 @@ def tutors(region_id=None, stage_id=None, status=None, search="",
     return out
 
 
-def funnel():
+def funnel(captain_id=None):
     """Per-stage reach/completion counts plus drop-off from the previous stage."""
     cache = ContentCache()
     stages = cache.stages()
     reached = {s.id: 0 for s in stages}
     completed = {s.id: 0 for s in stages}
-    tutor_rows = wrap_all(db.query(
-        "SELECT * FROM users WHERE role_key = 'tutor' AND is_active = 1"))
+    sql = "SELECT * FROM users WHERE role_key = 'tutor' AND is_active = 1"
+    args = ()
+    if captain_id:
+        sql += " AND captain_id = ?"
+        args = (captain_id,)
+    tutor_rows = wrap_all(db.query(sql, args))
     for tutor in tutor_rows:
         for state in stage_states(tutor, cache):
             if state.status in ("available", DONE):
@@ -827,3 +891,149 @@ def submissions_for(user_id, include_superseded=False):
     if not include_superseded:
         sql += " AND s.superseded_at IS NULL"
     return wrap_all(db.query(sql + " ORDER BY s.id DESC", (user_id,)))
+
+
+# --------------------------------------------------------------------------- #
+# Class review (C1-C8) — logged by a tutor's Captain
+# --------------------------------------------------------------------------- #
+
+CLASS_COUNT = 8
+MILESTONE_AFTER = {5: "progress_report", 8: "ptm"}
+
+
+def class_review_state(user_id):
+    """One row per class 1-8: the logged review if it exists, else a
+    placeholder marked 'pending'. Class N+1 stays locked until class N is
+    logged, so Captains review in order."""
+    rows = {r.class_number: r for r in wrap_all(db.query(
+        "SELECT * FROM class_reviews WHERE user_id = ?", (user_id,)))}
+    out = []
+    unlocked = True
+    for n in range(1, CLASS_COUNT + 1):
+        row = rows.get(n)
+        if row:
+            row.pending = False
+        else:
+            row = AttrDict({"class_number": n, "status": "pending",
+                            "feedback_note": "", "red_flag_reason": "",
+                            "milestone": MILESTONE_AFTER.get(n, ""),
+                            "reviewed_by": None, "reviewed_at": None,
+                            "pending": True})
+        row.locked = not unlocked
+        out.append(row)
+        unlocked = unlocked and not row.pending
+    return out
+
+
+def next_pending_class(user_id):
+    for row in class_review_state(user_id):
+        if row.pending and not row.locked:
+            return row.class_number
+    return None
+
+
+def log_class_review(request, tutor_id, class_number, feedback_note, red_flag_reason):
+    if db.one("SELECT 1 FROM class_reviews WHERE user_id = ? AND class_number = ?",
+              (tutor_id, class_number)):
+        raise ValueError("Class %d has already been reviewed." % class_number)
+    values = {
+        "user_id": tutor_id, "class_number": class_number,
+        "status": "flagged" if red_flag_reason else "reviewed",
+        "feedback_note": feedback_note, "red_flag_reason": red_flag_reason,
+        "milestone": MILESTONE_AFTER.get(class_number, ""),
+        "reviewed_by": request.user["id"], "reviewed_at": db.now(),
+    }
+    db.insert("class_reviews", values)
+    audit.record(request, "class_review.log", "user", tutor_id,
+                 "Logged class %d review%s" % (
+                     class_number, " (red flag)" if red_flag_reason else ""),
+                 after=values)
+
+
+# --------------------------------------------------------------------------- #
+# Coach compliance — logged by a tutor's Captain
+# --------------------------------------------------------------------------- #
+
+# Starting deduction model (editable): each incident costs points off a
+# 100 baseline. Bands per the Compliance Rating framework: <=40 Critical,
+# 41-80 Needs Attention, 81-99 Minor Issues, 100 Excellent.
+COMPLIANCE_EVENT_LABELS = {
+    "class_late_login": "Class — late login",
+    "class_no_show": "Class — no show",
+    "trial_late_login": "Trial — late login",
+    "trial_no_show": "Trial — no show",
+    "trial_ack_late": "Trial — acknowledged >2hrs late",
+}
+COMPLIANCE_EVENT_WEIGHT = 15
+
+
+def _compliance_band(score):
+    if score <= 40:
+        return "Critical"
+    if score <= 80:
+        return "Needs Attention"
+    if score < 100:
+        return "Minor Issues"
+    return "Excellent"
+
+
+def compliance_state(user_id, window_days=30):
+    """Rolling Compliance Rating for a tutor from the last `window_days` of
+    logged incidents: 100 minus a flat deduction per incident, floored at 0."""
+    cutoff = (datetime.datetime.utcnow()
+             - datetime.timedelta(days=window_days)).replace(microsecond=0) \
+             .isoformat(sep=" ")
+    events = wrap_all(db.query(
+        "SELECT * FROM compliance_events WHERE user_id = ? AND occurred_at >= ? "
+        "ORDER BY occurred_at DESC", (user_id, cutoff)))
+    for e in events:
+        e.label = COMPLIANCE_EVENT_LABELS.get(e.event_type, e.event_type)
+    score = max(0, 100 - COMPLIANCE_EVENT_WEIGHT * len(events))
+    return AttrDict({"score": score, "band": _compliance_band(score),
+                     "events": events, "window_days": window_days})
+
+
+def log_compliance_event(request, tutor_id, event_type, notes):
+    values = {"user_id": tutor_id, "event_type": event_type, "notes": notes,
+              "logged_by": request.user["id"], "occurred_at": db.now()}
+    db.insert("compliance_events", values)
+    audit.record(request, "compliance_event.log", "user", tutor_id,
+                 "Logged %s" % COMPLIANCE_EVENT_LABELS.get(event_type, event_type),
+                 after=values)
+
+
+# --------------------------------------------------------------------------- #
+# Onboarding Manager's Dashboard — both Captains side by side
+# --------------------------------------------------------------------------- #
+
+def manager_rollup(stalled_days=None):
+    """Per-Captain KPI rollup: onboarding stalls, first-8-class review SLA
+    breaches (pending >48h since unlocked), and compliance band mix — the
+    data behind the Captain KRAs, not captain-scoped (manager sees everyone)."""
+    if stalled_days is None:
+        stalled_days = db.setting_int("stalled_days", 7)
+    out = []
+    for captain in content.captains():
+        tutor_ids = [r["id"] for r in db.query(
+            "SELECT id FROM users WHERE role_key = 'tutor' AND captain_id = ?",
+            (captain.id,))]
+        stalled = len(tutors(stalled_days=stalled_days, captain_id=captain.id))
+        sla_breaches = 0
+        bands = {"Critical": 0, "Needs Attention": 0, "Minor Issues": 0, "Excellent": 0}
+        for tid in tutor_ids:
+            next_due = next_pending_class(tid)
+            if next_due:
+                # unlocked-but-unreviewed for 48h+: approximate "due" from the
+                # most recent logged review (or account creation if none yet).
+                last = db.scalar(
+                    "SELECT MAX(reviewed_at) FROM class_reviews WHERE user_id = ?",
+                    (tid,)) or db.scalar(
+                    "SELECT created_at FROM users WHERE id = ?", (tid,))
+                if last and (db.days_since(last) or 0) * 24 >= 48:
+                    sla_breaches += 1
+            bands[compliance_state(tid).band] += 1
+        out.append(AttrDict({
+            "captain": captain, "tutor_count": len(tutor_ids),
+            "stalled": stalled, "sla_breaches": sla_breaches, "bands": bands,
+        }))
+    return out

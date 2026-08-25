@@ -21,6 +21,13 @@
             {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
           </select></div>
       </div>
+      <div class="row2">
+        <div class="field"><label>Grade cohort</label>
+          <select name="grade_cohort_id">
+            <option value="">All grade cohorts</option>
+            {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+          </select></div>
+      </div>
       <label class="check"><input type="checkbox" name="is_active" value="1" checked>
         <span>Visible to tutors</span></label>
       <div class="btn-row mt">

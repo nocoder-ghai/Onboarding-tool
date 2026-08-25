@@ -1,0 +1,45 @@
+<aside class="tutor-sidebar">
+  <div class="ts-user">
+    <div class="ts-user-name">{{ user.name }}</div>
+    {% if region %}<div class="ts-user-region">{{ region.name }}</div>{% endif %}
+  </div>
+
+  <nav class="tsnav">
+    {% for i, s in enumerate(states, 1) %}
+      {% set grp_cls = "is-done" if s.status == "completed" else ("is-locked" if s.status == "locked" else "is-current") %}
+      {% set type_badge = "1:1" if s.completion_rule == "admin_marked" else "SELF" %}
+      <div class="tsnav-group {{ grp_cls }}">
+        {% if s.status == "locked" %}
+          <span class="tsnav-head">
+            <span class="tsnav-mark">&#128274;</span>
+            <span class="tsnav-title">{{ s.title }}</span>
+            <span class="tsnav-type">{{ type_badge }}</span>
+          </span>
+        {% else %}
+          <a class="tsnav-head" href="/stage/{{ s.id }}">
+            <span class="tsnav-mark">{% if s.status == "completed" %}&#10003;{% else %}&#9679;{% endif %}</span>
+            <span class="tsnav-title">{{ s.title }}</span>
+            <span class="tsnav-type">{{ type_badge }}</span>
+          </a>
+        {% endif %}
+        {% if s.id == current_stage_id and stage_components %}
+          <ul class="tsnav-children">
+            {% set current_marked = False %}
+            {% for comp in stage_components %}
+              {% set is_next = (not comp.complete) and (not current_marked) %}
+              {% set current_marked = current_marked or is_next %}
+              <li class="{{ 'is-done' if comp.complete else ('is-current' if is_next else '') }}">
+                {{ comp.title }}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </nav>
+
+  <div class="ts-foot">
+    <a href="/notifications">Updates{% if nav_unread %} &middot; {{ nav_unread }}{% endif %}</a>
+    <a href="/profile">You</a>
+  </div>
+</aside>

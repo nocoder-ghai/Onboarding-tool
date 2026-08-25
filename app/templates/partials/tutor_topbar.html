@@ -1,0 +1,17 @@
+<header class="tt-topbar">
+  <div class="tt-brand">
+    <span class="tt-brand-name">{{ brand }}</span>
+    <span class="tt-brand-tag">Making Coaches MathFit™</span>
+  </div>
+  <nav class="tt-tabs">
+    <a class="tt-tab{% if not path.startswith('/learnosity') %} on{% endif %}" href="/dashboard">Onboarding Journey</a>
+    <a class="tt-tab{% if path.startswith('/learnosity') %} on{% endif %}" href="/learnosity">Learnosity</a>
+  </nav>
+  <div class="tt-account">
+    <span class="tt-email">{{ user.email or user.phone }}</span>
+    <form method="post" action="/logout" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <button type="submit" class="btn btn-sm">Sign out</button>
+    </form>
+  </div>
+</header>

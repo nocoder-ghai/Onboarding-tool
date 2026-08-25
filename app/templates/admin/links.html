@@ -11,7 +11,7 @@
 
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Label</th><th>URL</th><th>Attached to</th><th>Region</th>
+      <thead><tr><th>Label</th><th>URL</th><th>Attached to</th><th>Region</th><th>Grade cohort</th>
         <th>On</th><th></th></tr></thead>
       <tbody>
         {% for link in links %}
@@ -21,6 +21,7 @@
             <td class="tiny"><a href="{{ link.url }}" target="_blank" rel="noopener">{{ truncate(link.url, 44) }}</a></td>
             <td class="tiny">{{ link.target }}</td>
             <td class="tiny">{{ link.region_label }}</td>
+            <td class="tiny">{{ link.grade_cohort_label }}</td>
             <td>{% if link.is_active %}<span class="badge done">Live</span>{% else %}<span class="badge locked">Off</span>{% endif %}</td>
             <td class="right">
               {% if can_write %}
@@ -40,6 +41,13 @@
                           <option value="">All regions</option>
                           {% for r in regions_all %}
                             <option value="{{ r.id }}"{% if r.id == link.region_id %} selected{% endif %}>{{ r.name }}</option>
+                          {% endfor %}
+                        </select></div>
+                      <div class="field"><label>Grade cohort</label>
+                        <select name="grade_cohort_id">
+                          <option value="">All grade cohorts</option>
+                          {% for g in grade_cohorts_all %}
+                            <option value="{{ g.id }}"{% if g.id == link.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
                           {% endfor %}
                         </select></div>
                       <label class="check"><input type="checkbox" name="is_active" value="1"
@@ -102,6 +110,13 @@
               {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
             </select>
           </div>
+        </div>
+        <div class="field">
+          <label>Grade cohort</label>
+          <select name="grade_cohort_id">
+            <option value="">All grade cohorts</option>
+            {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+          </select>
         </div>
         <label class="check"><input type="checkbox" name="is_active" value="1" checked>
           <span>Live for tutors straight away</span></label>

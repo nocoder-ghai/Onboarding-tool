@@ -121,7 +121,32 @@ def init_db():
     conn = connect()
     with conn:
         conn.executescript(script)
+        _migrate(conn)
     return config.DB_PATH
+
+
+def _migrate(conn):
+    """Small additive migrations for columns added after a DB already exists.
+    `executescript`'s CREATE TABLE IF NOT EXISTS can't add columns to a table
+    that's already there, so new columns get an explicit ALTER TABLE here."""
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "captain_id" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN captain_id INTEGER "
+                     "REFERENCES users(id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_captain "
+                 "ON users(captain_id)")
+    if "grade_cohort_id" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN grade_cohort_id INTEGER "
+                     "REFERENCES grade_cohorts(id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_grade_cohort "
+                 "ON users(grade_cohort_id)")
+
+    for table in ("components", "sub_items", "links", "documents"):
+        table_cols = [row[1] for row in
+                      conn.execute("PRAGMA table_info(%s)" % table).fetchall()]
+        if "grade_cohort_id" not in table_cols:
+            conn.execute("ALTER TABLE %s ADD COLUMN grade_cohort_id INTEGER "
+                         "REFERENCES grade_cohorts(id)" % table)
 
 
 def table_exists(name):

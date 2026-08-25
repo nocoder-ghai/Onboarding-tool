@@ -1,6 +1,25 @@
 {% set page_title = "Your onboarding" %}
+{% set hide_topbar = True %}
+{% set current_stage_id = summary.current_stage.id if summary.current_stage else None %}
 {% include "partials/head.html" %}
-<div class="wrap">
+{% include "partials/tutor_topbar.html" %}
+<div class="tutor-shell">
+{% include "partials/tutor_sidebar.html" %}
+<main class="tutor-main">
+
+  <div class="day-card">{% include "tutor/_timeline.html" %}</div>
+
+  {% if welcome_video %}
+    <div class="card">
+      {% if welcome_video.current %}
+        {% set doc = welcome_video %}
+        {% include "partials/_doc_link.html" %}
+      {% else %}
+        <h3 class="mb0">Nancy's Welcome Video</h3>
+        <p class="small muted mb0">Coming soon.</p>
+      {% endif %}
+    </div>
+  {% endif %}
 
   <div class="banner">
     <h1>Hi {{ user.name.split(' ')[0] }} 👋</h1>
@@ -15,8 +34,6 @@
       {% if summary.current_stage %} · up next: <strong>{{ summary.current_stage.title }}</strong>{% endif %}
     </p>
   </div>
-
-  {% include "tutor/_timeline.html" %}
 
   {% if summary.all_complete %}
     <div class="card" style="border-left:4px solid var(--gold)">
@@ -110,5 +127,6 @@
       </div>
     </div>
   {% endif %}
+</main>
 </div>
 {% include "partials/foot.html" %}

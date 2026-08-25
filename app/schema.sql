@@ -29,6 +29,17 @@ CREATE TABLE IF NOT EXISTS regions (
     is_active  INTEGER NOT NULL DEFAULT 1
 );
 
+-- Which grades a tutor will teach (e.g. "K-5", "3-8", "9-12"). Gates content
+-- the same way regions do — a component/sub-item/link/document tagged with a
+-- cohort is only shown to tutors in that cohort.
+CREATE TABLE IF NOT EXISTS grade_cohorts (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    key        TEXT NOT NULL UNIQUE,
+    name       TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_active  INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     name             TEXT NOT NULL,
@@ -37,6 +48,10 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash    TEXT,                  -- NULL => OTP-only account
     role_key         TEXT NOT NULL REFERENCES roles(key),
     region_id        INTEGER REFERENCES regions(id),
+    grade_cohort_id  INTEGER REFERENCES grade_cohorts(id),
+    -- for a tutor: which admin/viewer account (a "captain") tracks them.
+    -- NULL means unassigned. Ignored for non-tutor users.
+    captain_id       INTEGER REFERENCES users(id),
     is_active        INTEGER NOT NULL DEFAULT 1,
     created_at       TEXT NOT NULL,
     last_login_at    TEXT,
@@ -45,8 +60,11 @@ CREATE TABLE IF NOT EXISTS users (
     CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_role   ON users(role_key);
-CREATE INDEX IF NOT EXISTS idx_users_region ON users(region_id);
+CREATE INDEX IF NOT EXISTS idx_users_role    ON users(role_key);
+CREATE INDEX IF NOT EXISTS idx_users_region  ON users(region_id);
+-- idx_users_captain and idx_users_grade_cohort are created in db._migrate() —
+-- captain_id and grade_cohort_id may not exist
+-- yet on a database created before that column was added.
 
 -- One-time passcodes for passwordless login. Only the hash is stored.
 CREATE TABLE IF NOT EXISTS otp_codes (
@@ -102,6 +120,7 @@ CREATE TABLE IF NOT EXISTS components (
     completion_rule TEXT NOT NULL DEFAULT 'sub_items',
     -- NULL region_id => shown to every region. Set => region-specific content.
     region_id       INTEGER REFERENCES regions(id),
+    grade_cohort_id INTEGER REFERENCES grade_cohorts(id),
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL,
     archived_at     TEXT,
@@ -130,6 +149,7 @@ CREATE TABLE IF NOT EXISTS sub_items (
     sort_order      INTEGER NOT NULL DEFAULT 0,
     is_mandatory    INTEGER NOT NULL DEFAULT 1,
     region_id       INTEGER REFERENCES regions(id),
+    grade_cohort_id INTEGER REFERENCES grade_cohorts(id),
     created_at      TEXT NOT NULL,
     updated_at      TEXT NOT NULL,
     archived_at     TEXT,
@@ -167,6 +187,7 @@ CREATE TABLE IF NOT EXISTS links (
     component_id INTEGER REFERENCES components(id) ON DELETE CASCADE,
     sub_item_id  INTEGER REFERENCES sub_items(id) ON DELETE CASCADE,
     region_id    INTEGER REFERENCES regions(id),
+    grade_cohort_id INTEGER REFERENCES grade_cohorts(id),
     sort_order   INTEGER NOT NULL DEFAULT 0,
     is_active    INTEGER NOT NULL DEFAULT 1,
     created_at   TEXT NOT NULL,
@@ -191,6 +212,7 @@ CREATE TABLE IF NOT EXISTS documents (
     component_id INTEGER REFERENCES components(id) ON DELETE SET NULL,
     sub_item_id  INTEGER REFERENCES sub_items(id) ON DELETE SET NULL,
     region_id    INTEGER REFERENCES regions(id),
+    grade_cohort_id INTEGER REFERENCES grade_cohorts(id),
     is_active    INTEGER NOT NULL DEFAULT 1,
     created_at   TEXT NOT NULL,
     updated_at   TEXT NOT NULL,
@@ -363,6 +385,18 @@ CREATE TABLE IF NOT EXISTS policy_acknowledgements (
 
 CREATE INDEX IF NOT EXISTS idx_ack_user ON policy_acknowledgements(user_id);
 
+-- A tutor watching a video document to completion. Task/link steps whose
+-- video hasn't been watched yet can't be marked done (see toggle_sub_item).
+CREATE TABLE IF NOT EXISTS video_views (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    watched_at  TEXT NOT NULL,
+    UNIQUE (user_id, document_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_video_views_user ON video_views(user_id);
+
 -- Files a tutor submits (headshot, 1-minute video, anything else admins add).
 CREATE TABLE IF NOT EXISTS submissions (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -380,6 +414,49 @@ CREATE TABLE IF NOT EXISTS submissions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_submissions_user ON submissions(user_id, sub_item_id);
+
+-- --------------------------------------------------------------------------
+-- Class review & coach compliance (owned by a tutor's Captain, post-enrollment)
+-- --------------------------------------------------------------------------
+
+-- One row per (tutor, class number 1-8). A Captain logs this once the class
+-- has happened, so it doubles as "has this class been reviewed yet".
+CREATE TABLE IF NOT EXISTS class_reviews (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    class_number      INTEGER NOT NULL,
+    -- 'reviewed'  -> logged, no concerns
+    -- 'flagged'   -> logged, red flag raised
+    status            TEXT NOT NULL DEFAULT 'reviewed',
+    feedback_note     TEXT NOT NULL DEFAULT '',
+    red_flag_reason   TEXT NOT NULL DEFAULT '',
+    -- set on the class 5 review (Progress Report) and class 8 review (PTM)
+    milestone         TEXT NOT NULL DEFAULT '',
+    reviewed_by       INTEGER REFERENCES users(id),
+    reviewed_at       TEXT NOT NULL,
+    UNIQUE (user_id, class_number),
+    CHECK (class_number BETWEEN 1 AND 8),
+    CHECK (status IN ('reviewed', 'flagged')),
+    CHECK (milestone IN ('', 'progress_report', 'ptm'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_class_reviews_user ON class_reviews(user_id);
+
+-- Individual compliance incidents. A tutor's Compliance Rating is computed
+-- on read from these rows (see progress.compliance_state) rather than stored,
+-- so the scoring model can change without a backfill.
+CREATE TABLE IF NOT EXISTS compliance_events (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_type   TEXT NOT NULL,
+    notes        TEXT NOT NULL DEFAULT '',
+    logged_by    INTEGER REFERENCES users(id),
+    occurred_at  TEXT NOT NULL,
+    CHECK (event_type IN ('class_late_login', 'class_no_show', 'trial_late_login',
+                          'trial_no_show', 'trial_ack_late'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_compliance_events_user ON compliance_events(user_id, occurred_at DESC);
 
 -- --------------------------------------------------------------------------
 -- Notifications, audit, settings

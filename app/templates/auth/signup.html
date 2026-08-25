@@ -38,6 +38,18 @@
         <div class="hint">This decides which region-specific training you'll see.</div>
       </div>
       {% endif %}
+      {% if grade_cohorts %}
+      <div class="field">
+        <label for="grade_cohort_id">Which grades will you teach?</label>
+        <select id="grade_cohort_id" name="grade_cohort_id" required>
+          <option value="">Choose your grade cohort…</option>
+          {% for g in grade_cohorts %}
+            <option value="{{ g.id }}"{% if str(g.id) == form['grade_cohort_id'] %} selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="hint">This decides which grade-specific training you'll see.</div>
+      </div>
+      {% endif %}
       <div class="field">
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="new-password">

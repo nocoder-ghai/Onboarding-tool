@@ -1,0 +1,23 @@
+{% if doc.current %}
+  {% if doc.kind == "video" %}
+    <div class="video-box">
+      <div class="video-box-title">{{ doc.title }}</div>
+      <video controls preload="metadata"
+             poster="/file/document/{{ doc.current.id }}/thumbnail"
+             data-cm-video-timer data-document-id="{{ doc.current.id }}" data-csrf="{{ csrf }}">
+        <source src="/file/document/{{ doc.current.id }}" type="{{ doc.current.mime_type }}">
+      </video>
+      <div class="video-timer">
+        <div class="bar bar-sm"><div class="bar-fill"></div></div>
+        <span class="tiny muted video-timer-label">Loading video length…</span>
+      </div>
+    </div>
+  {% else %}
+    <div class="linkset">
+      <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
+        <span class="ico">{{ icon }}</span>
+        <span class="grow">{{ doc.title }}</span>
+      </a>
+    </div>
+  {% endif %}
+{% endif %}

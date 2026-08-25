@@ -1,7 +1,9 @@
-"""Reads of the admin-managed content tree, with region filtering applied.
+"""Reads of the admin-managed content tree, with region and grade-cohort
+filtering applied.
 
 Everything here answers the question "what should *this* tutor see?" — archived
-rows are hidden, and rows tagged with a region are only visible to that region.
+rows are hidden, and rows tagged with a region and/or grade cohort are only
+visible to tutors matching both.
 """
 
 from . import db, util
@@ -14,8 +16,15 @@ def _region_sql(column="region_id"):
     return "(%s IS NULL OR %s = ?)" % (column, column)
 
 
+def _scope_sql(region_column="region_id", grade_column="grade_cohort_id"):
+    """A pair of NULL-or-matches clauses — content tagged with a region and/or
+    grade cohort is only visible to a tutor matching both. Two `?` placeholders,
+    bind (region_id, grade_cohort_id) in that order."""
+    return "%s AND %s" % (_region_sql(region_column), _region_sql(grade_column))
+
+
 # --------------------------------------------------------------------------- #
-# Regions & settings
+# Regions, grade cohorts & settings
 # --------------------------------------------------------------------------- #
 
 def regions(active_only=True):
@@ -34,6 +43,41 @@ def region(region_id):
 def region_name(region_id):
     row = region(region_id)
     return row.name if row else "All regions"
+
+
+def grade_cohorts(active_only=True):
+    sql = "SELECT * FROM grade_cohorts"
+    if active_only:
+        sql += " WHERE is_active = 1"
+    return wrap_all(db.query(sql + " ORDER BY sort_order, name"))
+
+
+def grade_cohort(grade_cohort_id):
+    if not grade_cohort_id:
+        return None
+    return wrap(db.one("SELECT * FROM grade_cohorts WHERE id = ?", (grade_cohort_id,)))
+
+
+def grade_cohort_name(grade_cohort_id):
+    row = grade_cohort(grade_cohort_id)
+    return row.name if row else "All grade cohorts"
+
+
+# --------------------------------------------------------------------------- #
+# Captains (admin/viewer accounts that track a subset of tutors)
+# --------------------------------------------------------------------------- #
+
+def captains():
+    return wrap_all(db.query(
+        "SELECT * FROM users WHERE role_key IN ('admin', 'viewer') "
+        "AND is_active = 1 ORDER BY name"))
+
+
+def captain_name(captain_id):
+    if not captain_id:
+        return "Unassigned"
+    row = wrap(db.one("SELECT * FROM users WHERE id = ?", (captain_id,)))
+    return row.name if row else "Unassigned"
 
 
 # --------------------------------------------------------------------------- #
@@ -66,14 +110,15 @@ def agenda_items(stage_id, include_archived=False):
 # Components & sub-items
 # --------------------------------------------------------------------------- #
 
-def components(stage_id, region_id=None, include_archived=False, all_regions=False):
+def components(stage_id, region_id=None, grade_cohort_id=None,
+              include_archived=False, all_regions=False):
     sql = ["SELECT * FROM components WHERE stage_id = ?"]
     args = [stage_id]
     if not include_archived:
         sql.append("AND archived_at IS NULL")
     if not all_regions:
-        sql.append("AND " + _region_sql())
-        args.append(region_id)
+        sql.append("AND " + _scope_sql())
+        args.extend([region_id, grade_cohort_id])
     sql.append("ORDER BY sort_order, id")
     return wrap_all(db.query(" ".join(sql), args))
 
@@ -82,8 +127,9 @@ def component(component_id):
     return wrap(db.one("SELECT * FROM components WHERE id = ?", (component_id,)))
 
 
-def sub_items(component_id, region_id=None, include_archived=False,
-              all_regions=False, parent_id=None, top_level_only=True):
+def sub_items(component_id, region_id=None, grade_cohort_id=None,
+              include_archived=False, all_regions=False, parent_id=None,
+              top_level_only=True):
     sql = ["SELECT * FROM sub_items WHERE component_id = ?"]
     args = [component_id]
     if parent_id is not None:
@@ -94,8 +140,8 @@ def sub_items(component_id, region_id=None, include_archived=False,
     if not include_archived:
         sql.append("AND archived_at IS NULL")
     if not all_regions:
-        sql.append("AND " + _region_sql())
-        args.append(region_id)
+        sql.append("AND " + _scope_sql())
+        args.extend([region_id, grade_cohort_id])
     sql.append("ORDER BY sort_order, id")
     return wrap_all(db.query(" ".join(sql), args))
 
@@ -104,20 +150,21 @@ def sub_item(sub_item_id):
     return wrap(db.one("SELECT * FROM sub_items WHERE id = ?", (sub_item_id,)))
 
 
-def sub_item_tree(component_id, region_id=None, include_archived=False,
-                  all_regions=False):
+def sub_item_tree(component_id, region_id=None, grade_cohort_id=None,
+                  include_archived=False, all_regions=False):
     """Top-level sub-items, each with a `children` list (one nesting level)."""
-    tree = sub_items(component_id, region_id, include_archived, all_regions)
+    tree = sub_items(component_id, region_id, grade_cohort_id, include_archived,
+                     all_regions)
     for node in tree:
-        node.children = sub_items(component_id, region_id, include_archived,
-                                  all_regions, parent_id=node.id)
+        node.children = sub_items(component_id, region_id, grade_cohort_id,
+                                  include_archived, all_regions, parent_id=node.id)
     return tree
 
 
-def leaf_sub_items(component_id, region_id=None):
+def leaf_sub_items(component_id, region_id=None, grade_cohort_id=None):
     """Every completable sub-item under a component ('group' rows excluded)."""
     leaves = []
-    for node in sub_item_tree(component_id, region_id):
+    for node in sub_item_tree(component_id, region_id, grade_cohort_id):
         children = node.children
         if node.kind == "group" or children:
             leaves.extend([c for c in children if c.kind != "group"])
@@ -134,23 +181,23 @@ _TARGET_COLUMN = {"stage": "stage_id", "component": "component_id",
                   "sub_item": "sub_item_id"}
 
 
-def links_for(target_type, target_id, region_id=None):
+def links_for(target_type, target_id, region_id=None, grade_cohort_id=None):
     column = _TARGET_COLUMN[target_type]
     return wrap_all(db.query(
         "SELECT * FROM links WHERE %s = ? AND is_active = 1 AND %s "
-        "ORDER BY sort_order, id" % (column, _region_sql()),
-        (target_id, region_id)))
+        "ORDER BY sort_order, id" % (column, _scope_sql()),
+        (target_id, region_id, grade_cohort_id)))
 
 
 def link_by_key(key):
     return wrap(db.one("SELECT * FROM links WHERE key = ? AND is_active = 1", (key,)))
 
 
-def global_links(region_id=None):
+def global_links(region_id=None, grade_cohort_id=None):
     return wrap_all(db.query(
         "SELECT * FROM links WHERE stage_id IS NULL AND component_id IS NULL "
         "AND sub_item_id IS NULL AND is_active = 1 AND %s "
-        "ORDER BY sort_order, id" % _region_sql(), (region_id,)))
+        "ORDER BY sort_order, id" % _scope_sql(), (region_id, grade_cohort_id)))
 
 
 def all_links():
@@ -197,12 +244,12 @@ def _attach_current(docs):
     return docs
 
 
-def documents_for(target_type, target_id, region_id=None):
+def documents_for(target_type, target_id, region_id=None, grade_cohort_id=None):
     column = _TARGET_COLUMN[target_type]
     docs = wrap_all(db.query(
         "SELECT * FROM documents WHERE %s = ? AND is_active = 1 "
         "AND archived_at IS NULL AND %s ORDER BY id"
-        % (column, _region_sql()), (target_id, region_id)))
+        % (column, _scope_sql()), (target_id, region_id, grade_cohort_id)))
     return _attach_current(docs)
 
 
@@ -213,9 +260,9 @@ def all_documents(include_archived=False):
     return _attach_current(wrap_all(db.query(sql + " ORDER BY kind, title")))
 
 
-def primary_document(sub_item_id, region_id=None):
+def primary_document(sub_item_id, region_id=None, grade_cohort_id=None):
     """The document a policy sub-item asks the tutor to read."""
-    docs = documents_for("sub_item", sub_item_id, region_id)
+    docs = documents_for("sub_item", sub_item_id, region_id, grade_cohort_id)
     return docs[0] if docs else None
 
 

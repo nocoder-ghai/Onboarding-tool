@@ -17,13 +17,17 @@ def register(app):
         summary = progress.overall(states)
         progress.touch_activity(user["id"])
         class_stage = content.stage_by_key("class_and_app_training")
+        welcome_video = content.document_by_key("nancy_welcome_video")
+        if welcome_video:
+            welcome_video.current = content.current_version(welcome_video.id)
         return app.render(
             request, "tutor/dashboard.html",
             states=states, summary=summary,
             class_slot=progress.class_slot_for(user), class_stage=class_stage,
-            links=content.global_links(user["region_id"]),
+            links=content.global_links(user["region_id"], user["grade_cohort_id"]),
             intro=db.setting("dashboard_intro", ""),
-            unread=notify.unread_count(user["id"]))
+            unread=notify.unread_count(user["id"]),
+            welcome_video=welcome_video)
 
     # ---------------------------------------------------------- stage detail #
     @app.route("/stage/<int:stage_id>")
@@ -35,8 +39,23 @@ def register(app):
         if state is None:
             raise HttpError(404, "That stage isn't part of your journey.")
         progress.touch_activity(user["id"])
+        idx = next((i for i, s in enumerate(states) if s.id == stage_id), None)
+        next_stage = (states[idx + 1] if idx is not None and idx + 1 < len(states)
+                      else None)
         return app.render(request, "tutor/stage.html", stage=state, states=states,
-                          summary=progress.overall(states))
+                          summary=progress.overall(states), next_stage=next_stage)
+
+    # -------------------------------------------------------------- learnosity #
+    @app.route("/learnosity")
+    @tutor_required
+    def learnosity(request):
+        user = request.user
+        states = progress.sync(user, notifications=False)
+        comp = wrap(db.one("SELECT * FROM components WHERE key = 'learnosity'"))
+        links = content.links_for("component", comp.id, user["region_id"],
+                                  user["grade_cohort_id"]) if comp else []
+        return app.render(request, "tutor/learnosity.html", states=states,
+                          summary=progress.overall(states), comp=comp, links=links)
 
     # ------------------------------------------------------- item: tick off #
     @app.route("/item/<int:item_id>/toggle", methods=["POST"])
@@ -56,6 +75,13 @@ def register(app):
                       else "Reopened “%s”." % item.title, "ok")
         return redirect(back)
 
+    # ---------------------------------------------------- video: mark watched #
+    @app.route("/document/<int:document_id>/watched", methods=["POST"])
+    @tutor_post
+    def video_watched(request, document_id):
+        progress.mark_video_watched(request.user["id"], document_id)
+        return Response("ok")
+
     # --------------------------------------------------- policy: read & ack #
     @app.route("/policy/<int:item_id>")
     @tutor_required
@@ -69,7 +95,8 @@ def register(app):
         except (progress.ValidationError, progress.LockedError) as exc:
             request.flash(str(exc), "error")
             return redirect("/dashboard")
-        doc = content.primary_document(item.id, user["region_id"])
+        doc = content.primary_document(item.id, user["region_id"],
+                                       user["grade_cohort_id"])
         version = doc.current if doc else None
         ack = wrap(db.one(
             "SELECT * FROM policy_acknowledgements WHERE user_id = ? "
@@ -79,7 +106,8 @@ def register(app):
                           document=doc, version=version, ack=ack,
                           questions=content.quiz_questions(item.id),
                           links=content.links_for("sub_item", item.id,
-                                                  user["region_id"]))
+                                                  user["region_id"],
+                                                  user["grade_cohort_id"]))
 
     @app.route("/policy/<int:item_id>/quiz", methods=["POST"])
     @tutor_post
@@ -184,6 +212,7 @@ def register(app):
         return app.render(request, "tutor/complete.html", states=states,
                           summary=summary, tutor=fresh,
                           region=content.region(user["region_id"]),
+                          grade_cohort=content.grade_cohort(user["grade_cohort_id"]),
                           body=db.setting("certificate_body", ""),
                           signatory=db.setting("certificate_signatory", ""))
 
@@ -255,6 +284,7 @@ def register(app):
             return redirect("/profile")
         return app.render(request, "tutor/profile.html",
                           region=content.region(user["region_id"]),
+                          grade_cohort=content.grade_cohort(user["grade_cohort_id"]),
                           acks=progress.acknowledgements_for(user["id"]),
                           submissions=progress.submissions_for(user["id"]))
 
@@ -272,6 +302,25 @@ def register(app):
             raise HttpError(404, "That file is no longer available.")
         return file_response(storage.local_path(row["storage_key"]),
                              download_name=row["filename"])
+
+    @app.route("/file/document/<int:version_id>/thumbnail")
+    def serve_document_thumbnail(request, version_id):
+        """A preview frame for a video document. 404s (broken image, caught by
+        the template's onerror) if the file's missing or isn't a video."""
+        if request.user is None:
+            raise HttpError(404, "Not found.")
+        row = db.one(
+            "SELECT dv.storage_key, d.kind AS doc_kind FROM document_versions dv "
+            "JOIN documents d ON d.id = dv.document_id WHERE dv.id = ?",
+            (version_id,))
+        if row is None or row["doc_kind"] != "video" \
+                or not storage.exists(row["storage_key"]):
+            raise HttpError(404, "No thumbnail available.")
+        thumb_key = storage.thumbnail_for_video(row["storage_key"])
+        if thumb_key is None:
+            raise HttpError(404, "No thumbnail available.")
+        return file_response(storage.local_path(thumb_key),
+                             download_name="thumbnail.png")
 
     @app.route("/file/submission/<int:submission_id>")
     def serve_submission(request, submission_id):

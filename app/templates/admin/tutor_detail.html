@@ -8,7 +8,7 @@
     <h1>{{ tutor.name }}</h1>
     <p class="muted small mb0">
       {{ tutor.email or "no email" }}{% if tutor.phone %} · {{ tutor.phone }}{% endif %}
-      · {{ region_label }} · joined {{ fmt_date(tutor.created_at) }}
+      · {{ region_label }} · {{ grade_cohort_label }} · Activation Director: {{ captain_label }} · joined {{ fmt_date(tutor.created_at) }}
       · last active {{ ago(tutor.last_activity_at or tutor.created_at) }}
     </p>
   </div>
@@ -41,6 +41,38 @@
         <button class="btn btn-sm btn-primary" type="submit">Change region</button>
       </form>
       <p class="hint">Changing this swaps which Region-Specific Training they see.</p>
+    </div>
+
+    <div class="card">
+      <h3>Grade cohort</h3>
+      <form method="post" action="/admin/tutors/{{ tutor.id }}/grade-cohort" class="btn-row">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+        <select name="grade_cohort_id" style="max-width:260px">
+          <option value="">Not set</option>
+          {% for g in grade_cohorts_all %}
+            <option value="{{ g.id }}"{% if g.id == tutor.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-primary" type="submit">Change grade cohort</button>
+      </form>
+      <p class="hint">Changing this swaps which grade-specific training they see.</p>
+    </div>
+
+    <div class="card">
+      <h3>Activation Director</h3>
+      <form method="post" action="/admin/tutors/{{ tutor.id }}/captain" class="btn-row">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+        <select name="captain_id" style="max-width:260px">
+          <option value="">Unassigned</option>
+          {% for c in captains_all %}
+            <option value="{{ c.id }}"{% if c.id == tutor.captain_id %} selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-primary" type="submit">Change Activation Director</button>
+      </form>
+      <p class="hint">Whoever's assigned here can see this tutor on their dashboard.</p>
     </div>
   {% endif %}
 
@@ -106,6 +138,97 @@
       {% endfor %}
     </div>
   {% endfor %}
+
+  <div class="card">
+    <div class="card-row">
+      <h3 class="mb0">First 8 classes</h3>
+      <span class="badge {{ ('rejected' if compliance.band == 'Critical'
+        else ('submitted' if compliance.band == 'Needs Attention' else 'plain')) }}">
+        {{ len([r for r in class_reviews if not r.pending]) }}/8 reviewed
+      </span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Class</th><th>Status</th><th>Feedback to tutor</th>
+          <th>Milestone</th><th>Reviewed</th></tr></thead>
+        <tbody>
+          {% for row in class_reviews %}
+            <tr>
+              <td>C{{ row.class_number }}</td>
+              <td>
+                {% if row.locked %}<span class="badge locked">Locked</span>
+                {% elif row.status == 'flagged' %}<span class="badge rejected">Flagged</span>
+                {% elif row.status == 'reviewed' %}<span class="badge done">Reviewed</span>
+                {% else %}<span class="badge submitted">Pending</span>{% endif %}
+              </td>
+              <td class="tiny">{{ row.feedback_note or row.red_flag_reason or "—" }}</td>
+              <td>{% if row.milestone == 'progress_report' %}<span class="badge plain">Progress Report</span>
+                {% elif row.milestone == 'ptm' %}<span class="badge plain">PTM</span>{% endif %}</td>
+              <td class="tiny nowrap">{% if row.reviewed_at %}{{ fmt_datetime(row.reviewed_at) }}{% else %}—{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if can_review and next_class %}
+      <form method="post" action="/admin/tutors/{{ tutor.id }}/classes" class="mt">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+        <input type="hidden" name="class_number" value="{{ next_class }}">
+        <p class="small muted mb0">Log the review for Class {{ next_class }}
+          {% if next_class == 5 %}(closes with the Progress Report){% elif next_class == 8 %}(closes with the PTM){% endif %}.</p>
+        <textarea name="feedback_note" rows="2" placeholder="Specific, actionable feedback to relay to the tutor" required style="width:100%; margin:.4rem 0"></textarea>
+        <label class="small"><input type="checkbox" name="red_flag"> Raise a red flag</label>
+        <input type="text" name="red_flag_reason" placeholder="Red flag reason (if raised)" style="width:100%; margin:.3rem 0">
+        <button class="btn btn-sm btn-primary" type="submit">Log class {{ next_class }} review</button>
+      </form>
+    {% elif can_review %}
+      <p class="small muted mt mb0">All 8 classes reviewed.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-row">
+      <h3 class="mb0">Coach compliance</h3>
+      <span class="badge {{ ('rejected' if compliance.band == 'Critical'
+        else ('submitted' if compliance.band == 'Needs Attention' else
+        ('plain' if compliance.band == 'Minor Issues' else 'done'))) }}">
+        {{ compliance.score }} · {{ compliance.band }}
+      </span>
+    </div>
+    <p class="small muted">Last {{ compliance.window_days }} days.</p>
+    {% if compliance.events %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Incident</th><th>Notes</th><th>When</th></tr></thead>
+          <tbody>
+            {% for e in compliance.events %}
+              <tr>
+                <td>{{ e.label }}</td>
+                <td class="tiny">{{ e.notes or "—" }}</td>
+                <td class="tiny nowrap">{{ fmt_datetime(e.occurred_at) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="small muted mb0">No incidents logged.</p>
+    {% endif %}
+    {% if can_review %}
+      <form method="post" action="/admin/tutors/{{ tutor.id }}/compliance" class="btn-row mt">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+        <select name="event_type" style="max-width:280px">
+          {% for key, label in compliance_event_labels.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        <input type="text" name="notes" placeholder="Notes (optional)" style="max-width:280px">
+        <button class="btn btn-sm btn-primary" type="submit">Log incident</button>
+      </form>
+    {% endif %}
+  </div>
 
   <div class="card">
     <h3>Uploads</h3>

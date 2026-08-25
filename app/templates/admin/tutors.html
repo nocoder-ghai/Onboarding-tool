@@ -4,7 +4,7 @@
 {% include "partials/admin_nav.html" %}
 <main>
   <div class="page-head">
-    <h1>Tutors</h1>
+    <h1>{% if is_captain_view %}My candidates{% else %}Tutors{% endif %}</h1>
     <p class="muted small mb0">{{ plural(len(tutors), "tutor") }} matching your filters.</p>
   </div>
 
@@ -23,6 +23,26 @@
           {% endfor %}
         </select>
       </div>
+      <div class="field">
+        <label for="grade_cohort_id">Grade cohort</label>
+        <select id="grade_cohort_id" name="grade_cohort_id">
+          <option value="">All</option>
+          {% for g in grade_cohorts_all %}
+            <option value="{{ g.id }}"{% if g.id == grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if not is_captain_view %}
+        <div class="field">
+          <label for="captain_id">Activation Director</label>
+          <select id="captain_id" name="captain_id">
+            <option value="">Everyone</option>
+            {% for c in captains_all %}
+              <option value="{{ c.id }}"{% if c.id == captain_id %} selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
       <div class="field">
         <label for="stage_id">Currently on</label>
         <select id="stage_id" name="stage_id">
@@ -53,7 +73,7 @@
   </div>
 
   <div class="btn-row" style="margin-bottom:.7rem">
-    <a class="btn btn-sm" href="/admin/tutors.csv?q={{ q }}&region_id={{ region_id if region_id else '' }}&stage_id={{ stage_id if stage_id else '' }}&status={{ status }}&stalled={{ stalled if stalled else '' }}">
+    <a class="btn btn-sm" href="/admin/tutors.csv?q={{ q }}&region_id={{ region_id if region_id else '' }}&grade_cohort_id={{ grade_cohort_id if grade_cohort_id else '' }}&stage_id={{ stage_id if stage_id else '' }}&status={{ status }}&stalled={{ stalled if stalled else '' }}&captain_id={{ captain_id if captain_id else '' }}">
       ⬇ Export this view as CSV</a>
     <a class="btn btn-sm" href="/admin/attendance/import">Import attendance CSV</a>
   </div>
@@ -61,7 +81,7 @@
   {% if tutors %}
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Tutor</th><th>Region</th><th>Current stage</th>
+        <thead><tr><th>Tutor</th><th>Region</th><th>Grade cohort</th>{% if not is_captain_view %}<th>Activation Director</th>{% endif %}<th>Current stage</th>
           <th>Progress</th><th>Last active</th><th></th></tr></thead>
         <tbody>
           {% for t in tutors %}
@@ -71,6 +91,8 @@
                 <div class="tiny muted">{{ t.email or t.phone }}</div>
               </td>
               <td class="tiny">{{ t.region_label }}</td>
+              <td class="tiny">{{ t.grade_cohort_label }}</td>
+              {% if not is_captain_view %}<td class="tiny">{{ t.captain_label }}</td>{% endif %}
               <td class="tiny">
                 {% if t.summary.all_complete %}<span class="badge done">Onboarded</span>
                 {% else %}{{ t.current_stage_title }}{% endif %}

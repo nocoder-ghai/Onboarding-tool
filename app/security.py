@@ -52,6 +52,14 @@ def password_problem(password):
     return None
 
 
+def generate_password(phone):
+    """Deterministic password for a bulk-created account: a letter prefix plus
+    the tutor's own phone digits, so it's easy for them to remember and still
+    clears password_problem's letters+numbers check."""
+    digits = re.sub(r"\D", "", phone or "")
+    return "Cue@%s" % digits
+
+
 # --------------------------------------------------------------------------- #
 # Identifiers
 # --------------------------------------------------------------------------- #

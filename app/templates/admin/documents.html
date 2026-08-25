@@ -22,7 +22,7 @@
 
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Document</th><th>Kind</th><th>Attached to</th><th>Region</th>
+      <thead><tr><th>Document</th><th>Kind</th><th>Attached to</th><th>Region</th><th>Grade cohort</th>
         <th>Current</th><th>Versions</th><th></th></tr></thead>
       <tbody>
         {% for doc in documents %}
@@ -32,6 +32,7 @@
             <td><span class="badge plain">{{ doc.kind }}</span></td>
             <td class="tiny">{{ doc.target }}</td>
             <td class="tiny">{{ doc.region_label }}</td>
+            <td class="tiny">{{ doc.grade_cohort_label }}</td>
             <td class="tiny">
               {% if doc.current %}
                 v{{ doc.current.version_no }} · {{ fmt_date(doc.current.effective_from) }}
@@ -92,6 +93,13 @@
             <select name="region_id">
               <option value="">All regions</option>
               {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Grade cohort</label>
+            <select name="grade_cohort_id">
+              <option value="">All grade cohorts</option>
+              {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
             </select>
           </div>
         </div>

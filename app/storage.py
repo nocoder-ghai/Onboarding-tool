@@ -7,6 +7,9 @@ uses, so swapping the local backend for S3/GCS is a change confined to this file
 
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 import uuid
 
 from . import config
@@ -192,6 +195,33 @@ def exists(storage_key):
 
 def delete(storage_key):
     backend.delete(storage_key)
+
+
+def thumbnail_for_video(storage_key):
+    """Storage key of a cached preview frame for a video, generated on first
+    request via macOS Quick Look (no ffmpeg dependency). None if it can't be
+    made — callers should degrade to a plain icon in that case."""
+    thumb_key = storage_key + ".thumb.png"
+    if backend.exists(thumb_key):
+        return thumb_key
+    src = local_path(storage_key)
+    if not os.path.isfile(src):
+        return None
+    tmp_dir = tempfile.mkdtemp(prefix="cuemath_thumb_")
+    try:
+        subprocess.run(["qlmanage", "-t", "-s", "480", "-o", tmp_dir, src],
+                       capture_output=True, timeout=20)
+        produced = [f for f in os.listdir(tmp_dir) if f.lower().endswith(".png")]
+        if not produced:
+            return None
+        with open(os.path.join(tmp_dir, produced[0]), "rb") as fh:
+            data = fh.read()
+        backend.save(thumb_key, data)
+        return thumb_key
+    except (OSError, subprocess.SubprocessError):
+        return None
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def human_size(num_bytes):

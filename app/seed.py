@@ -206,6 +206,12 @@ REGIONS = [
     ("rest_of_world", "Rest of world"),
 ]
 
+GRADE_COHORTS = [
+    ("k_5", "K-5"),
+    ("g3_8", "3-8"),
+    ("g9_12", "9-12"),
+]
+
 SETTINGS = [
     ("brand_name", "Cuemath", "Brand name shown in the header"),
     ("support_email", "", "Support email shown to tutors"),
@@ -291,10 +297,19 @@ def seed(verbose=True, demo=False):
                                   "sort_order": index * 10, "is_active": 1})
     regions = {r.key: r.id for r in content.regions()}
 
+    for index, (key, name) in enumerate(GRADE_COHORTS, start=1):
+        row = db.one("SELECT * FROM grade_cohorts WHERE key = ?", (key,))
+        if row:
+            db.update("grade_cohorts", row["id"], {"name": name})
+        else:
+            db.insert("grade_cohorts", {"key": key, "name": name,
+                                        "sort_order": index * 10, "is_active": 1})
+    grade_cohorts = {g.key: g.id for g in content.grade_cohorts()}
+
     for key, value, description in SETTINGS:
         if db.one("SELECT 1 FROM settings WHERE key = ?", (key,)) is None:
             db.set_setting(key, value, description)
-    say("Roles, regions and settings ready.")
+    say("Roles, regions, grade cohorts and settings ready.")
 
     # ================================================================== #
     # Stage 1 — Coach Learning Platform

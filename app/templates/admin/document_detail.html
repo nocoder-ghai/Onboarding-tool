@@ -99,6 +99,13 @@
               <option value="{{ r.id }}"{% if r.id == doc.region_id %} selected{% endif %}>{{ r.name }}</option>
             {% endfor %}
           </select></div>
+        <div class="field"><label>Grade cohort</label>
+          <select name="grade_cohort_id">
+            <option value="">All grade cohorts</option>
+            {% for g in grade_cohorts_all %}
+              <option value="{{ g.id }}"{% if g.id == doc.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+          </select></div>
         <label class="check"><input type="checkbox" name="is_active" value="1"
           {% if doc.is_active %}checked{% endif %}><span>Visible to tutors</span></label>
         <div class="btn-row mt">

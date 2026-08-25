@@ -140,6 +140,7 @@
           <a href="/admin/components/{{ comp.id }}"><strong>{{ comp.title }}</strong></a>
           <span class="badge plain">{{ comp.item_count }} step(s)</span>
           {% if comp.region_id %}<span class="badge region">{{ comp.region_label }}</span>{% endif %}
+          {% if comp.grade_cohort_id %}<span class="badge region">{{ comp.grade_cohort_label }}</span>{% endif %}
           {% if comp.archived_at %}<span class="badge locked">Archived</span>{% endif %}
           <span class="split-end btn-row">
             <form method="post" action="/admin/components/{{ comp.id }}/move" class="inline-form">
@@ -196,6 +197,13 @@
                 <label class="check"><input type="checkbox" name="is_mandatory" value="1" checked>
                   <span>Mandatory</span></label>
               </div>
+            </div>
+            <div class="field">
+              <label>Grade cohort</label>
+              <select name="grade_cohort_id">
+                <option value="">All grade cohorts</option>
+                {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+              </select>
             </div>
             <button class="btn btn-sm btn-primary" type="submit">Add component</button>
           </form>

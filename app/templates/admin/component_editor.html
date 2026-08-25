@@ -47,6 +47,15 @@
             {% if comp.is_mandatory %}checked{% endif %}><span>Mandatory</span></label>
         </div>
       </div>
+      <div class="field">
+        <label for="grade_cohort_id">Grade cohort</label>
+        <select id="grade_cohort_id" name="grade_cohort_id">
+          <option value="">All grade cohorts</option>
+          {% for g in grade_cohorts_all %}
+            <option value="{{ g.id }}"{% if g.id == comp.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <button class="btn btn-primary" type="submit">Save component</button>
     </form>
   </div>
@@ -63,6 +72,7 @@
           <span class="k badge plain">{{ node.kind }}</span>
           <strong>{{ node.title }}</strong>
           {% if node.region_id %}<span class="badge region">{{ node.region_label }}</span>{% endif %}
+          {% if node.grade_cohort_id %}<span class="badge region">{{ node.grade_cohort_label }}</span>{% endif %}
           {% if not node.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
           {% if node.archived_at %}<span class="badge locked">Archived</span>{% endif %}
           <span class="split-end btn-row">
@@ -121,6 +131,7 @@
                   <span class="k badge plain">{{ child.kind }}</span>
                   <strong>{{ child.title }}</strong>
                   {% if child.region_id %}<span class="badge region">{{ child.region_label }}</span>{% endif %}
+                  {% if child.grade_cohort_id %}<span class="badge region">{{ child.grade_cohort_label }}</span>{% endif %}
                   {% if child.archived_at %}<span class="badge locked">Archived</span>{% endif %}
                   <span class="split-end btn-row">
                     <form method="post" action="/admin/items/{{ child.id }}/move" class="inline-form">
@@ -222,6 +233,13 @@
                   <option value="image/*">Images</option>
                   <option value="video/*">Video</option>
                   <option value="application/pdf">PDF</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Grade cohort</label>
+                <select name="grade_cohort_id">
+                  <option value="">All grade cohorts</option>
+                  {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
                 </select>
               </div>
             </div>

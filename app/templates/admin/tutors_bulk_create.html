@@ -1,0 +1,80 @@
+{% set page_title = "Bulk-create tutors" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Bulk-create tutor logins</h1>
+    <p class="muted small mb0">Upload a sheet of name, email, phone, region and
+      grade cohort. Each row becomes a tutor account with a generated password
+      (<code>Cue@</code> plus their phone number) — copy these out to share
+      with each tutor, they're shown only once. Region and grade cohort
+      together decide which training each tutor sees.</p>
+  </div>
+
+  {% if result %}
+    <div class="card">
+      <h3>Import result</h3>
+      {% if result['created'] %}
+        <div class="flash ok"><span>✓</span>
+          <span>{{ len(result['created']) }} account(s) created.</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Grade cohort</th><th>Password</th></tr></thead>
+            <tbody>
+              {% for row in result['created'] %}
+                <tr>
+                  <td>{{ row['name'] }}</td>
+                  <td>{{ row['email'] or '—' }}</td>
+                  <td>{{ row['phone'] }}</td>
+                  <td>{{ row['grade_cohort'] }}</td>
+                  <td><code>{{ row['password'] }}</code></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+      {% if result['skipped_count'] %}
+        <div class="flash error"><span>!</span>
+          <span>{{ result['skipped_count'] }} row(s) were skipped.</span></div>
+        <details class="editor" open>
+          <summary>Show skipped rows</summary>
+          <div><ul class="small muted">
+            {% for row in result['skipped'] %}<li>{{ row }}</li>{% endfor %}
+          </ul></div>
+        </details>
+      {% endif %}
+      <div class="btn-row mt"><a class="btn btn-sm btn-primary" href="/admin/tutors">See tutors</a></div>
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <h3>Upload a CSV</h3>
+    <form method="post" action="/admin/tutors/bulk-create" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="field">
+        <label for="file">CSV file</label>
+        <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Create accounts</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>File format</h3>
+    <p class="small muted">A header row is detected automatically —
+      <code>name</code>, <code>email</code>, <code>phone</code>, an optional
+      <code>region</code> and an optional <code>grade</code> (matched by name
+      — e.g. {{ ", ".join([g.name for g in grade_cohorts_all]) }}).
+      Without a header, columns are read in that order. A phone number is
+      required for every row since it's used to generate the password; rows
+      missing one, with an invalid email/phone or grade cohort, or matching
+      an existing account are skipped.</p>
+    <pre class="diff">name,email,phone,region,grade
+Ananya Rao,ananya@example.com,9876543210,North,K-5
+Marcus Bell,marcus@example.com,9123456780,South,9-12</pre>
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

@@ -4,5 +4,81 @@
     {% if support_email %} · Need a hand? <a href="mailto:{{ support_email }}">{{ support_email }}</a>{% endif %}
   </p>
 </footer>
+<script>
+function cmMarkWatched(documentId, csrfToken) {
+  fetch("/document/" + documentId + "/watched", {
+    method: "POST",
+    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    body: "_csrf=" + encodeURIComponent(csrfToken)
+  }).then(function () { location.reload(); }).catch(function () {});
+}
+
+function cmFormatSeconds(total) {
+  total = Math.max(0, Math.ceil(total));
+  var m = Math.floor(total / 60), s = total % 60;
+  return m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+// A video only counts as "watched" once a timer equal to its own length has
+// run down while it's actually playing — scrubbing to the end can't shortcut
+// it, since the countdown ignores playback position and only ticks while
+// the video is unpaused.
+document.querySelectorAll("video[data-cm-video-timer]").forEach(function (video) {
+  var box = video.closest(".video-box");
+  var bar = box.querySelector(".bar-fill");
+  var label = box.querySelector(".video-timer-label");
+  var documentId = video.dataset.documentId;
+  var csrfToken = video.dataset.csrf;
+  var remaining = null;
+  var total = null;
+  var tickHandle = null;
+  var done = false;
+
+  function render() {
+    bar.style.width = (100 * (total - remaining) / total) + "%";
+    label.textContent = remaining > 0
+      ? "⏳ " + cmFormatSeconds(remaining) + " left before you can mark this done"
+      : "✓ You can mark this done now.";
+  }
+
+  function finish() {
+    if (done) return;
+    done = true;
+    clearInterval(tickHandle);
+    cmMarkWatched(documentId, csrfToken);
+  }
+
+  function captureDuration() {
+    if (total !== null || !isFinite(video.duration)) return;
+    total = video.duration;
+    remaining = total;
+    render();
+  }
+
+  video.addEventListener("loadedmetadata", captureDuration);
+  if (video.readyState >= 1) captureDuration();
+
+  video.addEventListener("play", function () {
+    if (done || tickHandle) return;
+    captureDuration();
+    if (total === null) return;
+    tickHandle = setInterval(function () {
+      remaining -= 1;
+      if (remaining <= 0) {
+        remaining = 0;
+        render();
+        finish();
+        return;
+      }
+      render();
+    }, 1000);
+  });
+
+  video.addEventListener("pause", function () {
+    clearInterval(tickHandle);
+    tickHandle = null;
+  });
+});
+</script>
 </body>
 </html>

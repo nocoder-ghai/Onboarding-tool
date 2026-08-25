@@ -1,4 +1,4 @@
-<details class="item{% if item.done %} is-done{% elif item.status == 'rejected' %} is-rejected{% endif %}"{% if not item.done %} open{% endif %}>
+<details class="item{% if item.done %} is-done{% elif item.status == 'rejected' %} is-rejected{% endif %}"{% if item.id == current_item_id %} open{% endif %}>
   <summary class="item-top">
     <div class="item-mark">✓</div>
     <div class="item-body">
@@ -34,14 +34,7 @@
 
     {% if item.kind != "upload" and item.kind != "policy" %}
       {% for doc in item.documents %}
-        {% if doc.current %}
-          <div class="linkset">
-            <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
-              <span class="ico">{% if doc.kind == "video" %}🎥{% else %}📄{% endif %}</span>
-              <span class="grow">{{ doc.title }}</span>
-            </a>
-          </div>
-        {% endif %}
+        {% include "partials/_doc_link.html" %}
       {% endfor %}
     {% endif %}
 
@@ -57,27 +50,16 @@
         {% endif %}
       </div>
       {% for doc in item.documents[1:] %}
-        {% if doc.current %}
-          <div class="linkset">
-            <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
-              <span class="ico">📄</span><span class="grow">{{ doc.title }}</span>
-            </a>
-          </div>
-        {% endif %}
+        {% include "partials/_doc_link.html" %}
       {% endfor %}
       {% if item.acknowledgement %}
         <div class="item-meta">Acknowledged {{ fmt_datetime(item.acknowledgement.acknowledged_at) }}{% if item.stale_ack %} · a newer version is now available{% endif %}</div>
       {% endif %}
 
     {% elif item.kind == "upload" %}
+      {% set icon = "👀" %}
       {% for doc in item.documents %}
-        {% if doc.current %}
-          <div class="linkset">
-            <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
-              <span class="ico">👀</span><span class="grow">{{ doc.title }}</span>
-            </a>
-          </div>
-        {% endif %}
+        {% include "partials/_doc_link.html" %}
       {% endfor %}
       {% if item.submission %}
         <div class="item-meta">
@@ -97,18 +79,24 @@
       </form>
 
     {% else %}
-      <form method="post" action="/item/{{ item.id }}/toggle" class="item-actions">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <input type="hidden" name="back" value="{{ path }}">
-        {% if item.done %}
+      {% if item.done %}
+        <form method="post" action="/item/{{ item.id }}/toggle" class="item-actions">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="back" value="{{ path }}">
           <button class="btn btn-sm" type="submit">Undo</button>
-        {% else %}
+        </form>
+      {% elif item.video_locked %}
+        <div class="item-meta">🔒 Watch the video above to unlock this.</div>
+      {% else %}
+        <form method="post" action="/item/{{ item.id }}/toggle" class="item-actions">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="back" value="{{ path }}">
           <input type="hidden" name="done" value="1">
           <button class="btn btn-sm btn-ok" type="submit">
             {% if item.kind == "link" %}I've done this{% else %}Mark done{% endif %}
           </button>
-        {% endif %}
-      </form>
+        </form>
+      {% endif %}
     {% endif %}
   </div>
 </details>

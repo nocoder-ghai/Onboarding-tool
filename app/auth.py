@@ -51,6 +51,17 @@ def can_write(request):
     return bool(request.role and request.role["can_write"])
 
 
+def can_write_tutor(request, tutor_captain_id):
+    """Full admins may write onboarding data for any tutor. A viewer
+    ("Captain") may only write it for a tutor assigned to them — used for
+    class review and compliance logging, which the read-only viewer role
+    is otherwise blocked from doing."""
+    if can_write(request):
+        return True
+    return bool(request.role and request.role["key"] == "viewer"
+                and request.user and tutor_captain_id == request.user["id"])
+
+
 def home_for(user):
     if user is None:
         return "/login"
@@ -99,6 +110,28 @@ def admin_write_required(fn):
             raise HttpError(403, "Your account has read-only access.")
         request.verify_csrf()
         return fn(request, **kwargs)
+    return inner
+
+
+def captain_write_required(fn):
+    """POST actions a Captain may take, but only for their own assigned
+    tutors (class review, compliance logging) — full admins can act on any
+    tutor. `fn` must take `user_id` as its first positional argument after
+    `request`, naming the tutor being acted on."""
+    @functools.wraps(fn)
+    def inner(request, user_id, **kwargs):
+        if request.user is None:
+            return redirect("/admin/login")
+        if not is_admin(request):
+            raise HttpError(403, "You don't have access to the admin panel.")
+        tutor = db.one("SELECT captain_id FROM users WHERE id = ? "
+                       "AND role_key = 'tutor'", (user_id,))
+        if tutor is None:
+            raise HttpError(404, "Unknown tutor.")
+        if not can_write_tutor(request, tutor["captain_id"]):
+            raise HttpError(403, "That tutor isn't assigned to you.")
+        request.verify_csrf()
+        return fn(request, user_id, **kwargs)
     return inner
 
 

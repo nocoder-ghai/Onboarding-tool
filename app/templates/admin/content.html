@@ -67,6 +67,7 @@
               <a href="/admin/components/{{ comp.id }}"><strong>{{ comp.title }}</strong></a>
               {% if comp.archived_at %}<span class="badge locked">Archived</span>{% endif %}
               {% if comp.region_id %}<span class="badge region">{{ comp.region_label }}</span>{% endif %}
+              {% if comp.grade_cohort_id %}<span class="badge region">{{ comp.grade_cohort_label }}</span>{% endif %}
               <span class="badge plain">{{ comp.completion_rule }}</span>
               {% if not comp.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
             </div>
@@ -75,12 +76,14 @@
                 <span class="k">{{ node.kind }}</span>
                 <span>{{ node.title }}</span>
                 {% if node.region_id %}<span class="badge region">region-only</span>{% endif %}
+                {% if node.grade_cohort_id %}<span class="badge region">cohort-only</span>{% endif %}
               </div>
               {% for child in node.children %}
                 <div class="tree-item{% if child.archived_at %} archived{% endif %}" style="padding-left:2rem">
                   <span class="k">{{ child.kind }}</span>
                   <span>{{ child.title }}</span>
                   {% if child.region_id %}<span class="badge region">region-only</span>{% endif %}
+                  {% if child.grade_cohort_id %}<span class="badge region">cohort-only</span>{% endif %}
                 </div>
               {% endfor %}
             {% endfor %}

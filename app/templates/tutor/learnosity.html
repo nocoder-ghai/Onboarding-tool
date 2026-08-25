@@ -1,0 +1,30 @@
+{% set page_title = "Learnosity" %}
+{% set hide_topbar = True %}
+{% include "partials/head.html" %}
+{% include "partials/tutor_topbar.html" %}
+<div class="tutor-shell">
+{% include "partials/tutor_sidebar.html" %}
+<main class="tutor-main">
+  <div class="page-head">
+    <h1>Learnosity</h1>
+    {% if comp and comp.description %}<p class="small muted mb0">{{ comp.description }}</p>{% endif %}
+  </div>
+
+  <div class="card">
+    {% if links %}
+      <div class="linkset">
+        {% for link in links %}
+          <a class="linkrow" href="{{ link.url if '://' in link.url else 'https://' + link.url }}"
+             target="_blank" rel="noopener">
+            <span class="ico">↗</span>
+            <span class="grow">{{ link.label }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="small muted mb0">No Learnosity link has been set up yet.</p>
+    {% endif %}
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

@@ -8,9 +8,10 @@ both enforced by the @writes decorator.
 
 import csv
 import io
+import re
 
 from . import audit, content, db, notify, progress, security, storage, util
-from .auth import admin_required, admin_write_required
+from .auth import admin_required, admin_write_required, can_write_tutor, captain_write_required
 from .micro import HttpError, Response, file_response, redirect
 from .util import wrap, wrap_all
 
@@ -25,19 +26,21 @@ STAGE_SPEC = [("title", "text"), ("subtitle", "text"), ("description", "text"),
 
 COMPONENT_SPEC = [("title", "text"), ("description", "text"),
                   ("completion_rule", "text"), ("is_mandatory", "bool"),
-                  ("region_id", "int?")]
+                  ("region_id", "int?"), ("grade_cohort_id", "int?")]
 
 SUB_ITEM_SPEC = [("title", "text"), ("description", "text"),
                  ("instructions", "text"), ("kind", "text"),
                  ("accept_mime", "text"), ("max_upload_mb", "int?"),
                  ("is_mandatory", "bool"), ("region_id", "int?"),
-                 ("parent_id", "int?")]
+                 ("grade_cohort_id", "int?"), ("parent_id", "int?")]
 
 LINK_SPEC = [("label", "text"), ("url", "text"), ("description", "text"),
-             ("region_id", "int?"), ("is_active", "bool")]
+             ("region_id", "int?"), ("grade_cohort_id", "int?"),
+             ("is_active", "bool")]
 
 DOC_SPEC = [("title", "text"), ("description", "text"), ("kind", "text"),
-            ("region_id", "int?"), ("is_active", "bool")]
+            ("region_id", "int?"), ("grade_cohort_id", "int?"),
+            ("is_active", "bool")]
 
 SESSION_SPEC = [("title", "text"), ("zoom_link", "text"), ("starts_at", "text"),
                 ("duration_minutes", "int"), ("host_name", "text"),
@@ -86,7 +89,15 @@ def register(app):
 
     def render(request, template, **ctx):
         ctx.setdefault("regions_all", content.regions(active_only=False))
+        ctx.setdefault("grade_cohorts_all", content.grade_cohorts(active_only=False))
         return app.render(request, template, **ctx)
+
+    def captain_scope(request):
+        """Viewers ('captains') only ever see tutors assigned to them.
+        Admins see everyone, unless they explicitly filter by a captain."""
+        if request.role and request.role["key"] == "viewer":
+            return request.user["id"]
+        return request.get_int("captain_id")
 
     def back_to(request, default):
         target = request.get("back", "") or default
@@ -99,22 +110,35 @@ def register(app):
     @app.route("/admin")
     @admin_required
     def admin_home(request):
-        funnel = progress.funnel()
+        captain_id = captain_scope(request)
+        is_captain_view = request.role and request.role["key"] == "viewer"
+        funnel = progress.funnel(captain_id=captain_id)
         stalled_days = db.setting_int("stalled_days", 7)
-        stalled = progress.tutors(stalled_days=stalled_days)
-        recent = wrap_all(db.query(
-            "SELECT * FROM users WHERE role_key = 'tutor' "
-            "ORDER BY created_at DESC LIMIT 8"))
+        stalled = progress.tutors(stalled_days=stalled_days, captain_id=captain_id)
+        recent_sql = "SELECT * FROM users WHERE role_key = 'tutor'"
+        recent_args = []
+        if captain_id:
+            recent_sql += " AND captain_id = ?"
+            recent_args.append(captain_id)
+        recent_sql += " ORDER BY created_at DESC LIMIT 8"
+        recent = wrap_all(db.query(recent_sql, recent_args))
+        completed_sql = ("SELECT COUNT(*) FROM users WHERE role_key='tutor' "
+                         "AND completed_at IS NOT NULL")
+        completed_args = ()
+        if captain_id:
+            completed_sql += " AND captain_id = ?"
+            completed_args = (captain_id,)
         return render(request, "admin/home.html", funnel=funnel,
                       stalled=stalled[:8], stalled_count=len(stalled),
                       stalled_days=stalled_days, recent=recent,
-                      audit_rows=audit.recent(8),
+                      is_captain_view=is_captain_view,
+                      audit_rows=[] if is_captain_view else audit.recent(8),
+                      manager_rollup=(None if is_captain_view else
+                                      progress.manager_rollup(stalled_days)),
                       pending_email=db.scalar(
                           "SELECT COUNT(*) FROM email_outbox WHERE sent_at IS NULL",
                           (), 0),
-                      completed=db.scalar(
-                          "SELECT COUNT(*) FROM users WHERE role_key='tutor' "
-                          "AND completed_at IS NOT NULL", (), 0))
+                      completed=db.scalar(completed_sql, completed_args, 0))
 
     # ==================================================================== #
     # Content: journey tree
@@ -134,6 +158,8 @@ def register(app):
                 comp.tree = content.sub_item_tree(
                     comp.id, include_archived=show_archived, all_regions=True)
                 comp.region_label = content.region_name(comp.region_id)
+                comp.grade_cohort_label = content.grade_cohort_name(
+                    comp.grade_cohort_id)
         return render(request, "admin/content.html", stages=stages,
                       show_archived=show_archived)
 
@@ -165,6 +191,7 @@ def register(app):
                                          all_regions=True)
         for comp in stage.comps:
             comp.region_label = content.region_name(comp.region_id)
+            comp.grade_cohort_label = content.grade_cohort_name(comp.grade_cohort_id)
             comp.item_count = db.scalar(
                 "SELECT COUNT(*) FROM sub_items WHERE component_id = ? "
                 "AND archived_at IS NULL", (comp.id,), 0)
@@ -321,6 +348,7 @@ def register(app):
                                      all_regions=True)
         for node in tree:
             node.region_label = content.region_name(node.region_id)
+            node.grade_cohort_label = content.grade_cohort_name(node.grade_cohort_id)
             node.docs = content.documents_for("sub_item", node.id)
             node.item_links = wrap_all(db.query(
                 "SELECT * FROM links WHERE sub_item_id = ? ORDER BY sort_order",
@@ -329,6 +357,8 @@ def register(app):
                 node.quiz = content.quiz_questions(node.id, include_archived=True)
             for child in node.children:
                 child.region_label = content.region_name(child.region_id)
+                child.grade_cohort_label = content.grade_cohort_name(
+                    child.grade_cohort_id)
                 child.docs = content.documents_for("sub_item", child.id)
                 child.item_links = wrap_all(db.query(
                     "SELECT * FROM links WHERE sub_item_id = ? ORDER BY sort_order",
@@ -535,6 +565,7 @@ def register(app):
         rows = content.all_links()
         for row in rows:
             row.region_label = content.region_name(row.region_id)
+            row.grade_cohort_label = content.grade_cohort_name(row.grade_cohort_id)
             row.target = "Global"
             if row.stage_id:
                 stage = content.stage(row.stage_id)
@@ -623,6 +654,7 @@ def register(app):
         docs = content.all_documents(include_archived=request.checked("archived"))
         for doc in docs:
             doc.region_label = content.region_name(doc.region_id)
+            doc.grade_cohort_label = content.grade_cohort_name(doc.grade_cohort_id)
             doc.target = "Unattached"
             if doc.stage_id:
                 stage = content.stage(doc.stage_id)
@@ -963,32 +995,43 @@ def register(app):
     @admin_required
     def tutors_page(request):
         region_id = request.get_int("region_id")
+        grade_cohort_id = request.get_int("grade_cohort_id")
         stage_id = request.get_int("stage_id")
         status = request.get("status", "")
         search = request.get("q", "").strip()
         stalled_days = request.get_int("stalled")
-        rows = progress.tutors(region_id=region_id, stage_id=stage_id,
-                               status=status or None, search=search,
-                               stalled_days=stalled_days)
+        captain_id = captain_scope(request)
+        rows = progress.tutors(region_id=region_id, grade_cohort_id=grade_cohort_id,
+                               stage_id=stage_id, status=status or None,
+                               search=search, stalled_days=stalled_days,
+                               captain_id=captain_id)
         for row in rows:
             row.region_label = content.region_name(row.region_id)
+            row.grade_cohort_label = content.grade_cohort_name(row.grade_cohort_id)
+            row.captain_label = content.captain_name(row.captain_id)
+        is_captain_view = request.role and request.role["key"] == "viewer"
         return render(request, "admin/tutors.html", tutors=rows,
                       stages=content.stages(), region_id=region_id,
+                      grade_cohort_id=grade_cohort_id,
                       stage_id=stage_id, status=status, q=search,
-                      stalled=stalled_days,
+                      stalled=stalled_days, captain_id=captain_id,
+                      is_captain_view=is_captain_view,
+                      captains_all=content.captains(),
                       default_stalled=db.setting_int("stalled_days", 7))
 
     @app.route("/admin/tutors.csv")
     @admin_required
     def tutors_csv(request):
         rows = progress.tutors(region_id=request.get_int("region_id"),
+                               grade_cohort_id=request.get_int("grade_cohort_id"),
                                stage_id=request.get_int("stage_id"),
                                status=request.get("status", "") or None,
                                search=request.get("q", "").strip(),
-                               stalled_days=request.get_int("stalled"))
+                               stalled_days=request.get_int("stalled"),
+                               captain_id=captain_scope(request))
         stages = content.stages()
-        header = ["Name", "Email", "Phone", "Region", "Current stage",
-                  "Completion %", "Stages complete", "Signed up",
+        header = ["Name", "Email", "Phone", "Region", "Grade cohort",
+                  "Current stage", "Completion %", "Stages complete", "Signed up",
                   "Last activity", "Journey completed"] + \
                  ["%s status" % s.title for s in stages]
         out = []
@@ -997,6 +1040,7 @@ def register(app):
             out.append([
                 row.name, row.email or "", row.phone or "",
                 content.region_name(row.region_id),
+                content.grade_cohort_name(row.grade_cohort_id),
                 row.current_stage_title, row.summary.percent,
                 "%d/%d" % (row.summary.stages_done, row.summary.stages_total),
                 row.created_at, row.last_activity_at or "", row.completed_at or "",
@@ -1008,6 +1052,114 @@ def register(app):
                         headers=[("Content-Disposition",
                                   'attachment; filename="tutor-progress.csv"')])
 
+    # ------------------------------------------------- bulk tutor creation -- #
+    @app.route("/admin/tutors/bulk-create", methods=["GET", "POST"])
+    @admin_required
+    def tutors_bulk_create(request):
+        if request.method == "GET":
+            return render(request, "admin/tutors_bulk_create.html", result=None)
+
+        request.verify_csrf()
+        from .auth import can_write
+        if not can_write(request):
+            raise HttpError(403, "Your account has read-only access.")
+        upload = request.file("file")
+        if not upload:
+            request.flash("Choose a CSV file to upload.", "error")
+            return redirect("/admin/tutors/bulk-create")
+        try:
+            text = upload.data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = upload.data.decode("latin-1")
+        reader = csv.reader(io.StringIO(text))
+        rows = [r for r in reader if any((c or "").strip() for c in r)]
+        if not rows:
+            request.flash("That file looks empty.", "error")
+            return redirect("/admin/tutors/bulk-create")
+
+        header = [c.strip().lower() for c in rows[0]]
+        known = {"email", "phone", "mobile", "name", "region", "grade",
+                 "grade cohort", "cohort"}
+        has_header = bool(known & set(header))
+        data_rows = rows[1:] if has_header else rows
+
+        def column(names):
+            for name in names:
+                if name in header:
+                    return header.index(name)
+            return None
+
+        idx_name = column(["name", "tutor", "tutor name"]) if has_header else 0
+        idx_email = column(["email", "email address"]) if has_header else 1
+        idx_phone = column(["phone", "mobile", "phone number"]) if has_header else 2
+        idx_region = column(["region"]) if has_header else None
+        idx_grade = (column(["grade", "grade cohort", "cohort"])
+                    if has_header else None)
+
+        region_by_name = {r.name.strip().lower(): r.id
+                          for r in content.regions(active_only=False)}
+        grade_cohort_by_name = {g.name.strip().lower(): g.id
+                                for g in content.grade_cohorts(active_only=False)}
+
+        created, skipped = [], []
+        for row in data_rows:
+            def cell(index):
+                if index is None or index >= len(row):
+                    return ""
+                return (row[index] or "").strip()
+
+            name = cell(idx_name)
+            email = security.normalise_email(cell(idx_email))
+            phone = security.normalise_phone(cell(idx_phone))
+            region_name = cell(idx_region)
+            grade_name = cell(idx_grade)
+            label = email or phone or name or " ".join(row)[:40]
+
+            if not name:
+                skipped.append("%s — missing name" % label)
+            elif not phone:
+                skipped.append("%s — needs a phone number to generate a password"
+                               % label)
+            elif len(re.sub(r"\D", "", phone)) < 8:
+                skipped.append("%s — phone number looks invalid" % label)
+            elif email and not security.EMAIL_RE.match(email):
+                skipped.append("%s — email address looks invalid" % label)
+            elif email and db.one("SELECT 1 FROM users WHERE email = ?", (email,)):
+                skipped.append("%s — account already exists" % label)
+            elif db.one("SELECT 1 FROM users WHERE phone = ?", (phone,)):
+                skipped.append("%s — account already exists" % label)
+            elif grade_name and grade_name.lower() not in grade_cohort_by_name:
+                skipped.append("%s — unknown grade cohort “%s”" % (label, grade_name))
+            else:
+                region_id = (region_by_name.get(region_name.lower())
+                            if region_name else None)
+                grade_cohort_id = (grade_cohort_by_name.get(grade_name.lower())
+                                   if grade_name else None)
+                password = security.generate_password(phone)
+                user_id = db.insert("users", {
+                    "name": name, "email": email or None, "phone": phone,
+                    "password_hash": security.hash_password(password),
+                    "role_key": "tutor", "region_id": region_id,
+                    "grade_cohort_id": grade_cohort_id,
+                    "created_at": db.now(), "last_activity_at": db.now(),
+                })
+                user = wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,)))
+                session = progress.orientation_session_for(user)
+                if session is not None:
+                    progress.invite_to_orientation(user, session["id"])
+                progress.sync(user, notifications=False)
+                created.append({"name": name, "email": email, "phone": phone,
+                                "password": password,
+                                "grade_cohort": content.grade_cohort_name(
+                                    grade_cohort_id)})
+
+        audit.record(request, "tutor.bulk_create", "report", None,
+                     "Bulk-created %d tutor account(s), %d skipped"
+                     % (len(created), len(skipped)))
+        return render(request, "admin/tutors_bulk_create.html",
+                      result={"created": created, "skipped": skipped[:50],
+                              "skipped_count": len(skipped)})
+
     @app.route("/admin/tutors/<int:user_id>")
     @admin_required
     def tutor_detail(request, user_id):
@@ -1015,19 +1167,60 @@ def register(app):
                             (user_id,)))
         if tutor is None:
             raise HttpError(404, "Unknown tutor.")
+        if (request.role and request.role["key"] == "viewer"
+                and tutor.captain_id != request.user["id"]):
+            raise HttpError(403, "That tutor isn't assigned to you.")
         states = progress.sync(tutor, notifications=False)
         for state in states:
             for comp in state.components:
-                comp.tree = progress.hydrate_tree(tutor, comp, tutor.region_id)
+                comp.tree = progress.hydrate_tree(tutor, comp, tutor.region_id,
+                                                  tutor.grade_cohort_id)
         return render(request, "admin/tutor_detail.html", tutor=tutor, states=states,
                       summary=progress.overall(states),
                       region_label=content.region_name(tutor.region_id),
+                      grade_cohort_label=content.grade_cohort_name(
+                          tutor.grade_cohort_id),
+                      captain_label=content.captain_name(tutor.captain_id),
+                      captains_all=content.captains(),
                       acks=progress.acknowledgements_for(user_id),
                       submissions=progress.submissions_for(user_id,
                                                            include_superseded=True),
                       notifications=notify.for_user(user_id, 15),
                       stalled_days=db.days_since(tutor.last_activity_at
-                                                 or tutor.created_at))
+                                                 or tutor.created_at),
+                      class_reviews=progress.class_review_state(user_id),
+                      next_class=progress.next_pending_class(user_id),
+                      compliance=progress.compliance_state(user_id),
+                      compliance_event_labels=progress.COMPLIANCE_EVENT_LABELS,
+                      can_review=can_write_tutor(request, tutor.captain_id))
+
+    @app.route("/admin/tutors/<int:user_id>/classes", methods=["POST"])
+    @captain_write_required
+    def tutor_class_review(request, user_id):
+        class_number = request.get_int("class_number")
+        if not class_number:
+            raise HttpError(400, "Missing class number.")
+        feedback_note = request.get("feedback_note", "").strip()
+        red_flag_reason = (request.get("red_flag_reason", "").strip()
+                           if request.checked("red_flag") else "")
+        _require({"feedback_note": feedback_note}, "feedback_note",
+                 "Add a feedback note before logging this class.")
+        try:
+            progress.log_class_review(request, user_id, class_number,
+                                      feedback_note, red_flag_reason)
+        except ValueError as exc:
+            raise HttpError(400, str(exc))
+        return back_to(request, "/admin/tutors/%d" % user_id)
+
+    @app.route("/admin/tutors/<int:user_id>/compliance", methods=["POST"])
+    @captain_write_required
+    def tutor_compliance_event(request, user_id):
+        event_type = request.get("event_type", "")
+        if event_type not in progress.COMPLIANCE_EVENT_LABELS:
+            raise HttpError(400, "Unknown compliance event type.")
+        notes = request.get("notes", "").strip()
+        progress.log_compliance_event(request, user_id, event_type, notes)
+        return back_to(request, "/admin/tutors/%d" % user_id)
 
     @app.route("/admin/tutors/<int:user_id>/attendance", methods=["POST"])
     @writes
@@ -1107,6 +1300,39 @@ def register(app):
         progress.sync(wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,))),
                       notifications=False)
         request.flash("Region updated — region-specific training refreshed.", "ok")
+        return back_to(request, "/admin/tutors/%d" % user_id)
+
+    @app.route("/admin/tutors/<int:user_id>/grade-cohort", methods=["POST"])
+    @writes
+    def tutor_grade_cohort(request, user_id):
+        tutor = wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,)))
+        if tutor is None:
+            raise HttpError(404, "Unknown tutor.")
+        grade_cohort_id = request.get_int("grade_cohort_id")
+        db.update("users", user_id, {"grade_cohort_id": grade_cohort_id})
+        audit.record(request, "tutor.grade_cohort", "user", user_id,
+                     "Grade cohort set to %s"
+                     % content.grade_cohort_name(grade_cohort_id),
+                     before={"grade_cohort_id": tutor.grade_cohort_id},
+                     after={"grade_cohort_id": grade_cohort_id})
+        progress.sync(wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,))),
+                      notifications=False)
+        request.flash("Grade cohort updated — training refreshed.", "ok")
+        return back_to(request, "/admin/tutors/%d" % user_id)
+
+    @app.route("/admin/tutors/<int:user_id>/captain", methods=["POST"])
+    @writes
+    def tutor_captain(request, user_id):
+        tutor = wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,)))
+        if tutor is None:
+            raise HttpError(404, "Unknown tutor.")
+        captain_id = request.get_int("captain_id")
+        db.update("users", user_id, {"captain_id": captain_id})
+        audit.record(request, "tutor.captain", "user", user_id,
+                     "Activation Director set to %s" % content.captain_name(captain_id),
+                     before={"captain_id": tutor.captain_id},
+                     after={"captain_id": captain_id})
+        request.flash("Activation Director updated.", "ok")
         return back_to(request, "/admin/tutors/%d" % user_id)
 
     # ------------------------------------------------- bulk attendance CSV -- #

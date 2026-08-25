@@ -5,12 +5,15 @@
 <main>
   <div class="page-head">
     <h1>Overview</h1>
-    <p class="muted small mb0">Where every tutor stands right now.</p>
+    <p class="muted small mb0">
+      {% if is_captain_view %}Where your candidates stand right now.
+      {% else %}Where every tutor stands right now.{% endif %}
+    </p>
   </div>
 
   <div class="grid grid-4">
     <div class="stat accent"><div class="n">{{ funnel.total_tutors }}</div>
-      <div class="l">Active tutors</div></div>
+      <div class="l">{% if is_captain_view %}Your candidates{% else %}Active tutors{% endif %}</div></div>
     <div class="stat good"><div class="n">{{ completed }}</div>
       <div class="l">Fully onboarded</div></div>
     <div class="stat warn"><div class="n">{{ stalled_count }}</div>
@@ -74,26 +77,56 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-row">
-      <h3 class="mb0">Latest changes</h3>
-      <a class="btn btn-sm" href="/admin/audit">Audit log →</a>
+  {% if not is_captain_view %}
+    <div class="card">
+      <div class="card-row">
+        <h3 class="mb0">Onboarding Manager's Dashboard</h3>
+      </div>
+      <p class="small muted">Both Activation Directors' KRAs: onboarding stalls, first-8-class review SLA (48h), coach compliance mix.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Activation Director</th><th>Tutors</th><th>Stalled</th>
+            <th>Review SLA breaches</th><th>Critical</th><th>Needs Attention</th>
+            <th>Minor Issues</th><th>Excellent</th></tr></thead>
+          <tbody>
+            {% for row in manager_rollup %}
+              <tr>
+                <td><a href="/admin/tutors?captain_id={{ row.captain.id }}">{{ row.captain.name }}</a></td>
+                <td>{{ row.tutor_count }}</td>
+                <td{% if row.stalled %} style="color:var(--orange)"{% endif %}>{{ row.stalled }}</td>
+                <td{% if row.sla_breaches %} style="color:var(--orange)"{% endif %}>{{ row.sla_breaches }}</td>
+                <td>{{ row.bands['Critical'] }}</td>
+                <td>{{ row.bands['Needs Attention'] }}</td>
+                <td>{{ row.bands['Minor Issues'] }}</td>
+                <td>{{ row.bands['Excellent'] }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div class="table-wrap mt">
-      <table>
-        <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
-        <tbody>
-          {% for row in audit_rows %}
-            <tr>
-              <td class="nowrap tiny muted">{{ ago(row['created_at']) }}</td>
-              <td class="tiny">{{ row['actor_label'] }}</td>
-              <td>{{ row['summary'] or row['action'] }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+    <div class="card">
+      <div class="card-row">
+        <h3 class="mb0">Latest changes</h3>
+        <a class="btn btn-sm" href="/admin/audit">Audit log →</a>
+      </div>
+      <div class="table-wrap mt">
+        <table>
+          <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+          <tbody>
+            {% for row in audit_rows %}
+              <tr>
+                <td class="nowrap tiny muted">{{ ago(row['created_at']) }}</td>
+                <td class="tiny">{{ row['actor_label'] }}</td>
+                <td>{{ row['summary'] or row['action'] }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
+  {% endif %}
 </main>
 </div>
 {% include "partials/foot.html" %}

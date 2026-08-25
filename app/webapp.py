@@ -27,10 +27,18 @@ def create_app():
             "support_email": db.setting("support_email", ""),
             "nav_unread": 0,
             "path": request.path,
+            "hide_topbar": False,
+            "current_stage_id": None,
+            "stage_components": None,
+            "next_stage": None,
+            "icon": "📄",
+            "current_item_id": None,
         }
         if user is not None and user["role_key"] == "tutor":
             ctx["nav_unread"] = notify.unread_count(user["id"])
             ctx["region"] = content.region(user["region_id"])
+            ctx["mentor_name"] = (content.captain_name(user["captain_id"])
+                                  if user["captain_id"] else None)
         return ctx
 
     def _error(request, status, message):
