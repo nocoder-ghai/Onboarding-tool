@@ -2,7 +2,7 @@
 
 import urllib.parse
 
-from . import audit, auth, content, db, notify, progress, security
+from . import audit, auth, db, notify, progress, security
 from .micro import redirect
 from .util import wrap
 
@@ -99,82 +99,13 @@ def register(app):
         return redirect(_safe_next(nxt, auth.home_for(user)))
 
     # --------------------------------------------------------------- signup #
+    # Tutor accounts are created by admins (with a fixed password), not via
+    # self-signup — keep the route so old links don't 404, but send everyone
+    # to /login.
     @app.route("/signup", methods=["GET", "POST"])
     def signup(request):
-        regions = content.regions()
-        grade_cohorts = content.grade_cohorts()
-        if request.user is not None:
-            return redirect(auth.home_for(request.user))
-        form = {"name": "", "email": "", "phone": "", "region_id": "",
-                "grade_cohort_id": ""}
-        if request.method == "GET":
-            return app.render(request, "auth/signup.html", regions=regions,
-                              grade_cohorts=grade_cohorts, form=form,
-                              welcome=db.setting("signup_intro", ""))
-
-        request.verify_csrf()
-        form = {
-            "name": request.get("name", "").strip(),
-            "email": security.normalise_email(request.get("email", "")),
-            "phone": security.normalise_phone(request.get("phone", "")),
-            "region_id": request.get("region_id", ""),
-            "grade_cohort_id": request.get("grade_cohort_id", ""),
-        }
-        password = request.get("password", "")
-        errors = []
-        if len(form["name"]) < 2:
-            errors.append("Please tell us your full name.")
-        if not form["email"] and not form["phone"]:
-            errors.append("Give us either an email address or a mobile number.")
-        if form["email"] and not security.EMAIL_RE.match(form["email"]):
-            errors.append("That email address doesn't look right.")
-        region_id = request.get_int("region_id")
-        if regions and not region_id:
-            errors.append("Choose the region you'll be teaching in.")
-        grade_cohort_id = request.get_int("grade_cohort_id")
-        if grade_cohorts and not grade_cohort_id:
-            errors.append("Choose the grade cohort you'll be teaching.")
-        if password:
-            problem = security.password_problem(password)
-            if problem:
-                errors.append(problem)
-        if form["email"] and db.one("SELECT 1 FROM users WHERE email = ?",
-                                    (form["email"],)):
-            errors.append("An account already exists with that email. Try signing in.")
-        if form["phone"] and db.one("SELECT 1 FROM users WHERE phone = ?",
-                                    (form["phone"],)):
-            errors.append("An account already exists with that number. Try signing in.")
-        if errors:
-            for message in errors:
-                request.flash(message, "error")
-            return app.render(request, "auth/signup.html", regions=regions,
-                              grade_cohorts=grade_cohorts, form=form,
-                              welcome=db.setting("signup_intro", ""))
-
-        user_id = db.insert("users", {
-            "name": form["name"],
-            "email": form["email"] or None,
-            "phone": form["phone"] or None,
-            "password_hash": security.hash_password(password) if password else None,
-            "role_key": "tutor",
-            "region_id": region_id,
-            "grade_cohort_id": grade_cohort_id,
-            "created_at": db.now(),
-            "last_activity_at": db.now(),
-        })
-        user = wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,)))
-        auth.sign_in(request, user)
-        audit.record(request, "auth.signup", "user", user_id,
-                     "New tutor account: %s" % form["name"])
-
-        # Day 1: open Orientation and send the invite.
-        session = progress.orientation_session_for(user)
-        if session is not None:
-            progress.invite_to_orientation(user, session["id"])
-        progress.sync(user)
-        request.flash("Welcome to Cuemath, %s! Let's get you started."
-                      % form["name"].split(" ")[0], "ok")
-        return redirect("/dashboard")
+        return redirect(auth.home_for(request.user) if request.user is not None
+                        else "/login")
 
     # --------------------------------------------------------------- logout #
     @app.route("/logout", methods=["GET", "POST"])

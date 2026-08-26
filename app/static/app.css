@@ -119,6 +119,7 @@ p { margin: 0 0 .8em; }
   font-size: 1.05rem;
   color: #fff;
   letter-spacing: -.01em;
+  text-transform: uppercase;
   display: flex;
   align-items: center;
   gap: .5rem;

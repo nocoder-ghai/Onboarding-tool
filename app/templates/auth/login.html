@@ -6,10 +6,6 @@
     <p class="muted small">Content and tutor management. Tutors sign in
       <a href="/login">here</a>.</p>
   {% else %}
-    <div class="tabs">
-      <a href="/login" class="on">Sign in</a>
-      <a href="/signup">Create account</a>
-    </div>
     <h1>Welcome back</h1>
     <p class="muted small">Pick up exactly where you left off.</p>
   {% endif %}
@@ -31,12 +27,6 @@
       <button class="btn btn-primary btn-block" type="submit" name="action" value="password">
         Sign in
       </button>
-      {% if not admin_mode %}
-        <p class="small muted center mt">or</p>
-        <button class="btn btn-block" type="submit" name="action" value="otp">
-          Email me a one-time code
-        </button>
-      {% endif %}
     </form>
   </div>
   {% if not admin_mode %}
