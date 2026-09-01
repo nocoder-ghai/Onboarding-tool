@@ -679,7 +679,8 @@ def register(app):
 
     def _doc_profiles(kind):
         if kind == "video":
-            return ["video"]
+            # An image is allowed as a stand-in until the real video ships.
+            return ["video", "image"]
         if kind in ("sample", "deck", "guide"):
             return ["document", "image", "video"]
         return ["document"]

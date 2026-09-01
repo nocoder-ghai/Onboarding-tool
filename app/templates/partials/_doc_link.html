@@ -1,5 +1,11 @@
 {% if doc.current %}
-  {% if doc.kind == "video" %}
+  {% if doc.current.mime_type.startswith("image/") %}
+    <div class="video-box">
+      <div class="video-box-title">{{ doc.title }}</div>
+      <img src="/file/document/{{ doc.current.id }}" alt="{{ doc.title }}"
+           style="max-width:100%;border-radius:var(--radius);display:block">
+    </div>
+  {% elif doc.kind == "video" %}
     <div class="video-box">
       <div class="video-box-title">{{ doc.title }}</div>
       <video controls preload="metadata"
