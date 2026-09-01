@@ -8,6 +8,7 @@
     <h1>{{ tutor.name }}</h1>
     <p class="muted small mb0">
       {{ tutor.email or "no email" }}{% if tutor.phone %} · {{ tutor.phone }}{% endif %}
+      {% if tutor.db_id %} · DB ID: {{ tutor.db_id }}{% endif %}
       · {{ region_label }} · {{ grade_cohort_label }} · Activation Director: {{ captain_label }} · joined {{ fmt_date(tutor.created_at) }}
       · last active {{ ago(tutor.last_activity_at or tutor.created_at) }}
     </p>

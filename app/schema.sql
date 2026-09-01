@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS users (
     name             TEXT NOT NULL,
     email            TEXT UNIQUE,
     phone            TEXT UNIQUE,
+    -- Unique code identifying a coach across systems (e.g. the Rise
+    -- training CSV's Teacher DB ID) and their onboarding journey here.
+    db_id            TEXT UNIQUE,
     password_hash    TEXT,                  -- NULL => OTP-only account
     role_key         TEXT NOT NULL REFERENCES roles(key),
     region_id        INTEGER REFERENCES regions(id),

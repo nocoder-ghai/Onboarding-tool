@@ -140,6 +140,10 @@ def _migrate(conn):
                      "REFERENCES grade_cohorts(id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_users_grade_cohort "
                  "ON users(grade_cohort_id)")
+    if "db_id" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN db_id TEXT")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_db_id "
+                 "ON users(db_id) WHERE db_id IS NOT NULL AND db_id != ''")
 
     for table in ("components", "sub_items", "links", "documents"):
         table_cols = [row[1] for row in

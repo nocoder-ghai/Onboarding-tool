@@ -5,11 +5,14 @@
 <main>
   <div class="page-head">
     <h1>Bulk-create tutor logins</h1>
-    <p class="muted small mb0">Upload a sheet of name, email, phone, region and
-      grade cohort. Each row becomes a tutor account with a generated password
-      (<code>Cue@</code> plus their phone number) — copy these out to share
-      with each tutor, they're shown only once. Region and grade cohort
-      together decide which training each tutor sees.</p>
+    <p class="muted small mb0">Upload a sheet of name, email, phone, region,
+      grade cohort and DB ID. Each row becomes a tutor account with a
+      generated password (<code>Cue@</code> plus their phone number) — copy
+      these out to share with each tutor, they're shown only once. Region and
+      grade cohort together decide which training each tutor sees. DB ID is
+      the unique code that identifies the coach and their journey across
+      systems (e.g. the Rise training data) — optional, but must be unique
+      per tutor if given.</p>
   </div>
 
   {% if result %}
@@ -20,13 +23,14 @@
           <span>{{ len(result['created']) }} account(s) created.</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Grade cohort</th><th>Password</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>DB ID</th><th>Grade cohort</th><th>Password</th></tr></thead>
             <tbody>
               {% for row in result['created'] %}
                 <tr>
                   <td>{{ row['name'] }}</td>
                   <td>{{ row['email'] or '—' }}</td>
                   <td>{{ row['phone'] }}</td>
+                  <td>{{ row['db_id'] or '—' }}</td>
                   <td>{{ row['grade_cohort'] }}</td>
                   <td><code>{{ row['password'] }}</code></td>
                 </tr>
@@ -65,15 +69,16 @@
     <h3>File format</h3>
     <p class="small muted">A header row is detected automatically —
       <code>name</code>, <code>email</code>, <code>phone</code>, an optional
-      <code>region</code> and an optional <code>grade</code> (matched by name
-      — e.g. {{ ", ".join([g.name for g in grade_cohorts_all]) }}).
-      Without a header, columns are read in that order. A phone number is
-      required for every row since it's used to generate the password; rows
-      missing one, with an invalid email/phone or grade cohort, or matching
-      an existing account are skipped.</p>
-    <pre class="diff">name,email,phone,region,grade
-Ananya Rao,ananya@example.com,9876543210,North,K-5
-Marcus Bell,marcus@example.com,9123456780,South,9-12</pre>
+      <code>region</code>, an optional <code>grade</code> (matched by name
+      — e.g. {{ ", ".join([g.name for g in grade_cohorts_all]) }}) and an
+      optional <code>db id</code>. Without a header, columns are read in that
+      order. A phone number is required for every row since it's used to
+      generate the password; rows missing one, with an invalid email/phone or
+      grade cohort, or matching an existing account (by email, phone, or a DB
+      ID already assigned to someone else) are skipped.</p>
+    <pre class="diff">name,email,phone,region,grade,db id
+Ananya Rao,ananya@example.com,9876543210,North,K-5,TCH-10234
+Marcus Bell,marcus@example.com,9123456780,South,9-12,TCH-10577</pre>
   </div>
 </main>
 </div>

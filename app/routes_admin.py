@@ -1216,7 +1216,7 @@ def register(app):
 
         header = [c.strip().lower() for c in rows[0]]
         known = {"email", "phone", "mobile", "name", "region", "grade",
-                 "grade cohort", "cohort"}
+                 "grade cohort", "cohort", "db id", "db_id", "dbid"}
         has_header = bool(known & set(header))
         data_rows = rows[1:] if has_header else rows
 
@@ -1231,6 +1231,8 @@ def register(app):
         idx_phone = column(["phone", "mobile", "phone number"]) if has_header else 2
         idx_region = column(["region"]) if has_header else None
         idx_grade = (column(["grade", "grade cohort", "cohort"])
+                    if has_header else None)
+        idx_db_id = (column(["db id", "db_id", "dbid", "teacher db id"])
                     if has_header else None)
 
         region_by_name = {r.name.strip().lower(): r.id
@@ -1250,6 +1252,7 @@ def register(app):
             phone = security.normalise_phone(cell(idx_phone))
             region_name = cell(idx_region)
             grade_name = cell(idx_grade)
+            db_id = cell(idx_db_id)
             label = email or phone or name or " ".join(row)[:40]
 
             if not name:
@@ -1267,6 +1270,9 @@ def register(app):
                 skipped.append("%s — account already exists" % label)
             elif grade_name and grade_name.lower() not in grade_cohort_by_name:
                 skipped.append("%s — unknown grade cohort “%s”" % (label, grade_name))
+            elif db_id and db.one("SELECT 1 FROM users WHERE db_id = ?", (db_id,)):
+                skipped.append("%s — DB ID “%s” is already assigned to another "
+                               "account" % (label, db_id))
             else:
                 region_id = (region_by_name.get(region_name.lower())
                             if region_name else None)
@@ -1277,7 +1283,7 @@ def register(app):
                     "name": name, "email": email or None, "phone": phone,
                     "password_hash": security.hash_password(password),
                     "role_key": "tutor", "region_id": region_id,
-                    "grade_cohort_id": grade_cohort_id,
+                    "grade_cohort_id": grade_cohort_id, "db_id": db_id or None,
                     "created_at": db.now(), "last_activity_at": db.now(),
                 })
                 user = wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,)))
@@ -1286,7 +1292,7 @@ def register(app):
                     progress.invite_to_orientation(user, session["id"])
                 progress.sync(user, notifications=False)
                 created.append({"name": name, "email": email, "phone": phone,
-                                "password": password,
+                                "password": password, "db_id": db_id,
                                 "grade_cohort": content.grade_cohort_name(
                                     grade_cohort_id)})
 
