@@ -758,7 +758,7 @@ def seed(verbose=True, demo=False):
     # ================================================================== #
     stage6 = _stage(
         "class_quality",
-        title="Class Quality (Instructional Review)",
+        title="Class Quality",
         subtitle="How your classes get reviewed",
         description="Every class you teach is reviewed through our IR tool, "
                     "and a report is shared with you. This step is "
