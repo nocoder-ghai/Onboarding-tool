@@ -407,6 +407,10 @@ details.editor > div { padding-top: .7rem; }
 .item-actions { display: flex; gap: .45rem; flex-wrap: wrap; align-items: center;
                 margin-top: .55rem; }
 .item-meta { font-size: .76rem; color: var(--muted); margin-top: .35rem; }
+.doc-row { display: flex; align-items: center; gap: .5rem; }
+.doc-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius);
+             display: block; border: 1px solid var(--border, #ddd); }
+.doc-icon { font-size: 1rem; }
 .nest { margin-left: .9rem; padding-left: .9rem; border-left: 2px solid var(--line); }
 
 /* -- Collapsible steps: done tasks fold away, click to reopen -- */

@@ -1,0 +1,15 @@
+<div class="item-meta doc-row">
+  {% if doc.current and doc.current.mime_type.startswith("image/") %}
+    <a href="/admin/documents/{{ doc.id }}" class="doc-thumb-link">
+      <img class="doc-thumb" src="/file/document/{{ doc.current.id }}" alt=""></a>
+  {% elif doc.current and doc.kind == "video" %}
+    <a href="/admin/documents/{{ doc.id }}" class="doc-thumb-link">
+      <img class="doc-thumb" src="/file/document/{{ doc.current.id }}/thumbnail" alt=""
+           onerror="this.parentElement.style.display='none'"></a>
+  {% else %}
+    <span class="doc-icon">📄</span>
+  {% endif %}
+  <a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a>
+  {% if doc.current %}<span class="muted">· v{{ doc.current.version_no }}</span>
+  {% else %}· <span style="color:var(--red)">no file uploaded</span>{% endif %}
+</div>

@@ -96,8 +96,7 @@
         </div>
         {% if node.description %}<div class="item-desc">{{ node.description }}</div>{% endif %}
         {% for doc in node.docs %}
-          <div class="item-meta">📄 <a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a>
-            {% if doc.current %}· v{{ doc.current.version_no }}{% else %}· <span style="color:var(--red)">no file uploaded</span>{% endif %}</div>
+          {% include "admin/_doc_thumb.html" %}
         {% endfor %}
         {% for link in node.item_links %}
           <div class="item-meta">↗ {{ link.label }} — <span class="muted">{{ link.url }}</span></div>
@@ -154,8 +153,7 @@
                 </div>
                 {% if child.description %}<div class="item-desc">{{ child.description }}</div>{% endif %}
                 {% for doc in child.docs %}
-                  <div class="item-meta">📄 <a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a>
-                    {% if doc.current %}· v{{ doc.current.version_no }}{% else %}· <span style="color:var(--red)">no file uploaded</span>{% endif %}</div>
+                  {% include "admin/_doc_thumb.html" %}
                 {% endfor %}
                 {% for link in child.item_links %}
                   <div class="item-meta">↗ {{ link.label }}</div>
