@@ -1,4 +1,10 @@
 <style>
+  /* Page-level layout only: place this sidebar beside the page's main content
+     column. Shared here (rather than per-page) since every page that includes
+     this sidebar needs it — dashboard.html, stage.html, learnosity.html. */
+  .tutor-shell { display: flex; align-items: flex-start; }
+  .tutor-main { flex: 1; min-width: 0; padding: var(--space-24); }
+
   /* Page-level layout only: the stage list is a nav-sidebar with a per-stage
      sub-list of components (not a stock navigation.md variant), plus the
      lock icon on locked stages. Colours below are semantic tokens only. */

@@ -93,6 +93,53 @@ def nl2br(text):
     return html.escape(str(text or ""), quote=True).replace("\n", "<br>")
 
 
+def simple_markdown(text):
+    """Tiny, safe markdown-ish subset -> HTML, for admin-editable copy fields
+    (settings textareas) that want basic structure without a real HTML editor.
+    Supports **bold**, '### heading' lines, '* '/'- ' bullet lists, and blank
+    lines as paragraph breaks. Escapes everything else — safe to use with
+    `|safe` in templates."""
+    import html
+    import re
+    text = html.escape(str(text or ""), quote=True)
+    lines, out, paragraph, in_list = text.split("\n"), [], [], False
+
+    def flush_paragraph():
+        if paragraph:
+            out.append('<p style="margin: 0 0 var(--space-12);">%s</p>'
+                       % " ".join(paragraph))
+            paragraph.clear()
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            flush_paragraph()
+            continue
+        if line.startswith("### "):
+            flush_paragraph()
+            if in_list:
+                out.append("</ul>")
+                in_list = False
+            out.append('<h3 class="type-heading-xs" style="color: var(--text-primary); '
+                       'margin: var(--space-16) 0 var(--space-8);">%s</h3>' % line[4:])
+        elif line.startswith("* ") or line.startswith("- "):
+            flush_paragraph()
+            if not in_list:
+                out.append('<ul style="margin: 0 0 var(--space-12); '
+                           'padding-left: var(--space-20);">')
+                in_list = True
+            out.append('<li style="margin-bottom: var(--space-4);">%s</li>' % line[2:])
+        else:
+            if in_list:
+                out.append("</ul>")
+                in_list = False
+            paragraph.append(line)
+    flush_paragraph()
+    if in_list:
+        out.append("</ul>")
+    return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", "\n".join(out))
+
+
 def slugify(text, fallback="item"):
     import re
     slug = re.sub(r"[^a-z0-9]+", "_", str(text or "").lower()).strip("_")
@@ -154,4 +201,5 @@ TEMPLATE_GLOBALS = {
     "plural": plural,
     "truncate": truncate,
     "nl2br": nl2br,
+    "simple_markdown": simple_markdown,
 }

@@ -27,21 +27,26 @@
 
   <div class="card">{% include "tutor/_timeline.html" %}</div>
 
-  {% if welcome_video %}
-    <div class="card">
-      {% if welcome_video.current %}
-        {% set doc = welcome_video %}
-        {% include "partials/_doc_link.html" %}
-      {% else %}
-        <h3 class="type-heading-sm" style="color: var(--text-primary);">Nancy's Welcome Video</h3>
-        <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-4);">Coming soon.</p>
-      {% endif %}
-    </div>
-  {% endif %}
-
   <div class="card card-brand-tint">
     <h1 class="type-heading-lg" style="color: var(--text-primary);">Hi {{ user.name.split(' ')[0] }} 👋</h1>
-    <p class="type-body-lg" style="color: var(--text-secondary); margin-top: var(--space-8);">{{ intro or "Work through each stage in order — the next one opens as soon as you're ready." }}</p>
+
+    {% if welcome_video %}
+      <div style="margin-top: var(--space-16);">
+        {% if welcome_video.current %}
+          {% set doc = welcome_video %}
+          {% include "partials/_doc_link.html" %}
+        {% else %}
+          <div class="card" style="background: var(--bg-primary);">
+            <h3 class="type-heading-sm" style="color: var(--text-primary);">Nancy's Welcome Video</h3>
+            <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-4);">Coming soon.</p>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="type-body-md" style="color: var(--text-secondary); margin-top: var(--space-16);">
+      {{ simple_markdown(intro or "Work through each stage in order — the next one opens as soon as you're ready.")|safe }}
+    </div>
     <div class="progress-row" style="margin-top: var(--space-16);">
       <div class="progress{% if summary.percent == 100 %} progress-success{% endif %}" role="progressbar" aria-valuenow="{{ summary.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Overall onboarding progress" style="--progress-value: {{ summary.percent }}%;">
         <div class="progress-bar"></div>
