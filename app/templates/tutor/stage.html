@@ -117,14 +117,16 @@
     <!-- Components and their checklists -->
     {% for comp in stage.components %}
       {% if comp.visible %}
-      <div class="comp{% if comp.complete %} is-done{% endif %}">
-        <div class="comp-head">
+      <details class="comp{% if comp.complete %} is-done{% endif %}"
+                {% if not comp.complete %}open{% endif %}>
+        <summary class="comp-head">
           <h3>{{ comp.title }}</h3>
           {% if comp.complete %}<span class="badge done">Done</span>
           {% elif comp.awaiting_admin %}<span class="badge submitted">With your mentor</span>
           {% elif comp.effective_rule == "admin_marked" %}<span class="badge pending">Mentor marks this</span>
           {% else %}<span class="badge plain">{{ comp.done_units }}/{{ comp.total_units }}</span>{% endif %}
-        </div>
+        </summary>
+        <span id="comp-{{ comp.id }}-body"></span>
         {% if comp.description %}<p class="small muted">{{ comp.description }}</p>{% endif %}
 
         {% if comp.rejected_reason %}
@@ -233,7 +235,7 @@
             <button class="btn btn-sm" type="submit">Reopen this</button>
           </form>
         {% endif %}
-      </div>
+      </details>
       {% endif %}
     {% endfor %}
 

@@ -433,6 +433,9 @@ details.editor > div { padding-top: .7rem; }
   margin-bottom: 1rem; background: #fff; box-shadow: var(--shadow-sm);
 }
 .comp.is-done { border-left: 4px solid var(--green); }
+.comp > summary.comp-head { cursor: pointer; list-style: none; }
+.comp > summary.comp-head::-webkit-details-marker { display: none; }
+.comp > summary.comp-head::marker { content: ""; }
 .comp-head { display: flex; gap: .6rem; align-items: flex-start;
              flex-wrap: wrap; }
 .comp-head h3 { margin: 0; flex: 1; min-width: 180px; }
@@ -643,6 +646,8 @@ a.tsnav-head:hover { text-decoration: none; background: rgba(255, 255, 255, .06)
                       line-height: 1.3; }
 .tsnav-children li.is-current { color: var(--mid-blue); font-weight: 650; }
 .tsnav-children li.is-done { color: rgba(255, 255, 255, .85); }
+.tsnav-children li a { color: inherit; text-decoration: none; display: block; }
+.tsnav-children li a:hover { text-decoration: underline; }
 .ts-foot { margin-top: 1.4rem; padding-top: .9rem; border-top: 1px solid rgba(255, 255, 255, .14);
            display: flex; flex-direction: column; gap: .5rem; align-items: flex-start; }
 .ts-foot a { color: rgba(255, 255, 255, .7); font-size: .84rem; }

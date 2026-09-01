@@ -29,7 +29,11 @@
               {% set is_next = (not comp.complete) and (not current_marked) %}
               {% set current_marked = current_marked or is_next %}
               <li class="{{ 'is-done' if comp.complete else ('is-current' if is_next else '') }}">
-                {{ comp.title }}
+                {% if comp.visible %}
+                  <a href="/stage/{{ current_stage_id }}#comp-{{ comp.id }}-body">{{ comp.title }}</a>
+                {% else %}
+                  {{ comp.title }}
+                {% endif %}
               </li>
             {% endfor %}
           </ul>
