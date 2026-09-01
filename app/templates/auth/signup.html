@@ -1,62 +1,116 @@
 {% set page_title = "Create your account" %}
 {% include "partials/head.html" %}
-<div class="wrap auth-card">
-  <div class="tabs">
-    <a href="/login">Sign in</a>
-    <a href="/signup" class="on">Create account</a>
-  </div>
-  <h1>Let's get you started</h1>
-  <p class="muted small">{{ welcome or "Create your account and we'll walk you through onboarding one step at a time." }}</p>
+<style>
+  /* Page-level layout only: centers the auth card below the top nav. */
+  .auth-page { display: flex; justify-content: center; padding: var(--space-48) var(--space-16); }
+  .auth-page .form-container { width: 100%; max-width: 420px; }
+</style>
+<div class="container auth-page">
+  <div class="form-container">
+    <div class="tab-list tab-list-contained" role="tablist" aria-label="Account access" style="margin-bottom: var(--space-24);">
+      <a href="/login" class="tab" role="tab" aria-selected="false">Sign in</a>
+      <a href="/signup" class="tab is-active" role="tab" aria-selected="true" aria-current="page">Create account</a>
+    </div>
 
-  <div class="card">
-    <form method="post" action="/signup">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <div class="field">
-        <label for="name">Full name</label>
-        <input id="name" name="name" type="text" value="{{ form['name'] }}" required autofocus>
+    <div style="text-align: center; margin-bottom: var(--space-24);">
+      <h1 class="type-heading-lg" style="color: var(--text-primary); margin: 0 0 var(--space-8);">Let's get you started</h1>
+      <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">{{ welcome or "Create your account and we'll walk you through onboarding one step at a time." }}</p>
+    </div>
+
+    <div class="card">
+      <div class="card-content">
+        <form class="form-stack" style="gap: var(--space-24);" method="post" action="/signup">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="name" name="name" type="text" placeholder=" " value="{{ form['name'] }}" required autofocus>
+              <label class="cm-field-label" for="name">Full name</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Full name</span></legend>
+              </fieldset>
+            </div>
+          </div>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="email" name="email" type="email" placeholder=" " value="{{ form['email'] }}"
+                     autocomplete="email">
+              <label class="cm-field-label" for="email">Email address</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Email address</span></legend>
+              </fieldset>
+            </div>
+          </div>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="phone" name="phone" type="tel" placeholder=" " value="{{ form['phone'] }}"
+                     autocomplete="tel">
+              <label class="cm-field-label" for="phone">Mobile number</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Mobile number</span></legend>
+              </fieldset>
+            </div>
+            <div class="cm-field-helper">Give us at least one of email or mobile — that's how you'll sign in.</div>
+          </div>
+
+          {% if regions %}
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <select id="region_id" name="region_id" required class="{{ '' if form['region_id'] else 'is-placeholder' }}">
+                <option value="" disabled{% if not form['region_id'] %} selected{% endif %} hidden></option>
+                {% for r in regions %}
+                  <option value="{{ r.id }}"{% if str(r.id) == form['region_id'] %} selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+              </select>
+              <span class="cm-field-label">Where will you be teaching?</span>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Where will you be teaching?</span></legend></fieldset>
+            </div>
+            <div class="cm-field-helper">This decides which region-specific training you'll see.</div>
+          </div>
+          {% endif %}
+
+          {% if grade_cohorts %}
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <select id="grade_cohort_id" name="grade_cohort_id" required class="{{ '' if form['grade_cohort_id'] else 'is-placeholder' }}">
+                <option value="" disabled{% if not form['grade_cohort_id'] %} selected{% endif %} hidden></option>
+                {% for g in grade_cohorts %}
+                  <option value="{{ g.id }}"{% if str(g.id) == form['grade_cohort_id'] %} selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+              </select>
+              <span class="cm-field-label">Which grades will you teach?</span>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Which grades will you teach?</span></legend></fieldset>
+            </div>
+            <div class="cm-field-helper">This decides which grade-specific training you'll see.</div>
+          </div>
+          {% endif %}
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="password" name="password" type="password" placeholder=" " autocomplete="new-password">
+              <label class="cm-field-label" for="password">Password</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Password</span></legend>
+              </fieldset>
+            </div>
+            <div class="cm-field-helper">Optional — leave blank and sign in with a one-time code instead.</div>
+          </div>
+
+          <button class="btn btn-lg btn-primary btn-full" type="submit">Create my account</button>
+        </form>
       </div>
-      <div class="field">
-        <label for="email">Email address</label>
-        <input id="email" name="email" type="email" value="{{ form['email'] }}"
-               autocomplete="email">
-      </div>
-      <div class="field">
-        <label for="phone">Mobile number</label>
-        <input id="phone" name="phone" type="tel" value="{{ form['phone'] }}"
-               autocomplete="tel">
-        <div class="hint">Give us at least one of email or mobile — that's how you'll sign in.</div>
-      </div>
-      {% if regions %}
-      <div class="field">
-        <label for="region_id">Where will you be teaching?</label>
-        <select id="region_id" name="region_id" required>
-          <option value="">Choose your region…</option>
-          {% for r in regions %}
-            <option value="{{ r.id }}"{% if str(r.id) == form['region_id'] %} selected{% endif %}>{{ r.name }}</option>
-          {% endfor %}
-        </select>
-        <div class="hint">This decides which region-specific training you'll see.</div>
-      </div>
-      {% endif %}
-      {% if grade_cohorts %}
-      <div class="field">
-        <label for="grade_cohort_id">Which grades will you teach?</label>
-        <select id="grade_cohort_id" name="grade_cohort_id" required>
-          <option value="">Choose your grade cohort…</option>
-          {% for g in grade_cohorts %}
-            <option value="{{ g.id }}"{% if str(g.id) == form['grade_cohort_id'] %} selected{% endif %}>{{ g.name }}</option>
-          {% endfor %}
-        </select>
-        <div class="hint">This decides which grade-specific training you'll see.</div>
-      </div>
-      {% endif %}
-      <div class="field">
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="new-password">
-        <div class="hint">Optional — leave blank and sign in with a one-time code instead.</div>
-      </div>
-      <button class="btn btn-primary btn-block" type="submit">Create my account</button>
-    </form>
+    </div>
   </div>
 </div>
+<script>
+  /* Floating-label native selects: drop .is-placeholder once a real value is
+     chosen so the label floats up and the selected text shows. */
+  document.querySelectorAll('.cm-field-wrap select').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      sel.classList.toggle('is-placeholder', sel.value === '');
+    });
+  });
+</script>
 {% include "partials/foot.html" %}

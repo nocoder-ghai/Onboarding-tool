@@ -1,99 +1,114 @@
 {% set page_title = "Journey content" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: two-column admin shell — sidebar + content. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); display: flex; flex-direction: column; gap: var(--space-24); }
+  @media (max-width: 768px) {
+    .admin-shell { flex-direction: column; }
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Journey content</h1>
-    <p class="muted small mb0">Stages, components and steps. Everything here is what
+  <div>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin: 0 0 var(--space-4);">Journey content</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">Stages, components and steps. Everything here is what
       tutors see — reorder, edit or archive without touching code.</p>
   </div>
 
-  <div class="card card-tight">
-    <div class="split">
-      <span class="small muted">Showing {{ "archived and active" if show_archived else "active" }} content</span>
-      <span class="split-end">
-        <a class="btn btn-sm" href="/admin/content{{ '' if show_archived else '?archived=1' }}">
-          {{ "Hide archived" if show_archived else "Show archived" }}
-        </a>
-      </span>
+  <div class="card card-compact">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap;">
+      <span class="type-body-sm" style="color: var(--text-secondary);">Showing {{ "archived and active" if show_archived else "active" }} content</span>
+      <a class="btn btn-sm btn-secondary" href="/admin/content{{ '' if show_archived else '?archived=1' }}">
+        {{ "Hide archived" if show_archived else "Show archived" }}
+      </a>
     </div>
   </div>
 
   {% for stage in stages %}
-    <div class="tree-stage{% if stage.archived_at %} archived{% endif %}">
-      <div class="tree-head">
-        <strong>{{ stage.title }}</strong>
-        {% if stage.archived_at %}<span class="badge locked">Archived</span>{% endif %}
-        {% if not stage.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
-        {% if stage.completion_rule == "admin_marked" %}<span class="badge pending">Admin marks</span>{% endif %}
-        {% if stage.unlock_after_stage_id %}
-          <span class="badge plain">Unlocks after #{{ stage.unlock_after_stage_id }}</span>
-        {% else %}
-          <span class="badge active">Open from day 1</span>
-        {% endif %}
-        {% if stage.deadline_days %}<span class="badge plain">{{ stage.deadline_days }}d deadline</span>{% endif %}
-        <span class="split-end btn-row">
+    <div class="card{% if stage.archived_at %} card-compact{% endif %}">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">{{ stage.title }}</div>
+          <div class="card-description" style="display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; margin-top: var(--space-4);">
+            {% if stage.archived_at %}<span class="badge badge-neutral-strong">Archived</span>{% endif %}
+            {% if not stage.is_mandatory %}<span class="badge">Optional</span>{% endif %}
+            {% if stage.completion_rule == "admin_marked" %}<span class="badge badge-warning">Admin marks</span>{% endif %}
+            {% if stage.unlock_after_stage_id %}
+              <span class="badge">Unlocks after #{{ stage.unlock_after_stage_id }}</span>
+            {% else %}
+              <span class="badge badge-success">Open from day 1</span>
+            {% endif %}
+            {% if stage.deadline_days %}<span class="badge">{{ stage.deadline_days }}d deadline</span>{% endif %}
+          </div>
+        </div>
+        <div style="display: flex; gap: var(--space-8); flex-shrink: 0; flex-wrap: wrap;">
           <form method="post" action="/admin/stages/{{ stage.id }}/move" class="inline-form">
             <input type="hidden" name="_csrf" value="{{ csrf }}">
             <input type="hidden" name="dir" value="up">
             <input type="hidden" name="back" value="/admin/content">
-            <button class="btn btn-xs" type="submit" title="Move up">↑</button>
+            <button class="btn btn-sm btn-secondary btn-icon-only" type="submit" aria-label="Move up">
+              <svg data-icon="chevron-up" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.2674 13.2326Q12.4967 12.4619 12 11.5776Q11.5033 12.4619 10.7326 13.2326Q8.56519 15.4 5.5 15.4L5.5 13.6Q7.81961 13.6 9.4598 11.9598Q11.1 10.3196 11.1 8L12 8L12.9 8Q12.9 10.3196 14.5402 11.9598Q16.1804 13.6 18.5 13.6L18.5 15.4Q15.4348 15.4 13.2674 13.2326Z" fill="currentColor"/></svg>
+            </button>
           </form>
           <form method="post" action="/admin/stages/{{ stage.id }}/move" class="inline-form">
             <input type="hidden" name="_csrf" value="{{ csrf }}">
             <input type="hidden" name="dir" value="down">
             <input type="hidden" name="back" value="/admin/content">
-            <button class="btn btn-xs" type="submit" title="Move down">↓</button>
+            <button class="btn btn-sm btn-secondary btn-icon-only" type="submit" aria-label="Move down">
+              <svg data-icon="chevron-down" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.7326 10.7674Q11.5033 11.5381 12 12.4224Q12.4967 11.5381 13.2674 10.7674Q15.4348 8.6 18.5 8.6L18.5 10.4Q16.1804 10.4 14.5402 12.0402Q12.9 13.6804 12.9 16L11.1 16Q11.1 13.6804 9.4598 12.0402Q7.81961 10.4 5.5 10.4L5.5 8.6Q8.56519 8.6 10.7326 10.7674Z" fill="currentColor"/></svg>
+            </button>
           </form>
-          <a class="btn btn-xs btn-primary" href="/admin/stages/{{ stage.id }}">Edit</a>
+          <a class="btn btn-sm btn-primary" href="/admin/stages/{{ stage.id }}">Edit</a>
           <form method="post" action="/admin/stages/{{ stage.id }}/archive" class="inline-form">
             <input type="hidden" name="_csrf" value="{{ csrf }}">
             <input type="hidden" name="back" value="/admin/content{{ '?archived=1' if show_archived else '' }}">
             {% if stage.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
-            <button class="btn btn-xs{% if not stage.archived_at %} btn-danger{% endif %}" type="submit">
+            <button class="btn btn-sm {{ 'btn-secondary' if stage.archived_at else 'btn-destructive' }}" type="submit">
               {{ "Restore" if stage.archived_at else "Archive" }}
             </button>
           </form>
-        </span>
+        </div>
       </div>
-      <div class="tree-body">
+      <div class="card-content">
         {% if stage.agenda %}
-          <div class="small muted">Agenda: {{ ", ".join([a.title for a in stage.agenda]) }}</div>
+          <div class="type-body-sm" style="color: var(--text-tertiary); margin-bottom: var(--space-12);">Agenda: {{ ", ".join([a.title for a in stage.agenda]) }}</div>
         {% endif %}
         {% for comp in stage.comps %}
-          <div class="tree-comp{% if comp.archived_at %} archived{% endif %}">
-            <div class="split">
-              <a href="/admin/components/{{ comp.id }}"><strong>{{ comp.title }}</strong></a>
-              {% if comp.archived_at %}<span class="badge locked">Archived</span>{% endif %}
-              {% if comp.region_id %}<span class="badge region">{{ comp.region_label }}</span>{% endif %}
-              {% if comp.grade_cohort_id %}<span class="badge region">{{ comp.grade_cohort_label }}</span>{% endif %}
-              <span class="badge plain">{{ comp.completion_rule }}</span>
-              {% if not comp.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
+          <div style="padding: var(--space-12) 0; border-bottom: 1px solid var(--border-tertiary);">
+            <div style="display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap;">
+              <a class="cm-link" href="/admin/components/{{ comp.id }}"><strong class="type-label-md">{{ comp.title }}</strong></a>
+              {% if comp.archived_at %}<span class="badge badge-neutral-strong">Archived</span>{% endif %}
+              {% if comp.region_id %}<span class="badge badge-info">{{ comp.region_label }}</span>{% endif %}
+              {% if comp.grade_cohort_id %}<span class="badge badge-info">{{ comp.grade_cohort_label }}</span>{% endif %}
+              <span class="badge">{{ comp.completion_rule }}</span>
+              {% if not comp.is_mandatory %}<span class="badge">Optional</span>{% endif %}
             </div>
             {% for node in comp.tree %}
-              <div class="tree-item{% if node.archived_at %} archived{% endif %}">
-                <span class="k">{{ node.kind }}</span>
-                <span>{{ node.title }}</span>
-                {% if node.region_id %}<span class="badge region">region-only</span>{% endif %}
-                {% if node.grade_cohort_id %}<span class="badge region">cohort-only</span>{% endif %}
+              <div style="display: flex; align-items: center; gap: var(--space-8); padding: var(--space-4) 0 0 var(--space-16); flex-wrap: wrap;">
+                <span class="badge badge-sm">{{ node.kind }}</span>
+                <span class="type-body-sm">{{ node.title }}</span>
+                {% if node.region_id %}<span class="badge badge-sm badge-info">region-only</span>{% endif %}
+                {% if node.grade_cohort_id %}<span class="badge badge-sm badge-info">cohort-only</span>{% endif %}
               </div>
               {% for child in node.children %}
-                <div class="tree-item{% if child.archived_at %} archived{% endif %}" style="padding-left:2rem">
-                  <span class="k">{{ child.kind }}</span>
-                  <span>{{ child.title }}</span>
-                  {% if child.region_id %}<span class="badge region">region-only</span>{% endif %}
-                  {% if child.grade_cohort_id %}<span class="badge region">cohort-only</span>{% endif %}
+                <div style="display: flex; align-items: center; gap: var(--space-8); padding: var(--space-4) 0 0 var(--space-32); flex-wrap: wrap;">
+                  <span class="badge badge-sm">{{ child.kind }}</span>
+                  <span class="type-body-sm">{{ child.title }}</span>
+                  {% if child.region_id %}<span class="badge badge-sm badge-info">region-only</span>{% endif %}
+                  {% if child.grade_cohort_id %}<span class="badge badge-sm badge-info">cohort-only</span>{% endif %}
                 </div>
               {% endfor %}
             {% endfor %}
             {% if not comp.tree %}
-              <div class="tree-item muted">No steps — tutors tick this component itself.</div>
+              <p class="type-body-sm" style="color: var(--text-tertiary); margin: var(--space-4) 0 0;">No steps — tutors tick this component itself.</p>
             {% endif %}
           </div>
         {% endfor %}
         {% if not stage.comps %}
-          <p class="small muted mb0">No components. Tutors see the description, agenda
+          <p class="type-body-sm" style="color: var(--text-tertiary); margin: 0;">No components. Tutors see the description, agenda
             and any links; completion is {{ stage.completion_rule }}.</p>
         {% endif %}
       </div>
@@ -102,51 +117,88 @@
 
   {% if can_write %}
     <div class="card">
-      <h3>Add a stage</h3>
-      <form method="post" action="/admin/stages/new">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="row2">
-          <div class="field">
-            <label for="ns_title">Title</label>
-            <input id="ns_title" name="title" type="text" required>
-          </div>
-          <div class="field">
-            <label for="ns_sub">Subtitle</label>
-            <input id="ns_sub" name="subtitle" type="text">
-          </div>
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Add a stage</div>
         </div>
-        <div class="field">
-          <label for="ns_desc">Description tutors read</label>
-          <textarea id="ns_desc" name="description"></textarea>
-        </div>
-        <div class="row3">
-          <div class="field">
-            <label for="ns_rule">Completion</label>
-            <select id="ns_rule" name="completion_rule">
-              <option value="components">All mandatory components</option>
-              <option value="admin_marked">An admin marks it</option>
-            </select>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/stages/new" class="form-stack">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="grid">
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input id="ns_title" name="title" type="text" placeholder=" " required>
+                  <label class="cm-field-label" for="ns_title">Title</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input id="ns_sub" name="subtitle" type="text" placeholder=" ">
+                  <label class="cm-field-label" for="ns_sub">Subtitle</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Subtitle</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="field">
-            <label for="ns_after">Unlocks after</label>
-            <select id="ns_after" name="unlock_after_stage_id">
-              <option value="">Open from day 1</option>
-              {% for s in stages %}
-                {% if not s.archived_at %}<option value="{{ s.id }}">{{ s.title }}</option>{% endif %}
-              {% endfor %}
-            </select>
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <textarea id="ns_desc" name="description" placeholder=" " rows="3"></textarea>
+              <label class="cm-field-label" for="ns_desc">Description tutors read</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description tutors read</span></legend></fieldset>
+            </div>
           </div>
-          <div class="field">
-            <label for="ns_dl">Deadline (days)</label>
-            <input id="ns_dl" name="deadline_days" type="number" min="1">
+          <div class="grid">
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select id="ns_rule" name="completion_rule">
+                    <option value="components">All mandatory components</option>
+                    <option value="admin_marked">An admin marks it</option>
+                  </select>
+                  <span class="cm-field-label">Completion</span>
+                  <fieldset class="cm-field-notch"><legend><span>Completion</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select id="ns_after" name="unlock_after_stage_id" class="is-placeholder">
+                    <option value="" selected>Open from day 1</option>
+                    {% for s in stages %}
+                      {% if not s.archived_at %}<option value="{{ s.id }}">{{ s.title }}</option>{% endif %}
+                    {% endfor %}
+                  </select>
+                  <span class="cm-field-label">Unlocks after</span>
+                  <fieldset class="cm-field-notch"><legend><span>Unlocks after</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input id="ns_dl" name="deadline_days" type="number" min="1" placeholder=" ">
+                  <label class="cm-field-label" for="ns_dl">Deadline (days)</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Deadline (days)</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <label class="check"><input type="checkbox" name="is_mandatory" value="1" checked>
-          <span>Mandatory — must be finished to complete onboarding</span></label>
-        <div class="btn-row mt">
-          <button class="btn btn-primary" type="submit">Add stage</button>
-        </div>
-      </form>
+          <label class="cm-checkbox">
+            <input type="checkbox" name="is_mandatory" value="1" checked>
+            <span class="cm-checkbox-box"><svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg></span>
+            <span class="cm-checkbox-label">Mandatory — must be finished to complete onboarding</span>
+          </label>
+          <div>
+            <button class="btn btn-md btn-primary" type="submit">Add stage</button>
+          </div>
+        </form>
+      </div>
     </div>
   {% endif %}
 </main>

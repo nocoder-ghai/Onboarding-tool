@@ -1,36 +1,67 @@
 {% set page_title = "Admin sign in" if admin_mode else "Sign in" %}
 {% include "partials/head.html" %}
-<div class="wrap auth-card">
-  {% if admin_mode %}
-    <h1>Admin sign in</h1>
-    <p class="muted small">Content and tutor management. Tutors sign in
-      <a href="/login">here</a>.</p>
-  {% else %}
-    <h1>Welcome back</h1>
-    <p class="muted small">Pick up exactly where you left off.</p>
-  {% endif %}
+<style>
+  /* Page-level layout only: centers the auth card below the top nav. */
+  .auth-page { display: flex; justify-content: center; padding: var(--space-48) var(--space-16); }
+  .auth-page .form-container { width: 100%; max-width: 420px; }
+</style>
+<div class="container auth-page">
+  <div class="form-container">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text">
+          {% if admin_mode %}
+            <div class="card-title type-heading-md">Admin sign in</div>
+            <div class="card-description">Content and tutor management. Tutors sign in
+              <a class="cm-link" href="/login">here</a>.</div>
+          {% else %}
+            <div class="card-title type-heading-md">Welcome back</div>
+            <div class="card-description">Pick up exactly where you left off.</div>
+          {% endif %}
+        </div>
+      </div>
 
-  <div class="card">
-    <form method="post" action="{{ '/admin/login' if admin_mode else '/login' }}">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <input type="hidden" name="next" value="{{ next }}">
-      <div class="field">
-        <label for="identifier">{{ "Work email" if admin_mode else "Email or mobile number" }}</label>
-        <input id="identifier" name="identifier" type="text" value="{{ identifier }}"
-               autocomplete="username" autofocus required>
+      <div class="card-content">
+        <form class="form-stack" style="gap: var(--space-24);" method="post" action="{{ '/admin/login' if admin_mode else '/login' }}">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="next" value="{{ next }}">
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="identifier" name="identifier" type="text" placeholder=" " value="{{ identifier }}"
+                     autocomplete="username" autofocus required>
+              <label class="cm-field-label" for="identifier">{{ "Work email" if admin_mode else "Email or mobile number" }}</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>{{ "Work email" if admin_mode else "Email or mobile number" }}</span></legend>
+              </fieldset>
+            </div>
+          </div>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="password" name="password" type="password" placeholder=" "
+                     autocomplete="current-password">
+              <label class="cm-field-label" for="password">Password</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Password</span></legend>
+              </fieldset>
+            </div>
+          </div>
+
+          <button class="btn btn-lg btn-primary btn-full" type="submit" name="action" value="password">
+            Sign in
+          </button>
+        </form>
       </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password"
-               autocomplete="current-password">
+
+      {% if not admin_mode %}
+      <div class="card-footer" style="justify-content: center;">
+        <span class="type-body-md" style="color: var(--text-secondary);">
+          Cuemath staff? <a class="cm-link" href="/admin/login">Admin sign in</a>
+        </span>
       </div>
-      <button class="btn btn-primary btn-block" type="submit" name="action" value="password">
-        Sign in
-      </button>
-    </form>
+      {% endif %}
+    </div>
   </div>
-  {% if not admin_mode %}
-    <p class="tiny muted center">Cuemath staff? <a href="/admin/login">Admin sign in</a></p>
-  {% endif %}
 </div>
 {% include "partials/foot.html" %}

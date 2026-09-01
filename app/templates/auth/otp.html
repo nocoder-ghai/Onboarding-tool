@@ -1,31 +1,56 @@
 {% set page_title = "Enter your code" %}
 {% include "partials/head.html" %}
-<div class="wrap auth-card">
-  <h1>Check your {{ "inbox" if kind == "email" else "messages" }}</h1>
-  <p class="muted small">We sent a 6-digit code to <strong>{{ identifier }}</strong>.
-    It's good for 10 minutes.</p>
-  <div class="card">
-    <form method="post" action="/login/otp">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <input type="hidden" name="next" value="{{ next }}">
-      <div class="field">
-        <label for="code">Your code</label>
-        <input id="code" name="code" type="text" inputmode="numeric"
-               autocomplete="one-time-code" maxlength="6" required autofocus
-               style="font-size:1.3rem; letter-spacing:.35em; text-align:center">
+<style>
+  /* Page-level layout only: centers the auth card below the top nav. */
+  .auth-page { display: flex; justify-content: center; padding: var(--space-48) var(--space-16); }
+  .auth-page .form-container { width: 100%; max-width: 420px; }
+</style>
+<div class="container auth-page">
+  <div class="form-container">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title type-heading-md">Check your {{ "inbox" if kind == "email" else "messages" }}</div>
+          <div class="card-description">We sent a 6-digit code to <strong>{{ identifier }}</strong>. It's good for 10 minutes.</div>
+        </div>
       </div>
-      <button class="btn btn-primary btn-block" type="submit" name="action" value="verify">
-        Continue
-      </button>
-    </form>
-    <form method="post" action="/login/otp" class="mt">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <input type="hidden" name="next" value="{{ next }}">
-      <button class="btn btn-block btn-sm" type="submit" name="action" value="resend">
-        Send a new code
-      </button>
-    </form>
+
+      <div class="card-content">
+        <form class="form-stack" style="gap: var(--space-24);" method="post" action="/login/otp">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="next" value="{{ next }}">
+
+          <div class="cm-field cm-field-lg">
+            <div class="cm-field-wrap">
+              <input id="code" name="code" class="cm-field-otp-input" type="text" inputmode="numeric" pattern="[0-9]*"
+                     autocomplete="one-time-code" maxlength="6" required autofocus placeholder="000000">
+              <label class="cm-field-label" for="code">Your code</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Your code</span></legend>
+              </fieldset>
+            </div>
+          </div>
+
+          <button class="btn btn-lg btn-primary btn-full" type="submit" name="action" value="verify">
+            Continue
+          </button>
+        </form>
+
+        <form method="post" action="/login/otp" style="margin-top: var(--space-16);">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="next" value="{{ next }}">
+          <button class="btn btn-md btn-secondary btn-full" type="submit" name="action" value="resend">
+            Send a new code
+          </button>
+        </form>
+      </div>
+
+      <div class="card-footer" style="justify-content: center;">
+        <span class="type-body-md" style="color: var(--text-secondary);">
+          <a class="cm-link" href="/login">Use a password instead</a>
+        </span>
+      </div>
+    </div>
   </div>
-  <p class="tiny muted center"><a href="/login">Use a password instead</a></p>
 </div>
 {% include "partials/foot.html" %}

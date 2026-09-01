@@ -1,25 +1,49 @@
-<aside class="tutor-sidebar">
-  <div class="ts-user">
-    <div class="ts-user-name">{{ user.name }}</div>
-    {% if region %}<div class="ts-user-region">{{ region.name }}</div>{% endif %}
+<style>
+  /* Page-level layout only: the stage list is a nav-sidebar with a per-stage
+     sub-list of components (not a stock navigation.md variant), plus the
+     lock icon on locked stages. Colours below are semantic tokens only. */
+  .tsnav-group + .tsnav-group { margin-top: var(--space-2); }
+  .tsnav-head .tsnav-title { flex: 1; }
+  .tsnav-children { list-style: none; margin: 0; padding: var(--space-4) 0 var(--space-8) var(--space-24); display: flex; flex-direction: column; }
+  .tsnav-children li { padding: var(--space-4) var(--space-16) var(--space-4) var(--space-8); }
+  .tsnav-children li a { color: var(--text-secondary); text-decoration: none; }
+  .tsnav-children li a:hover { color: var(--text-primary); }
+  .tsnav-children li.is-done a,
+  .tsnav-children li.is-done { color: var(--text-success); }
+  .tsnav-children li.is-current a,
+  .tsnav-children li.is-current { color: var(--text-brand); font-weight: var(--type-body-emphasis); }
+  .ts-sidebar-foot { margin-top: auto; padding-top: var(--space-16); border-top: 1px solid var(--border-tertiary); }
+</style>
+<aside class="nav-sidebar" aria-label="Sidebar" style="height: 100%;">
+  <div style="padding: 0 var(--space-16) var(--space-16);">
+    <div class="type-body-md type-body-emphasis" style="color: var(--text-primary);">{{ user.name }}</div>
+    {% if region %}<div class="type-body-sm" style="color: var(--text-tertiary);">{{ region.name }}</div>{% endif %}
   </div>
 
-  <nav class="tsnav">
+  <nav class="nav-sidebar-section tsnav" aria-label="Onboarding stages">
     {% for i, s in enumerate(states, 1) %}
       {% set grp_cls = "is-done" if s.status == "completed" else ("is-locked" if s.status == "locked" else "is-current") %}
       {% set type_badge = "1:1" if s.completion_rule == "admin_marked" else "SELF" %}
       <div class="tsnav-group {{ grp_cls }}">
         {% if s.status == "locked" %}
-          <span class="tsnav-head">
-            <span class="tsnav-mark">&#128274;</span>
+          <span class="nav-link is-disabled tsnav-head">
+            <span class="cm-icon cm-icon-16" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.4998 7.14285L16.4998 9.14026Q16.6949 9.3127 16.8828 9.50281Q18.9 11.544 18.9 14.4286Q18.9 17.3131 16.8828 19.3543Q14.8612 21.4 12 21.4Q9.13881 21.4 7.11721 19.3543Q5.1 17.3131 5.1 14.4286Q5.1 11.544 7.11721 9.50281Q7.30491 9.31287 7.49984 9.14058L7.49984 7.14286Q7.49984 5.26426 8.81409 3.93435Q10.1327 2.6 11.9998 2.6Q13.8669 2.6 15.1856 3.93435Q16.4998 5.26425 16.4998 7.14285ZM14.6998 7.14285Q14.6998 4.4 11.9998 4.4Q9.29984 4.4 9.29984 7.14286L9.29984 7.98928Q10.5407 7.45715 12 7.45715Q13.4591 7.45715 14.6998 7.98912L14.6998 7.14285ZM17.1 14.4286Q17.1 12.2834 15.6025 10.768Q14.1094 9.25715 12 9.25715Q9.89063 9.25715 8.39751 10.768Q6.9 12.2834 6.9 14.4286Q6.9 16.5738 8.39751 18.0891Q9.89064 19.6 12 19.6Q14.1094 19.6 15.6025 18.0891Q17.1 16.5738 17.1 14.4286ZM11.1 15.7Q10.9603 15.5952 10.8484 15.4611Q10.7365 15.327 10.6584 15.1708Q10.5803 15.0146 10.5401 14.8446Q10.5 14.6747 10.5 14.5Q10.5 14.4263 10.5072 14.353Q10.5144 14.2796 10.5288 14.2074Q10.5432 14.1351 10.5646 14.0646Q10.586 13.9941 10.6142 13.926Q10.6424 13.8579 10.6771 13.7929Q10.7119 13.7279 10.7528 13.6666Q10.7937 13.6054 10.8405 13.5484Q10.8872 13.4914 10.9393 13.4393Q10.9914 13.3872 11.0484 13.3405Q11.1054 13.2937 11.1666 13.2528Q11.2279 13.2119 11.2929 13.1771Q11.3579 13.1424 11.426 13.1142Q11.4941 13.086 11.5646 13.0646Q11.6351 13.0432 11.7074 13.0288Q11.7796 13.0144 11.853 13.0072Q11.9263 13 12 13Q12.0737 13 12.147 13.0072Q12.2204 13.0144 12.2926 13.0288Q12.3649 13.0432 12.4354 13.0646Q12.5059 13.086 12.574 13.1142Q12.6421 13.1424 12.7071 13.1771Q12.7721 13.2119 12.8334 13.2528Q12.8946 13.2937 12.9516 13.3405Q13.0086 13.3872 13.0607 13.4393Q13.1128 13.4914 13.1595 13.5484Q13.2063 13.6054 13.2472 13.6666Q13.2881 13.7279 13.3229 13.7929Q13.3576 13.8579 13.3858 13.926Q13.414 13.9941 13.4354 14.0646Q13.4568 14.1351 13.4712 14.2074Q13.4856 14.2796 13.4928 14.353Q13.5 14.4263 13.5 14.5Q13.5 14.6747 13.4599 14.8446Q13.4197 15.0146 13.3416 15.1708Q13.2635 15.327 13.1516 15.4611Q13.0397 15.5952 12.9 15.7L12.9 16.6Q12.9 16.9728 12.6364 17.2364Q12.3728 17.5 12 17.5Q11.6272 17.5 11.3636 17.2364Q11.1 16.9728 11.1 16.6L11.1 15.7Z" fill="currentColor"/></svg>
+            </span>
             <span class="tsnav-title">{{ s.title }}</span>
-            <span class="tsnav-type">{{ type_badge }}</span>
+            <span class="badge badge-sm">{{ type_badge }}</span>
           </span>
         {% else %}
-          <a class="tsnav-head" href="/stage/{{ s.id }}">
-            <span class="tsnav-mark">{% if s.status == "completed" %}&#10003;{% else %}&#9679;{% endif %}</span>
+          <a class="nav-link tsnav-head{% if s.id == current_stage_id %} is-active{% endif %}" href="/stage/{{ s.id }}"{% if s.id == current_stage_id %} aria-current="page"{% endif %}>
+            {% if s.status == "completed" %}
+              <span class="cm-icon cm-icon-16" style="color: var(--text-success);" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.134 6.28251L10.0256 18.8483L8.4416 18.2829C8.4416 15.4101 6.30538 12.9428 3.32832 12.2114L3.77168 10.5256C6.77013 11.2622 9.16316 13.4453 9.95821 16.2449L19.7658 5.15166L21.134 6.28251Z" fill="currentColor"/></svg>
+              </span>
+            {% else %}
+              <span class="badge-dot-standalone badge-brand" aria-hidden="true"></span>
+            {% endif %}
             <span class="tsnav-title">{{ s.title }}</span>
-            <span class="tsnav-type">{{ type_badge }}</span>
+            <span class="badge badge-sm">{{ type_badge }}</span>
           </a>
         {% endif %}
         {% if s.id == current_stage_id and stage_components %}
@@ -28,7 +52,7 @@
             {% for comp in stage_components %}
               {% set is_next = (not comp.complete) and (not current_marked) %}
               {% set current_marked = current_marked or is_next %}
-              <li class="{{ 'is-done' if comp.complete else ('is-current' if is_next else '') }}">
+              <li class="type-body-sm {{ 'is-done' if comp.complete else ('is-current' if is_next else '') }}">
                 {% if comp.visible %}
                   <a href="/stage/{{ current_stage_id }}#comp-{{ comp.id }}-body">{{ comp.title }}</a>
                 {% else %}
@@ -42,8 +66,8 @@
     {% endfor %}
   </nav>
 
-  <div class="ts-foot">
-    <a href="/notifications">Updates{% if nav_unread %} &middot; {{ nav_unread }}{% endif %}</a>
-    <a href="/profile">You</a>
+  <div class="ts-sidebar-foot" style="padding: 0 var(--space-8);">
+    <a href="/notifications" class="nav-link">Updates{% if nav_unread %} <span class="badge badge-error badge-sm badge-count">{{ nav_unread }}</span>{% endif %}</a>
+    <a href="/profile" class="nav-link">You</a>
   </div>
 </aside>

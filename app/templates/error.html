@@ -1,14 +1,14 @@
 {% set page_title = headline %}
 {% include "partials/head.html" %}
-<div class="wrap wrap-narrow">
-  <div class="card center mt2">
-    <div class="empty">
-      <div class="big">{% if status == 404 %}🧭{% elif status == 403 %}🔒{% else %}🛠️{% endif %}</div>
-      <h1>{{ headline }}</h1>
-      <p class="muted">{{ message }}</p>
-      <div class="btn-row" style="justify-content:center">
-        <a class="btn btn-primary" href="/">Take me home</a>
-      </div>
+<div class="container">
+  <div class="empty-state empty-state-fullpage" role="status">
+    <div class="empty-state-icon" style="width: auto; height: auto; background: none; font-size: var(--type-heading-md-size);">
+      {% if status == 404 %}🧭{% elif status == 403 %}🔒{% else %}🛠️{% endif %}
+    </div>
+    <h1 class="empty-state-title">{{ headline }}</h1>
+    <p class="empty-state-description">{{ message }}</p>
+    <div class="empty-state-actions">
+      <a class="btn btn-primary" href="/">Take me home</a>
     </div>
   </div>
 </div>

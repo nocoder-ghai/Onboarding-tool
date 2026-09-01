@@ -1,283 +1,430 @@
 {% set page_title = comp.title %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: two-column admin shell — sidebar + content. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); display: flex; flex-direction: column; gap: var(--space-24); }
+  .step-actions { display: flex; gap: var(--space-8); flex-shrink: 0; flex-wrap: wrap; }
+  .step-children { display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-12); padding-left: var(--space-24); border-left: 2px solid var(--border-tertiary); }
+  @media (max-width: 768px) {
+    .admin-shell { flex-direction: column; }
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <div class="crumb">
-      <a href="/admin/content">Journey</a> ·
-      <a href="/admin/stages/{{ stage.id }}">{{ stage.title }}</a>
-    </div>
-    <h1>{{ comp.title }}</h1>
-    <p class="muted small mb0">Key <code>{{ comp.key }}</code></p>
-  </div>
-
-  <div class="card">
-    <h3>Component details</h3>
-    <form method="post" action="/admin/components/{{ comp.id }}/edit">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <div class="field">
-        <label for="title">Title</label>
-        <input id="title" name="title" type="text" value="{{ comp.title }}" required>
-      </div>
-      <div class="field">
-        <label for="description">Description</label>
-        <textarea id="description" name="description">{{ comp.description }}</textarea>
-      </div>
-      <div class="row3">
-        <div class="field">
-          <label for="completion_rule">Completion</label>
-          <select id="completion_rule" name="completion_rule">
-            <option value="sub_items"{% if comp.completion_rule == "sub_items" %} selected{% endif %}>All mandatory steps done</option>
-            <option value="self_marked"{% if comp.completion_rule == "self_marked" %} selected{% endif %}>Tutor ticks the component</option>
-            <option value="admin_marked"{% if comp.completion_rule == "admin_marked" %} selected{% endif %}>Mentor/admin marks it</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="region_id">Region</label>
-          <select id="region_id" name="region_id">
-            <option value="">All regions</option>
-            {% for r in regions_all %}
-              <option value="{{ r.id }}"{% if r.id == comp.region_id %} selected{% endif %}>{{ r.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="field" style="align-self:end">
-          <label class="check"><input type="checkbox" name="is_mandatory" value="1"
-            {% if comp.is_mandatory %}checked{% endif %}><span>Mandatory</span></label>
-        </div>
-      </div>
-      <div class="field">
-        <label for="grade_cohort_id">Grade cohort</label>
-        <select id="grade_cohort_id" name="grade_cohort_id">
-          <option value="">All grade cohorts</option>
-          {% for g in grade_cohorts_all %}
-            <option value="{{ g.id }}"{% if g.id == comp.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <button class="btn btn-primary" type="submit">Save component</button>
-    </form>
-  </div>
-
-  <div class="card">
-    <h3>Steps</h3>
-    <p class="small muted">A <strong>group</strong> is a heading with steps nested under
-      it. A <strong>policy</strong> step needs a document attached and is acknowledged by
-      the tutor. An <strong>upload</strong> step collects a file.</p>
-
-    {% for node in tree %}
-      <div class="item{% if node.archived_at %} archived{% endif %}">
-        <div class="split">
-          <span class="k badge plain">{{ node.kind }}</span>
-          <strong>{{ node.title }}</strong>
-          {% if node.region_id %}<span class="badge region">{{ node.region_label }}</span>{% endif %}
-          {% if node.grade_cohort_id %}<span class="badge region">{{ node.grade_cohort_label }}</span>{% endif %}
-          {% if not node.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
-          {% if node.archived_at %}<span class="badge locked">Archived</span>{% endif %}
-          <span class="split-end btn-row">
-            <form method="post" action="/admin/items/{{ node.id }}/move" class="inline-form">
-              <input type="hidden" name="_csrf" value="{{ csrf }}">
-              <input type="hidden" name="dir" value="up">
-              <button class="btn btn-xs" type="submit">↑</button>
-            </form>
-            <form method="post" action="/admin/items/{{ node.id }}/move" class="inline-form">
-              <input type="hidden" name="_csrf" value="{{ csrf }}">
-              <input type="hidden" name="dir" value="down">
-              <button class="btn btn-xs" type="submit">↓</button>
-            </form>
-            <form method="post" action="/admin/items/{{ node.id }}/archive" class="inline-form">
-              <input type="hidden" name="_csrf" value="{{ csrf }}">
-              {% if node.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
-              <button class="btn btn-xs{% if not node.archived_at %} btn-danger{% endif %}" type="submit">
-                {{ "Restore" if node.archived_at else "Archive" }}</button>
-            </form>
+  <div>
+    <nav aria-label="Breadcrumb" style="margin-bottom: var(--space-12);">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="/admin/content">Journey</a>
+          <span class="breadcrumb-separator">
+            <svg data-icon="chevron-right" width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.7674 13.2674Q11.5381 12.4967 12.4224 12Q11.5381 11.5033 10.7674 10.7326Q8.6 8.56519 8.6 5.5L10.4 5.5Q10.4 7.81961 12.0402 9.4598Q13.6804 11.1 16 11.1L16 12.9Q13.6804 12.9 12.0402 14.5402Q10.4 16.1804 10.4 18.5L8.6 18.5Q8.6 15.4348 10.7674 13.2674Z" fill="currentColor"/></svg>
           </span>
-        </div>
-        {% if node.description %}<div class="item-desc">{{ node.description }}</div>{% endif %}
-        {% for doc in node.docs %}
-          {% include "admin/_doc_thumb.html" %}
-        {% endfor %}
-        {% for link in node.item_links %}
-          <div class="item-meta">↗ {{ link.label }} — <span class="muted">{{ link.url }}</span></div>
-        {% endfor %}
-        {% if can_write %}
-          <details class="editor">
-            <summary>Edit this step</summary>
-            <div>{% set item = node %}{% include "admin/_item_form.html" %}</div>
-          </details>
-          {% set doc_target_type = "sub_item" %}
-          {% set doc_target_id = node.id %}
-          {% set doc_target_label = node.title %}
-          {% set doc_back = "/admin/components/" + str(comp.id) %}
-          {% include "admin/_document_upload_form.html" %}
-          {% set link_target_type = "sub_item" %}
-          {% set link_target_id = node.id %}
-          {% set link_target_label = node.title %}
-          {% set link_back = "/admin/components/" + str(comp.id) %}
-          {% include "admin/_link_form.html" %}
-        {% endif %}
-        {% if node.kind == "policy" %}
-          {% set item = node %}
-          {% include "admin/_quiz_editor.html" %}
-        {% endif %}
-
-        {% if node.children %}
-          <div class="nest mt">
-            {% for child in node.children %}
-              <div class="item{% if child.archived_at %} archived{% endif %}">
-                <div class="split">
-                  <span class="k badge plain">{{ child.kind }}</span>
-                  <strong>{{ child.title }}</strong>
-                  {% if child.region_id %}<span class="badge region">{{ child.region_label }}</span>{% endif %}
-                  {% if child.grade_cohort_id %}<span class="badge region">{{ child.grade_cohort_label }}</span>{% endif %}
-                  {% if child.archived_at %}<span class="badge locked">Archived</span>{% endif %}
-                  <span class="split-end btn-row">
-                    <form method="post" action="/admin/items/{{ child.id }}/move" class="inline-form">
-                      <input type="hidden" name="_csrf" value="{{ csrf }}">
-                      <input type="hidden" name="dir" value="up">
-                      <button class="btn btn-xs" type="submit">↑</button>
-                    </form>
-                    <form method="post" action="/admin/items/{{ child.id }}/move" class="inline-form">
-                      <input type="hidden" name="_csrf" value="{{ csrf }}">
-                      <input type="hidden" name="dir" value="down">
-                      <button class="btn btn-xs" type="submit">↓</button>
-                    </form>
-                    <form method="post" action="/admin/items/{{ child.id }}/archive" class="inline-form">
-                      <input type="hidden" name="_csrf" value="{{ csrf }}">
-                      {% if child.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
-                      <button class="btn btn-xs{% if not child.archived_at %} btn-danger{% endif %}" type="submit">
-                        {{ "Restore" if child.archived_at else "Archive" }}</button>
-                    </form>
-                  </span>
-                </div>
-                {% if child.description %}<div class="item-desc">{{ child.description }}</div>{% endif %}
-                {% for doc in child.docs %}
-                  {% include "admin/_doc_thumb.html" %}
-                {% endfor %}
-                {% for link in child.item_links %}
-                  <div class="item-meta">↗ {{ link.label }}</div>
-                {% endfor %}
-                {% if can_write %}
-                  <details class="editor">
-                    <summary>Edit this step</summary>
-                    <div>{% set item = child %}{% include "admin/_item_form.html" %}</div>
-                  </details>
-                  {% set doc_target_type = "sub_item" %}
-                  {% set doc_target_id = child.id %}
-                  {% set doc_target_label = child.title %}
-                  {% set doc_back = "/admin/components/" + str(comp.id) %}
-                  {% include "admin/_document_upload_form.html" %}
-                  {% set link_target_type = "sub_item" %}
-                  {% set link_target_id = child.id %}
-                  {% set link_target_label = child.title %}
-                  {% set link_back = "/admin/components/" + str(comp.id) %}
-                  {% include "admin/_link_form.html" %}
-                {% endif %}
-                {% if child.kind == "policy" %}
-                  {% set item = child %}
-                  {% include "admin/_quiz_editor.html" %}
-                {% endif %}
-              </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      </div>
-    {% endfor %}
-
-    {% if can_write %}
-      <details class="editor" open>
-        <summary>Add a step</summary>
-        <div>
-          <form method="post" action="/admin/components/{{ comp.id }}/items/new">
-            <input type="hidden" name="_csrf" value="{{ csrf }}">
-            <div class="row2">
-              <div class="field"><label>Title</label>
-                <input name="title" type="text" required></div>
-              <div class="field">
-                <label>Type</label>
-                <select name="kind">
-                  <option value="task">Task — tutor ticks it off</option>
-                  <option value="policy">Policy — read &amp; acknowledge</option>
-                  <option value="upload">Upload — tutor submits a file</option>
-                  <option value="link">Link — visit, then tick</option>
-                  <option value="group">Group — a heading for nested steps</option>
-                </select>
-              </div>
-            </div>
-            <div class="field"><label>Description</label>
-              <textarea name="description"></textarea></div>
-            <div class="field"><label>Instructions (shown until it's done)</label>
-              <textarea name="instructions"></textarea></div>
-            <div class="row3">
-              <div class="field">
-                <label>Nest under</label>
-                <select name="parent_id">
-                  <option value="">Top level</option>
-                  {% for g in groups %}<option value="{{ g.id }}">{{ g.title }}</option>{% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label>Region</label>
-                <select name="region_id">
-                  <option value="">All regions</option>
-                  {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label>Upload accepts</label>
-                <select name="accept_mime">
-                  <option value="">n/a</option>
-                  <option value="image/*">Images</option>
-                  <option value="video/*">Video</option>
-                  <option value="application/pdf">PDF</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Grade cohort</label>
-                <select name="grade_cohort_id">
-                  <option value="">All grade cohorts</option>
-                  {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
-                </select>
-              </div>
-            </div>
-            <label class="check"><input type="checkbox" name="is_mandatory" value="1" checked>
-              <span>Mandatory</span></label>
-            <div class="btn-row mt">
-              <button class="btn btn-primary" type="submit">Add step</button>
-            </div>
-          </form>
-        </div>
-      </details>
-    {% endif %}
+        </li>
+        <li class="breadcrumb-item">
+          <a href="/admin/stages/{{ stage.id }}">{{ stage.title }}</a>
+          <span class="breadcrumb-separator">
+            <svg data-icon="chevron-right" width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.7674 13.2674Q11.5381 12.4967 12.4224 12Q11.5381 11.5033 10.7674 10.7326Q8.6 8.56519 8.6 5.5L10.4 5.5Q10.4 7.81961 12.0402 9.4598Q13.6804 11.1 16 11.1L16 12.9Q13.6804 12.9 12.0402 14.5402Q10.4 16.1804 10.4 18.5L8.6 18.5Q8.6 15.4348 10.7674 13.2674Z" fill="currentColor"/></svg>
+          </span>
+        </li>
+        <li class="breadcrumb-item is-current" aria-current="page">{{ comp.title }}</li>
+      </ol>
+    </nav>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin: 0 0 var(--space-4);">{{ comp.title }}</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">Key <code>{{ comp.key }}</code></p>
   </div>
 
   <div class="card">
-    <h3>Links &amp; documents on this component</h3>
-    {% for link in comp_links %}
-      <div class="linkrow"><span class="ico">↗</span>
-        <span class="grow">{{ link.label }} — <span class="muted tiny">{{ link.url }}</span></span></div>
-    {% endfor %}
-    {% for doc in documents %}
-      <div class="linkrow"><span class="ico">📄</span>
-        <span class="grow"><a href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a></span></div>
-    {% endfor %}
-    {% if not comp_links and not documents %}
-      <p class="small muted">Nothing attached yet.</p>
-    {% endif %}
-    {% if can_write %}
-      {% set link_target_type = "component" %}
-      {% set link_target_id = comp.id %}
-      {% set link_target_label = comp.title %}
-      {% set link_back = "/admin/components/" + str(comp.id) %}
-      {% include "admin/_link_form.html" %}
-      {% set doc_target_type = "component" %}
-      {% set doc_target_id = comp.id %}
-      {% set doc_target_label = comp.title %}
-      {% set doc_back = "/admin/components/" + str(comp.id) %}
-      {% include "admin/_document_upload_form.html" %}
-    {% endif %}
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Component details</div>
+      </div>
+    </div>
+    <div class="card-content">
+      <form method="post" action="/admin/components/{{ comp.id }}/edit" class="form-stack">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="cm-field">
+          <div class="cm-field-wrap">
+            <input id="title" name="title" type="text" value="{{ comp.title }}" placeholder=" " required>
+            <label class="cm-field-label" for="title">Title</label>
+            <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+          </div>
+        </div>
+        <div class="cm-field">
+          <div class="cm-field-wrap">
+            <textarea id="description" name="description" placeholder=" " rows="3">{{ comp.description }}</textarea>
+            <label class="cm-field-label" for="description">Description</label>
+            <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="col-4 col-sm-12">
+            <div class="cm-field">
+              <div class="cm-field-wrap">
+                <select id="completion_rule" name="completion_rule">
+                  <option value="sub_items"{% if comp.completion_rule == "sub_items" %} selected{% endif %}>All mandatory steps done</option>
+                  <option value="self_marked"{% if comp.completion_rule == "self_marked" %} selected{% endif %}>Tutor ticks the component</option>
+                  <option value="admin_marked"{% if comp.completion_rule == "admin_marked" %} selected{% endif %}>Mentor/admin marks it</option>
+                </select>
+                <span class="cm-field-label">Completion</span>
+                <fieldset class="cm-field-notch"><legend><span>Completion</span></legend></fieldset>
+              </div>
+            </div>
+          </div>
+          <div class="col-4 col-sm-12">
+            <div class="cm-field">
+              <div class="cm-field-wrap">
+                <select id="region_id" name="region_id"{% if not comp.region_id %} class="is-placeholder"{% endif %}>
+                  <option value=""{% if not comp.region_id %} selected{% endif %}>All regions</option>
+                  {% for r in regions_all %}
+                    <option value="{{ r.id }}"{% if r.id == comp.region_id %} selected{% endif %}>{{ r.name }}</option>
+                  {% endfor %}
+                </select>
+                <span class="cm-field-label">Region</span>
+                <fieldset class="cm-field-notch"><legend><span>Region</span></legend></fieldset>
+              </div>
+            </div>
+          </div>
+          <div class="col-4 col-sm-12" style="display: flex; align-items: center;">
+            <label class="cm-checkbox">
+              <input type="checkbox" name="is_mandatory" value="1"
+                {% if comp.is_mandatory %}checked{% endif %}>
+              <span class="cm-checkbox-box"><svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg></span>
+              <span class="cm-checkbox-label">Mandatory</span>
+            </label>
+          </div>
+        </div>
+        <div class="cm-field">
+          <div class="cm-field-wrap">
+            <select id="grade_cohort_id" name="grade_cohort_id"{% if not comp.grade_cohort_id %} class="is-placeholder"{% endif %}>
+              <option value=""{% if not comp.grade_cohort_id %} selected{% endif %}>All grade cohorts</option>
+              {% for g in grade_cohorts_all %}
+                <option value="{{ g.id }}"{% if g.id == comp.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+              {% endfor %}
+            </select>
+            <span class="cm-field-label">Grade cohort</span>
+            <fieldset class="cm-field-notch"><legend><span>Grade cohort</span></legend></fieldset>
+          </div>
+        </div>
+        <div><button class="btn btn-md btn-primary" type="submit">Save component</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Steps</div>
+        <div class="card-description">A <strong>group</strong> is a heading with steps nested under
+          it. A <strong>policy</strong> step needs a document attached and is acknowledged by
+          the tutor. An <strong>upload</strong> step collects a file.</div>
+      </div>
+    </div>
+    <div class="card-content">
+      {% for node in tree %}
+        <div class="card card-compact" style="margin-bottom: var(--space-12);{% if node.archived_at %} opacity: 0.6;{% endif %}">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap;">
+              <span class="badge">{{ node.kind }}</span>
+              <strong class="type-label-md" style="color: var(--text-primary);">{{ node.title }}</strong>
+              {% if node.region_id %}<span class="badge badge-info">{{ node.region_label }}</span>{% endif %}
+              {% if node.grade_cohort_id %}<span class="badge badge-info">{{ node.grade_cohort_label }}</span>{% endif %}
+              {% if not node.is_mandatory %}<span class="badge">Optional</span>{% endif %}
+              {% if node.archived_at %}<span class="badge badge-neutral-strong">Archived</span>{% endif %}
+            </div>
+            <div class="step-actions">
+              <form method="post" action="/admin/items/{{ node.id }}/move" class="inline-form">
+                <input type="hidden" name="_csrf" value="{{ csrf }}">
+                <input type="hidden" name="dir" value="up">
+                <button class="btn btn-sm btn-secondary btn-icon-only" type="submit" aria-label="Move up">
+                  <svg data-icon="chevron-up" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.2674 13.2326Q12.4967 12.4619 12 11.5776Q11.5033 12.4619 10.7326 13.2326Q8.56519 15.4 5.5 15.4L5.5 13.6Q7.81961 13.6 9.4598 11.9598Q11.1 10.3196 11.1 8L12 8L12.9 8Q12.9 10.3196 14.5402 11.9598Q16.1804 13.6 18.5 13.6L18.5 15.4Q15.4348 15.4 13.2674 13.2326Z" fill="currentColor"/></svg>
+                </button>
+              </form>
+              <form method="post" action="/admin/items/{{ node.id }}/move" class="inline-form">
+                <input type="hidden" name="_csrf" value="{{ csrf }}">
+                <input type="hidden" name="dir" value="down">
+                <button class="btn btn-sm btn-secondary btn-icon-only" type="submit" aria-label="Move down">
+                  <svg data-icon="chevron-down" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.7326 10.7674Q11.5033 11.5381 12 12.4224Q12.4967 11.5381 13.2674 10.7674Q15.4348 8.6 18.5 8.6L18.5 10.4Q16.1804 10.4 14.5402 12.0402Q12.9 13.6804 12.9 16L11.1 16Q11.1 13.6804 9.4598 12.0402Q7.81961 10.4 5.5 10.4L5.5 8.6Q8.56519 8.6 10.7326 10.7674Z" fill="currentColor"/></svg>
+                </button>
+              </form>
+              <form method="post" action="/admin/items/{{ node.id }}/archive" class="inline-form">
+                <input type="hidden" name="_csrf" value="{{ csrf }}">
+                {% if node.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+                <button class="btn btn-sm {{ 'btn-secondary' if node.archived_at else 'btn-destructive' }}" type="submit">
+                  {{ "Restore" if node.archived_at else "Archive" }}</button>
+              </form>
+            </div>
+          </div>
+          {% if node.description %}<div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-8);">{{ node.description }}</div>{% endif %}
+          {% for doc in node.docs %}
+            {% include "admin/_doc_thumb.html" %}
+          {% endfor %}
+          {% for link in node.item_links %}
+            <div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-8);">↗ {{ link.label }} — <span style="color: var(--text-tertiary);">{{ link.url }}</span></div>
+          {% endfor %}
+          {% if can_write %}
+            <div class="accordion" style="margin-top: var(--space-12);">
+              <div class="accordion-item">
+                <button class="accordion-trigger" aria-expanded="false" aria-controls="item-{{ node.id }}-panel" id="item-{{ node.id }}-trigger">
+                  <span class="type-label-sm">Edit this step</span>
+                  <span class="cm-icon accordion-icon"><svg data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg><svg data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg></span>
+                </button>
+                <div class="accordion-content" id="item-{{ node.id }}-panel" role="region" aria-labelledby="item-{{ node.id }}-trigger" style="max-height: 0;">
+                  <div class="accordion-body">
+                    {% set item = node %}{% include "admin/_item_form.html" %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% set doc_target_type = "sub_item" %}
+            {% set doc_target_id = node.id %}
+            {% set doc_target_label = node.title %}
+            {% set doc_back = "/admin/components/" + str(comp.id) %}
+            {% include "admin/_document_upload_form.html" %}
+            {% set link_target_type = "sub_item" %}
+            {% set link_target_id = node.id %}
+            {% set link_target_label = node.title %}
+            {% set link_back = "/admin/components/" + str(comp.id) %}
+            {% include "admin/_link_form.html" %}
+          {% endif %}
+          {% if node.kind == "policy" %}
+            {% set item = node %}
+            {% include "admin/_quiz_editor.html" %}
+          {% endif %}
+
+          {% if node.children %}
+            <div class="step-children">
+              {% for child in node.children %}
+                <div class="card card-compact"{% if child.archived_at %} style="opacity: 0.6;"{% endif %}>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap;">
+                      <span class="badge">{{ child.kind }}</span>
+                      <strong class="type-label-md" style="color: var(--text-primary);">{{ child.title }}</strong>
+                      {% if child.region_id %}<span class="badge badge-info">{{ child.region_label }}</span>{% endif %}
+                      {% if child.grade_cohort_id %}<span class="badge badge-info">{{ child.grade_cohort_label }}</span>{% endif %}
+                      {% if child.archived_at %}<span class="badge badge-neutral-strong">Archived</span>{% endif %}
+                    </div>
+                    <div class="step-actions">
+                      <form method="post" action="/admin/items/{{ child.id }}/move" class="inline-form">
+                        <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        <input type="hidden" name="dir" value="up">
+                        <button class="btn btn-sm btn-secondary btn-icon-only" type="submit" aria-label="Move up">
+                          <svg data-icon="chevron-up" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.2674 13.2326Q12.4967 12.4619 12 11.5776Q11.5033 12.4619 10.7326 13.2326Q8.56519 15.4 5.5 15.4L5.5 13.6Q7.81961 13.6 9.4598 11.9598Q11.1 10.3196 11.1 8L12 8L12.9 8Q12.9 10.3196 14.5402 11.9598Q16.1804 13.6 18.5 13.6L18.5 15.4Q15.4348 15.4 13.2674 13.2326Z" fill="currentColor"/></svg>
+                        </button>
+                      </form>
+                      <form method="post" action="/admin/items/{{ child.id }}/move" class="inline-form">
+                        <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        <input type="hidden" name="dir" value="down">
+                        <button class="btn btn-sm btn-secondary btn-icon-only" type="submit" aria-label="Move down">
+                          <svg data-icon="chevron-down" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.7326 10.7674Q11.5033 11.5381 12 12.4224Q12.4967 11.5381 13.2674 10.7674Q15.4348 8.6 18.5 8.6L18.5 10.4Q16.1804 10.4 14.5402 12.0402Q12.9 13.6804 12.9 16L11.1 16Q11.1 13.6804 9.4598 12.0402Q7.81961 10.4 5.5 10.4L5.5 8.6Q8.56519 8.6 10.7326 10.7674Z" fill="currentColor"/></svg>
+                        </button>
+                      </form>
+                      <form method="post" action="/admin/items/{{ child.id }}/archive" class="inline-form">
+                        <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        {% if child.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+                        <button class="btn btn-sm {{ 'btn-secondary' if child.archived_at else 'btn-destructive' }}" type="submit">
+                          {{ "Restore" if child.archived_at else "Archive" }}</button>
+                      </form>
+                    </div>
+                  </div>
+                  {% if child.description %}<div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-8);">{{ child.description }}</div>{% endif %}
+                  {% for doc in child.docs %}
+                    {% include "admin/_doc_thumb.html" %}
+                  {% endfor %}
+                  {% for link in child.item_links %}
+                    <div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-8);">↗ {{ link.label }}</div>
+                  {% endfor %}
+                  {% if can_write %}
+                    <div class="accordion" style="margin-top: var(--space-12);">
+                      <div class="accordion-item">
+                        <button class="accordion-trigger" aria-expanded="false" aria-controls="item-{{ child.id }}-panel" id="item-{{ child.id }}-trigger">
+                          <span class="type-label-sm">Edit this step</span>
+                          <span class="cm-icon accordion-icon"><svg data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg><svg data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg></span>
+                        </button>
+                        <div class="accordion-content" id="item-{{ child.id }}-panel" role="region" aria-labelledby="item-{{ child.id }}-trigger" style="max-height: 0;">
+                          <div class="accordion-body">
+                            {% set item = child %}{% include "admin/_item_form.html" %}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% set doc_target_type = "sub_item" %}
+                    {% set doc_target_id = child.id %}
+                    {% set doc_target_label = child.title %}
+                    {% set doc_back = "/admin/components/" + str(comp.id) %}
+                    {% include "admin/_document_upload_form.html" %}
+                    {% set link_target_type = "sub_item" %}
+                    {% set link_target_id = child.id %}
+                    {% set link_target_label = child.title %}
+                    {% set link_back = "/admin/components/" + str(comp.id) %}
+                    {% include "admin/_link_form.html" %}
+                  {% endif %}
+                  {% if child.kind == "policy" %}
+                    {% set item = child %}
+                    {% include "admin/_quiz_editor.html" %}
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      {% if can_write %}
+        <details style="margin-top: var(--space-16);" open>
+          <summary class="type-label-md" style="color: var(--text-primary); cursor: pointer;">Add a step</summary>
+          <form method="post" action="/admin/components/{{ comp.id }}/items/new" class="form-stack" style="margin-top: var(--space-12);">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <div class="grid">
+              <div class="col-6 col-sm-12">
+                <div class="cm-field">
+                  <div class="cm-field-wrap">
+                    <input name="title" type="text" placeholder=" " required>
+                    <label class="cm-field-label">Title</label>
+                    <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-sm-12">
+                <div class="cm-field">
+                  <div class="cm-field-wrap">
+                    <select name="kind">
+                      <option value="task">Task — tutor ticks it off</option>
+                      <option value="policy">Policy — read &amp; acknowledge</option>
+                      <option value="upload">Upload — tutor submits a file</option>
+                      <option value="link">Link — visit, then tick</option>
+                      <option value="group">Group — a heading for nested steps</option>
+                    </select>
+                    <span class="cm-field-label">Type</span>
+                    <fieldset class="cm-field-notch"><legend><span>Type</span></legend></fieldset>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="cm-field">
+              <div class="cm-field-wrap">
+                <textarea name="description" placeholder=" " rows="2"></textarea>
+                <label class="cm-field-label">Description</label>
+                <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
+              </div>
+            </div>
+            <div class="cm-field">
+              <div class="cm-field-wrap">
+                <textarea name="instructions" placeholder=" " rows="2"></textarea>
+                <label class="cm-field-label">Instructions (shown until it's done)</label>
+                <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Instructions (shown until it's done)</span></legend></fieldset>
+              </div>
+            </div>
+            <div class="grid">
+              <div class="col-3 col-sm-12">
+                <div class="cm-field">
+                  <div class="cm-field-wrap">
+                    <select name="parent_id" class="is-placeholder">
+                      <option value="" selected>Top level</option>
+                      {% for g in groups %}<option value="{{ g.id }}">{{ g.title }}</option>{% endfor %}
+                    </select>
+                    <span class="cm-field-label">Nest under</span>
+                    <fieldset class="cm-field-notch"><legend><span>Nest under</span></legend></fieldset>
+                  </div>
+                </div>
+              </div>
+              <div class="col-3 col-sm-12">
+                <div class="cm-field">
+                  <div class="cm-field-wrap">
+                    <select name="region_id" class="is-placeholder">
+                      <option value="" selected>All regions</option>
+                      {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                    </select>
+                    <span class="cm-field-label">Region</span>
+                    <fieldset class="cm-field-notch"><legend><span>Region</span></legend></fieldset>
+                  </div>
+                </div>
+              </div>
+              <div class="col-3 col-sm-12">
+                <div class="cm-field">
+                  <div class="cm-field-wrap">
+                    <select name="accept_mime" class="is-placeholder">
+                      <option value="" selected>n/a</option>
+                      <option value="image/*">Images</option>
+                      <option value="video/*">Video</option>
+                      <option value="application/pdf">PDF</option>
+                    </select>
+                    <span class="cm-field-label">Upload accepts</span>
+                    <fieldset class="cm-field-notch"><legend><span>Upload accepts</span></legend></fieldset>
+                  </div>
+                </div>
+              </div>
+              <div class="col-3 col-sm-12">
+                <div class="cm-field">
+                  <div class="cm-field-wrap">
+                    <select name="grade_cohort_id" class="is-placeholder">
+                      <option value="" selected>All grade cohorts</option>
+                      {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+                    </select>
+                    <span class="cm-field-label">Grade cohort</span>
+                    <fieldset class="cm-field-notch"><legend><span>Grade cohort</span></legend></fieldset>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <label class="cm-checkbox">
+              <input type="checkbox" name="is_mandatory" value="1" checked>
+              <span class="cm-checkbox-box"><svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg></span>
+              <span class="cm-checkbox-label">Mandatory</span>
+            </label>
+            <div><button class="btn btn-md btn-primary" type="submit">Add step</button></div>
+          </form>
+        </details>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Links &amp; documents on this component</div>
+      </div>
+    </div>
+    <div class="card-content">
+      {% for link in comp_links %}
+        <div class="type-body-sm" style="padding: var(--space-8) 0;">↗ {{ link.label }} — <span style="color: var(--text-tertiary);">{{ link.url }}</span></div>
+      {% endfor %}
+      {% for doc in documents %}
+        <div class="type-body-sm" style="padding: var(--space-8) 0;">📄 <a class="cm-link" href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a></div>
+      {% endfor %}
+      {% if not comp_links and not documents %}
+        <p class="type-body-sm" style="color: var(--text-tertiary);">Nothing attached yet.</p>
+      {% endif %}
+      {% if can_write %}
+        {% set link_target_type = "component" %}
+        {% set link_target_id = comp.id %}
+        {% set link_target_label = comp.title %}
+        {% set link_back = "/admin/components/" + str(comp.id) %}
+        {% include "admin/_link_form.html" %}
+        {% set doc_target_type = "component" %}
+        {% set doc_target_id = comp.id %}
+        {% set doc_target_label = comp.title %}
+        {% set doc_back = "/admin/components/" + str(comp.id) %}
+        {% include "admin/_document_upload_form.html" %}
+      {% endif %}
+    </div>
   </div>
 </main>
 </div>
+<script>
+// Accordion toggle (each .accordion on this page wraps a single edit form, so
+// there are no sibling sections to close — this only opens/closes itself).
+document.querySelectorAll('.accordion-trigger').forEach(function (trigger) {
+  trigger.addEventListener('click', function () {
+    var item = trigger.closest('.accordion-item');
+    var panel = item.querySelector('.accordion-content');
+    var isOpen = item.classList.contains('is-open');
+    item.classList.toggle('is-open', !isOpen);
+    trigger.setAttribute('aria-expanded', String(!isOpen));
+    panel.style.maxHeight = isOpen ? '0' : panel.scrollHeight + 'px';
+  });
+});
+</script>
 {% include "partials/foot.html" %}

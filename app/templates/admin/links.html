@@ -1,64 +1,122 @@
 {% set page_title = "Links" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); }
+  @media (max-width: 768px) {
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Links</h1>
-    <p class="muted small mb0">Zoom links, the profile builder, app downloads, external
+  <div style="margin-bottom: var(--space-32);">
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">Links</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">Zoom links, the profile builder, app downloads, external
       forms — anything a tutor clicks.</p>
   </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Label</th><th>URL</th><th>Attached to</th><th>Region</th><th>Grade cohort</th>
-        <th>On</th><th></th></tr></thead>
+  <div class="table-wrap" role="region" aria-label="Links" tabindex="0">
+    <table class="table table-hoverable">
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>URL</th>
+          <th>Attached to</th>
+          <th>Region</th>
+          <th>Grade cohort</th>
+          <th class="cell-centre">On</th>
+          <th></th>
+        </tr>
+      </thead>
       <tbody>
         {% for link in links %}
           <tr>
-            <td><strong>{{ link.label }}</strong>
-              {% if link.description %}<div class="tiny muted">{{ truncate(link.description, 70) }}</div>{% endif %}</td>
-            <td class="tiny"><a href="{{ link.url }}" target="_blank" rel="noopener">{{ truncate(link.url, 44) }}</a></td>
-            <td class="tiny">{{ link.target }}</td>
-            <td class="tiny">{{ link.region_label }}</td>
-            <td class="tiny">{{ link.grade_cohort_label }}</td>
-            <td>{% if link.is_active %}<span class="badge done">Live</span>{% else %}<span class="badge locked">Off</span>{% endif %}</td>
-            <td class="right">
+            <td>
+              <span class="type-label-md" style="color: var(--text-primary);">{{ link.label }}</span>
+              {% if link.description %}<div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ truncate(link.description, 70) }}</div>{% endif %}
+            </td>
+            <td><a class="cm-link cm-link-sm" style="color: var(--text-brand);" href="{{ link.url }}" target="_blank" rel="noopener">{{ truncate(link.url, 44) }}</a></td>
+            <td class="type-body-sm" style="color: var(--text-secondary);">{{ link.target }}</td>
+            <td class="type-body-sm" style="color: var(--text-secondary);">{{ link.region_label }}</td>
+            <td class="type-body-sm" style="color: var(--text-secondary);">{{ link.grade_cohort_label }}</td>
+            <td class="cell-centre">{% if link.is_active %}<span class="badge badge-success badge-dot">Live</span>{% else %}<span class="badge badge-neutral-strong">Off</span>{% endif %}</td>
+            <td class="cell-right">
               {% if can_write %}
-                <details class="editor" style="border:0; margin:0; padding:0">
-                  <summary>Edit</summary>
-                  <div style="min-width:280px; text-align:left">
-                    <form method="post" action="/admin/links/{{ link.id }}/edit">
+                <details class="card card-expandable card-compact" style="text-align: left;">
+                  <summary>
+                    <span class="type-label-sm">Edit</span>
+                    <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                      <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/>
+</svg>
+                      <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/>
+</svg>
+                    </span>
+                  </summary>
+                  <div class="card-expand-body" style="min-width: 280px;">
+                    <form method="post" action="/admin/links/{{ link.id }}/edit" class="form-stack">
                       <input type="hidden" name="_csrf" value="{{ csrf }}">
-                      <div class="field"><label>Label</label>
-                        <input name="label" type="text" value="{{ link.label }}" required></div>
-                      <div class="field"><label>URL</label>
-                        <input name="url" type="text" value="{{ link.url }}" required></div>
-                      <div class="field"><label>Description</label>
-                        <input name="description" type="text" value="{{ link.description }}"></div>
-                      <div class="field"><label>Region</label>
-                        <select name="region_id">
-                          <option value="">All regions</option>
-                          {% for r in regions_all %}
-                            <option value="{{ r.id }}"{% if r.id == link.region_id %} selected{% endif %}>{{ r.name }}</option>
-                          {% endfor %}
-                        </select></div>
-                      <div class="field"><label>Grade cohort</label>
-                        <select name="grade_cohort_id">
-                          <option value="">All grade cohorts</option>
-                          {% for g in grade_cohorts_all %}
-                            <option value="{{ g.id }}"{% if g.id == link.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
-                          {% endfor %}
-                        </select></div>
-                      <label class="check"><input type="checkbox" name="is_active" value="1"
-                        {% if link.is_active %}checked{% endif %}><span>Live for tutors</span></label>
-                      <div class="btn-row mt">
-                        <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                      <div class="cm-field">
+                        <div class="cm-field-wrap">
+                          <input name="label" type="text" placeholder=" " value="{{ link.label }}" required>
+                          <label class="cm-field-label">Label</label>
+                          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Label</span></legend></fieldset>
+                        </div>
                       </div>
+                      <div class="cm-field">
+                        <div class="cm-field-wrap">
+                          <input name="url" type="text" placeholder=" " value="{{ link.url }}" required>
+                          <label class="cm-field-label">URL</label>
+                          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>URL</span></legend></fieldset>
+                        </div>
+                      </div>
+                      <div class="cm-field">
+                        <div class="cm-field-wrap">
+                          <input name="description" type="text" placeholder=" " value="{{ link.description }}">
+                          <label class="cm-field-label">Description</label>
+                          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
+                        </div>
+                      </div>
+                      <div class="cm-field">
+                        <div class="cm-field-wrap">
+                          <select name="region_id">
+                            <option value="">All regions</option>
+                            {% for r in regions_all %}
+                              <option value="{{ r.id }}"{% if r.id == link.region_id %} selected{% endif %}>{{ r.name }}</option>
+                            {% endfor %}
+                          </select>
+                          <span class="cm-field-label">Region</span>
+                          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Region</span></legend></fieldset>
+                        </div>
+                      </div>
+                      <div class="cm-field">
+                        <div class="cm-field-wrap">
+                          <select name="grade_cohort_id">
+                            <option value="">All grade cohorts</option>
+                            {% for g in grade_cohorts_all %}
+                              <option value="{{ g.id }}"{% if g.id == link.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+                            {% endfor %}
+                          </select>
+                          <span class="cm-field-label">Grade cohort</span>
+                          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Grade cohort</span></legend></fieldset>
+                        </div>
+                      </div>
+                      <label class="cm-checkbox">
+                        <input type="checkbox" name="is_active" value="1" {% if link.is_active %}checked{% endif %}>
+                        <span class="cm-checkbox-box">
+                          <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+                        </span>
+                        <span class="cm-checkbox-label">Live for tutors</span>
+                      </label>
+                      <div><button class="btn btn-sm btn-primary" type="submit">Save</button></div>
                     </form>
-                    <form method="post" action="/admin/links/{{ link.id }}/delete" class="mt">
+                    <div class="divider" style="margin: var(--space-16) 0;"></div>
+                    <form method="post" action="/admin/links/{{ link.id }}/delete">
                       <input type="hidden" name="_csrf" value="{{ csrf }}">
-                      <button class="btn btn-sm btn-danger" type="submit">Delete link</button>
+                      <button class="btn btn-sm btn-destructive" type="submit">Delete link</button>
                     </form>
                   </div>
                 </details>
@@ -71,57 +129,108 @@
   </div>
 
   {% if can_write %}
-    <div class="card mt">
-      <h3>Add a link</h3>
-      <form method="post" action="/admin/links/new">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="row2">
-          <div class="field"><label>Label tutors see</label>
-            <input name="label" type="text" required></div>
-          <div class="field"><label>URL</label>
-            <input name="url" type="url" placeholder="https://…" required></div>
-        </div>
-        <div class="field"><label>Description</label>
-          <input name="description" type="text"></div>
-        <div class="row3">
-          <div class="field">
-            <label>Attach to</label>
-            <select name="target_type">
-              <option value="global">Nothing — show on the dashboard</option>
-              <option value="stage">A stage</option>
-              <option value="component">A component</option>
-              <option value="sub_item">A step</option>
-            </select>
+    <div class="card" style="margin-top: var(--space-24);">
+      <div class="card-header">
+        <div class="card-header-text"><div class="card-title">Add a link</div></div>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/links/new" class="form-stack">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="grid">
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="label" type="text" placeholder=" " required>
+                  <label class="cm-field-label">Label tutors see</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Label tutors see</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="url" type="url" placeholder="https://…" required>
+                  <label class="cm-field-label">URL</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>URL</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="field">
-            <label>Which one</label>
-            <select name="target_id">
-              <option value="">—</option>
-              {% for s in stages %}<option value="{{ s.id }}">Stage: {{ s.title }}</option>{% endfor %}
-              {% for c in components %}<option value="{{ c.id }}">Component: {{ c.title }}</option>{% endfor %}
-              {% for i in items %}<option value="{{ i.id }}">Step: {{ i.title }}</option>{% endfor %}
-            </select>
-            <div class="hint">Pick the entry matching the type on the left.</div>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="description" type="text" placeholder=" ">
+              <label class="cm-field-label">Description</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
+            </div>
           </div>
-          <div class="field">
-            <label>Region</label>
-            <select name="region_id">
-              <option value="">All regions</option>
-              {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
-            </select>
+
+          <div class="grid">
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="target_type">
+                    <option value="global">Nothing — show on the dashboard</option>
+                    <option value="stage">A stage</option>
+                    <option value="component">A component</option>
+                    <option value="sub_item">A step</option>
+                  </select>
+                  <span class="cm-field-label">Attach to</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Attach to</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="target_id">
+                    <option value="">—</option>
+                    {% for s in stages %}<option value="{{ s.id }}">Stage: {{ s.title }}</option>{% endfor %}
+                    {% for c in components %}<option value="{{ c.id }}">Component: {{ c.title }}</option>{% endfor %}
+                    {% for i in items %}<option value="{{ i.id }}">Step: {{ i.title }}</option>{% endfor %}
+                  </select>
+                  <span class="cm-field-label">Which one</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Which one</span></legend></fieldset>
+                </div>
+                <div class="cm-field-helper">Pick the entry matching the type on the left.</div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="region_id">
+                    <option value="">All regions</option>
+                    {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                  </select>
+                  <span class="cm-field-label">Region</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Region</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="field">
-          <label>Grade cohort</label>
-          <select name="grade_cohort_id">
-            <option value="">All grade cohorts</option>
-            {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
-          </select>
-        </div>
-        <label class="check"><input type="checkbox" name="is_active" value="1" checked>
-          <span>Live for tutors straight away</span></label>
-        <div class="btn-row mt"><button class="btn btn-primary" type="submit">Add link</button></div>
-      </form>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <select name="grade_cohort_id">
+                <option value="">All grade cohorts</option>
+                {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+              </select>
+              <span class="cm-field-label">Grade cohort</span>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Grade cohort</span></legend></fieldset>
+            </div>
+          </div>
+
+          <label class="cm-checkbox">
+            <input type="checkbox" name="is_active" value="1" checked>
+            <span class="cm-checkbox-box">
+              <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+            </span>
+            <span class="cm-checkbox-label">Live for tutors straight away</span>
+          </label>
+
+          <div><button class="btn btn-primary" type="submit">Add link</button></div>
+        </form>
+      </div>
     </div>
   {% endif %}
 </main>

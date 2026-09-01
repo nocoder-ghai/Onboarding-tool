@@ -1,62 +1,95 @@
 {% set page_title = "Audit log" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; min-height: 100vh; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); background: var(--bg-secondary);
+    display: flex; flex-direction: column; gap: var(--space-24); }
+  @media (max-width: 768px) {
+    .admin-shell { flex-direction: column; }
+    .admin-shell > main { padding: var(--space-16); }
+  }
+  .audit-diff { font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size); color: var(--text-secondary);
+    white-space: pre-wrap; word-break: break-word; margin-top: var(--space-4); }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Audit log</h1>
-    <p class="muted small mb0">Who changed what content, and when. Every write goes
+  <div>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">Audit log</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">Who changed what content, and when. Every write goes
       through here.</p>
   </div>
 
-  <div class="card card-tight">
-    <form method="get" action="/admin/audit" class="filters">
-      <div class="field">
-        <label for="entity_type">Entity</label>
-        <select id="entity_type" name="entity_type">
-          <option value="">All</option>
-          {% for et in entity_types %}
-            <option value="{{ et }}"{% if et == entity_type %} selected{% endif %}>{{ et }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label for="action">Action contains</label>
-        <input id="action" name="action" type="text" value="{{ action }}"
-               placeholder="e.g. archive">
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-sm btn-primary" type="submit">Filter</button>
-        <a class="btn btn-sm" href="/admin/audit">Clear</a>
+  <div class="card card-compact">
+    <form method="get" action="/admin/audit" class="form-stack" style="gap: var(--space-16);">
+      <div class="grid" style="align-items: end;">
+        <div class="col-4 col-md-6 col-sm-12">
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <select id="entity_type" name="entity_type">
+                <option value="">All</option>
+                {% for et in entity_types %}
+                  <option value="{{ et }}"{% if et == entity_type %} selected{% endif %}>{{ et }}</option>
+                {% endfor %}
+              </select>
+              <label for="entity_type" class="cm-field-label">Entity</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Entity</span></legend></fieldset>
+            </div>
+          </div>
+        </div>
+        <div class="col-4 col-md-6 col-sm-12">
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="action" name="action" type="text" placeholder=" " value="{{ action }}">
+              <label class="cm-field-label">Action contains</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Action contains</span></legend></fieldset>
+            </div>
+            <div class="cm-field-helper">e.g. archive</div>
+          </div>
+        </div>
+        <div class="col-4 col-md-12 col-sm-12" style="display: flex; align-items: center; gap: var(--space-8);">
+          <button class="btn btn-sm btn-primary" type="submit">Filter</button>
+          <a class="btn btn-sm btn-secondary" href="/admin/audit">Clear</a>
+        </div>
       </div>
     </form>
   </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What changed</th>
-        <th>IP</th></tr></thead>
-      <tbody>
-        {% for row in rows %}
-          <tr>
-            <td class="tiny nowrap">{{ fmt_datetime(row.created_at) }}</td>
-            <td class="tiny">{{ row.actor_label }}</td>
-            <td class="tiny"><code>{{ row.action }}</code>
-              {% if row.entity_type %}<div class="muted">{{ row.entity_type }}
-                {% if row.entity_id %}#{{ row.entity_id }}{% endif %}</div>{% endif %}</td>
-            <td>
-              <div class="small">{{ row.summary }}</div>
-              {% if row.diff %}<pre class="diff">{{ row.diff }}</pre>{% endif %}
-            </td>
-            <td class="tiny muted">{{ row.ip_address }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if not rows %}
-    <div class="card"><div class="empty"><div class="big">📜</div>
-      <h3>Nothing logged yet</h3></div></div>
+  {% if rows %}
+    <div class="table-wrap" role="region" aria-label="Audit log entries" tabindex="0">
+      <table class="table table-hoverable">
+        <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What changed</th>
+          <th>IP</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td class="type-label-sm" style="color: var(--text-tertiary); white-space: nowrap;">{{ fmt_datetime(row.created_at) }}</td>
+              <td class="type-label-sm">{{ row.actor_label }}</td>
+              <td class="type-label-sm">
+                <code>{{ row.action }}</code>
+                {% if row.entity_type %}<div class="type-body-sm" style="color: var(--text-tertiary);">{{ row.entity_type }}
+                  {% if row.entity_id %}#{{ row.entity_id }}{% endif %}</div>{% endif %}
+              </td>
+              <td>
+                <div class="type-body-sm">{{ row.summary }}</div>
+                {% if row.diff %}<pre class="audit-diff">{{ row.diff }}</pre>{% endif %}
+              </td>
+              <td class="type-label-sm" style="color: var(--text-tertiary);">{{ row.ip_address }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="empty-state" role="status">
+        <div class="empty-state-icon">
+          <svg data-icon="clock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5.4C8.35492 5.4 5.4 8.35492 5.4 12C5.4 15.6451 8.35492 18.6 12 18.6C15.6451 18.6 18.6 15.6451 18.6 12C18.6 8.35492 15.6451 5.4 12 5.4ZM3.6 12C3.6 7.36081 7.36081 3.6 12 3.6C16.6392 3.6 20.4 7.36081 20.4 12C20.4 16.6392 16.6392 20.4 12 20.4C7.36081 20.4 3.6 16.6392 3.6 12ZM11.1328 7.6548L12.9328 7.6548L12.9328 11.4001L15.8551 12.6177L15.509 13.4485L15.1628 14.2793L11.6866 12.8308L11.1328 12.6001L11.1328 7.6548Z" fill="currentColor"/></svg>
+        </div>
+        <h3 class="empty-state-title">Nothing logged yet</h3>
+      </div>
+    </div>
   {% endif %}
 </main>
 </div>

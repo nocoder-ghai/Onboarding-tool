@@ -1,99 +1,137 @@
 {% set page_title = item.title %}
 {% include "partials/head.html" %}
-<div class="wrap">
-  <div class="page-head">
-    <div class="crumb"><a href="/stage/{{ stage.id }}">← {{ stage.title }}</a></div>
-    <h1>{{ item.title }}</h1>
-    {% if item.description %}<p class="muted small mb0">{{ item.description }}</p>{% endif %}
+<style>
+  /* Page-level layout only: narrow single-column reading width, and a
+     plain list of external link rows (no dedicated "link list" component
+     exists in the design system — this composes Link + a divider). */
+  .page-narrow { max-width: 720px; }
+  .page-head-block { margin-bottom: var(--space-24); }
+  .stack { display: flex; flex-direction: column; gap: var(--space-24); }
+  .link-row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-24); text-decoration: none; }
+  .link-row + .link-row { border-top: 1px solid var(--border-tertiary); }
+  .link-row:hover { background: var(--bg-secondary); }
+</style>
+<div class="container page-narrow">
+  <div class="page-head-block">
+    <a href="/stage/{{ stage.id }}" class="cm-link cm-link-sm" style="color: var(--text-secondary);">← {{ stage.title }}</a>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-top: var(--space-8);">{{ item.title }}</h1>
+    {% if item.description %}<p class="type-body-md" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ item.description }}</p>{% endif %}
   </div>
 
   {% if version %}
-    <div class="card">
-      <div class="card-row">
-        <div>
-          <h3 class="mb0">{{ document.title }}</h3>
-          <p class="small muted mb0">
-            Version {{ version.version_no }} · in effect from {{ fmt_date(version.effective_from) }}
-            · {{ version.filename }}
-          </p>
+    <div class="stack">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-text">
+            <div class="card-title">{{ document.title }}</div>
+            <div class="card-description">Version {{ version.version_no }} · in effect from {{ fmt_date(version.effective_from) }} · {{ version.filename }}</div>
+          </div>
+          <a class="btn btn-md btn-primary" href="/file/document/{{ version.id }}" target="_blank" rel="noopener">Open the document</a>
         </div>
-        <a class="btn btn-primary" href="/file/document/{{ version.id }}" target="_blank" rel="noopener">
-          Open the document
-        </a>
+        {% if item.instructions %}
+          <div class="card-content">{{ nl2br(item.instructions)|safe }}</div>
+        {% endif %}
       </div>
-      {% if item.instructions %}
-        <div class="item-instr mt">{{ nl2br(item.instructions)|safe }}</div>
+
+      {% if links %}
+        <div class="card">
+          <div class="card-content" style="padding: 0;">
+            {% for link in links %}
+              <a class="link-row" href="{{ link.url }}" target="_blank" rel="noopener">
+                <span aria-hidden="true" style="color: var(--text-tertiary);">↗</span>
+                <span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
       {% endif %}
-    </div>
 
-    {% if links %}
-      <div class="card card-tight">
-        <div class="linkset">
-          {% for link in links %}
-            <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
-              <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
-            </a>
-          {% endfor %}
-        </div>
-      </div>
-    {% endif %}
-
-    <div class="card">
-      {% if ack %}
-        <h3>You've completed this ✓</h3>
-        <p class="small muted">
-          Recorded {{ fmt_datetime(ack.acknowledged_at) }} against version {{ version.version_no }}.
-          We keep this on record.
-        </p>
-        <a class="btn" href="/stage/{{ stage.id }}">Back to {{ stage.title }}</a>
-      {% elif questions %}
-        <h3>Quick check: {{ plural(len(questions), "question") }}</h3>
-        <p class="small muted">Answer every question correctly to mark
-          <strong>{{ item.title }}</strong> as read. You can try again if you don't get
-          them all right the first time.</p>
-        <form method="post" action="/policy/{{ item.id }}/quiz">
-          <input type="hidden" name="_csrf" value="{{ csrf }}">
-          {% for i, q in enumerate(questions, 1) %}
-            <div class="field mt">
-              <label>{{ i }}. {{ q.question }}</label>
-              {% for c in q.choices %}
-                <label class="check" style="display:block; margin-top:.3rem">
-                  <input type="radio" name="q_{{ q.id }}" value="{{ c.id }}" required>
-                  <span>{{ c.label }}</span>
-                </label>
-              {% endfor %}
+      <div class="card">
+        {% if ack %}
+          <div class="card-content">
+            <div style="display: flex; align-items: center; gap: var(--space-8);">
+              <span class="cm-icon cm-icon-20" style="color: var(--text-success);" aria-hidden="true">
+                <svg data-icon="submit" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.134 6.28251L10.0256 18.8483L8.4416 18.2829C8.4416 15.4101 6.30538 12.9428 3.32832 12.2114L3.77168 10.5256C6.77013 11.2622 9.16316 13.4453 9.95821 16.2449L19.7658 5.15166L21.134 6.28251Z" fill="currentColor"/></svg>
+              </span>
+              <h3 class="type-heading-sm" style="margin: 0; color: var(--text-primary);">You've completed this</h3>
             </div>
-          {% endfor %}
-          <div class="btn-row mt">
-            <button class="btn btn-primary" type="submit">Submit answers</button>
-            <a class="btn" href="/stage/{{ stage.id }}">Not yet</a>
+            <p class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-8);">
+              Recorded {{ fmt_datetime(ack.acknowledged_at) }} against version {{ version.version_no }}.
+              We keep this on record.
+            </p>
+            <div style="margin-top: var(--space-16);">
+              <a class="btn btn-md btn-secondary" href="/stage/{{ stage.id }}">Back to {{ stage.title }}</a>
+            </div>
           </div>
-        </form>
-      {% else %}
-        <h3>Confirm you've read it</h3>
-        <form method="post" action="/policy/{{ item.id }}/acknowledge">
-          <input type="hidden" name="_csrf" value="{{ csrf }}">
-          <input type="hidden" name="back" value="/policy/{{ item.id }}">
-          <label class="check mt">
-            <input type="checkbox" name="confirm" value="1" required>
-            <span>I've read <strong>{{ item.title }}</strong> (version {{ version.version_no }})
-              and I understand what it asks of me.</span>
-          </label>
-          <div class="btn-row mt">
-            <button class="btn btn-primary" type="submit">Acknowledge</button>
-            <a class="btn" href="/stage/{{ stage.id }}">Not yet</a>
+        {% elif questions %}
+          <div class="card-header">
+            <div class="card-header-text">
+              <div class="card-title">Quick check: {{ plural(len(questions), "question") }}</div>
+              <div class="card-description">Answer every question correctly to mark <span style="font-weight: 500; color: var(--text-primary);">{{ item.title }}</span> as read. You can try again if you don't get them all right the first time.</div>
+            </div>
           </div>
-        </form>
-      {% endif %}
+          <div class="card-content">
+            <form method="post" action="/policy/{{ item.id }}/quiz" class="form-stack" style="gap: var(--space-24);">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              {% for i, q in enumerate(questions, 1) %}
+                <fieldset style="border: 0; margin: 0; padding: 0;">
+                  <legend class="type-body-md" style="font-weight: 500; color: var(--text-primary); padding: 0; margin-bottom: var(--space-8);">{{ i }}. {{ q.question }}</legend>
+                  <div class="cm-field-group">
+                    {% for c in q.choices %}
+                      <label class="cm-radio">
+                        <input type="radio" name="q_{{ q.id }}" value="{{ c.id }}" required>
+                        <span class="cm-radio-circle"><span class="cm-radio-dot"></span></span>
+                        <span class="cm-radio-label">{{ c.label }}</span>
+                      </label>
+                    {% endfor %}
+                  </div>
+                </fieldset>
+              {% endfor %}
+              <div style="display: flex; gap: var(--space-12);">
+                <button class="btn btn-md btn-primary" type="submit">Submit answers</button>
+                <a class="btn btn-md btn-secondary" href="/stage/{{ stage.id }}">Not yet</a>
+              </div>
+            </form>
+          </div>
+        {% else %}
+          <div class="card-header">
+            <div class="card-header-text">
+              <div class="card-title">Confirm you've read it</div>
+            </div>
+          </div>
+          <div class="card-content">
+            <form method="post" action="/policy/{{ item.id }}/acknowledge" class="form-stack" style="gap: var(--space-24);">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="back" value="/policy/{{ item.id }}">
+              <label class="cm-checkbox">
+                <input type="checkbox" name="confirm" value="1" required>
+                <span class="cm-checkbox-box">
+                  <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+                </span>
+                <span class="cm-checkbox-label">I've read <span style="font-weight: 500;">{{ item.title }}</span> (version {{ version.version_no }}) and I understand what it asks of me.</span>
+              </label>
+              <div style="display: flex; gap: var(--space-12);">
+                <button class="btn btn-md btn-primary" type="submit">Acknowledge</button>
+                <a class="btn btn-md btn-secondary" href="/stage/{{ stage.id }}">Not yet</a>
+              </div>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+
     </div>
   {% else %}
     <div class="card">
-      <div class="empty">
-        <div class="big">📄</div>
-        <h2>This document isn't up yet</h2>
-        <p class="muted">Your mentor still has to upload it. Nothing for you to do —
-          we'll let you know the moment it's ready.</p>
-        <a class="btn btn-primary" href="/stage/{{ stage.id }}">Back to {{ stage.title }}</a>
+      <div class="empty-state" role="status">
+        <div class="empty-state-icon">
+          <svg data-icon="clock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5.4C8.35492 5.4 5.4 8.35492 5.4 12C5.4 15.6451 8.35492 18.6 12 18.6C15.6451 18.6 18.6 15.6451 18.6 12C18.6 8.35492 15.6451 5.4 12 5.4ZM3.6 12C3.6 7.36081 7.36081 3.6 12 3.6C16.6392 3.6 20.4 7.36081 20.4 12C20.4 16.6392 16.6392 20.4 12 20.4C7.36081 20.4 3.6 16.6392 3.6 12ZM11.1328 7.6548L12.9328 7.6548L12.9328 11.4001L15.8551 12.6177L15.509 13.4485L15.1628 14.2793L11.6866 12.8308L11.1328 12.6001L11.1328 7.6548Z" fill="currentColor"/></svg>
+        </div>
+        <h2 class="empty-state-title">This document isn't up yet</h2>
+        <p class="empty-state-description">Your mentor still has to upload it. Nothing for you to do — we'll let you know the moment it's ready.</p>
+        <div class="empty-state-actions">
+          <a class="btn btn-md btn-primary" href="/stage/{{ stage.id }}">Back to {{ stage.title }}</a>
+        </div>
       </div>
     </div>
   {% endif %}

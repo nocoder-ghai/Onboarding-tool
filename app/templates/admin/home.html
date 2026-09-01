@@ -1,104 +1,164 @@
 {% set page_title = "Admin overview" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; min-height: 100vh; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); background: var(--bg-secondary);
+    display: flex; flex-direction: column; gap: var(--space-24); }
+  @media (max-width: 768px) {
+    .admin-shell { flex-direction: column; }
+    .admin-shell > main { padding: var(--space-16); }
+  }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-16); }
+  @media (max-width: 1024px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+  .list-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12);
+    padding: var(--space-8) 0; border-bottom: 1px solid var(--border-tertiary); }
+  .list-row:last-child { border-bottom: none; }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Overview</h1>
-    <p class="muted small mb0">
+  <div>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">Overview</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">
       {% if is_captain_view %}Where your candidates stand right now.
       {% else %}Where every tutor stands right now.{% endif %}
     </p>
   </div>
 
-  <div class="grid grid-4">
-    <div class="stat accent"><div class="n">{{ funnel.total_tutors }}</div>
-      <div class="l">{% if is_captain_view %}Your candidates{% else %}Active tutors{% endif %}</div></div>
-    <div class="stat good"><div class="n">{{ completed }}</div>
-      <div class="l">Fully onboarded</div></div>
-    <div class="stat warn"><div class="n">{{ stalled_count }}</div>
-      <div class="l">Stalled {{ stalled_days }}d+</div></div>
-    <div class="stat"><div class="n">{{ pending_email }}</div>
-      <div class="l">Emails queued</div></div>
+  <div class="stat-grid">
+    <div class="kpi-card kpi-card-compact kpi-card-brand">
+      <div class="kpi-card-label">{% if is_captain_view %}Your candidates{% else %}Active tutors{% endif %}</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ funnel.total_tutors }}</div></div>
+    </div>
+    <div class="kpi-card kpi-card-compact kpi-card-success">
+      <div class="kpi-card-label">Fully onboarded</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ completed }}</div></div>
+    </div>
+    <div class="kpi-card kpi-card-compact kpi-card-warning">
+      <div class="kpi-card-label">Stalled {{ stalled_days }}d+</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ stalled_count }}</div></div>
+    </div>
+    <div class="kpi-card kpi-card-compact">
+      <div class="kpi-card-label">Emails queued</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ pending_email }}</div></div>
+    </div>
   </div>
 
-  <div class="card mt">
-    <div class="card-row">
-      <h2 class="mb0">Funnel</h2>
-      <a class="btn btn-sm" href="/admin/reports">Full report →</a>
-    </div>
-    {% for row in funnel.stages %}
-      {% set total = funnel.total_tutors or 1 %}
-      <div class="funnel-row">
-        <div class="funnel-label">{{ row.title }}</div>
-        <div class="funnel-track">
-          <i class="done" style="width:{{ pct(row.completed, total) }}%"></i>
-          <i class="prog" style="width:{{ pct(row.in_progress, total) }}%"></i>
-        </div>
-        <div class="funnel-num">{{ row.completed }} done · {{ row.reached }} reached</div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Funnel</div>
       </div>
-    {% endfor %}
-    <div class="legend">
-      <span><i style="background:var(--green)"></i>Complete</span>
-      <span><i style="background:var(--mid-blue)"></i>In progress</span>
+      <a class="btn btn-sm btn-secondary" href="/admin/reports">Full report &rarr;</a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: var(--space-20);">
+      {% for row in funnel.stages %}
+        {% set total = funnel.total_tutors or 1 %}
+        <div>
+          <div class="progress-caption">
+            <span>{{ row.title }}</span>
+            <span>{{ row.completed }} done &middot; {{ row.reached }} reached</span>
+          </div>
+          <div class="progress progress-buffered" role="progressbar"
+               aria-valuenow="{{ pct(row.completed, total) }}" aria-valuemin="0" aria-valuemax="100"
+               aria-label="{{ row.title }} completion"
+               style="--progress-value: {{ pct(row.completed, total) }}%; --progress-buffer: {{ pct(row.reached, total) }}%;">
+            <div class="progress-buffer"></div>
+            <div class="progress-bar"></div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div style="display: flex; gap: var(--space-16);">
+      <span class="type-body-sm" style="color: var(--text-secondary); display: inline-flex; align-items: center; gap: var(--space-4);">
+        <span style="width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--bg-brand); display: inline-block;"></span>Complete
+      </span>
+      <span class="type-body-sm" style="color: var(--text-secondary); display: inline-flex; align-items: center; gap: var(--space-4);">
+        <span style="width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--bg-tertiary); display: inline-block;"></span>In progress
+      </span>
     </div>
   </div>
 
-  <div class="grid grid-2">
-    <div class="card">
-      <h3>Needs a nudge</h3>
-      <p class="small muted">No activity for {{ stalled_days }}+ days.</p>
-      {% if stalled %}
-        {% for tutor in stalled %}
-          <div class="split" style="padding:.35rem 0; border-bottom:1px solid var(--line)">
-            <a href="/admin/tutors/{{ tutor.id }}">{{ tutor.name }}</a>
-            <span class="split-end tiny muted">{{ tutor.current_stage_title }} ·
-              {{ tutor.stalled_days }}d quiet</span>
+  <div class="grid">
+    <div class="col-6 col-sm-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-text">
+            <div class="card-title">Needs a nudge</div>
+            <div class="card-description">No activity for {{ stalled_days }}+ days.</div>
           </div>
-        {% endfor %}
-        <a class="btn btn-sm mt" href="/admin/tutors?stalled={{ stalled_days }}">See all {{ stalled_count }}</a>
-      {% else %}
-        <p class="small mb0">Nobody is stuck. 🎉</p>
-      {% endif %}
+        </div>
+        {% if stalled %}
+          <div>
+            {% for tutor in stalled %}
+              <div class="list-row">
+                <a class="cm-link cm-link-sm" href="/admin/tutors/{{ tutor.id }}">{{ tutor.name }}</a>
+                <span class="type-label-sm" style="color: var(--text-tertiary);">{{ tutor.current_stage_title }} &middot;
+                  {{ tutor.stalled_days }}d quiet</span>
+              </div>
+            {% endfor %}
+          </div>
+          <a class="btn btn-sm btn-secondary" href="/admin/tutors?stalled={{ stalled_days }}">See all {{ stalled_count }}</a>
+        {% else %}
+          <div class="empty-state empty-state-inline" role="status">
+            <h4 class="empty-state-title">Nobody is stuck</h4>
+            <p class="empty-state-description">Everyone is moving through the funnel.</p>
+          </div>
+        {% endif %}
+      </div>
     </div>
 
-    <div class="card">
-      <h3>Newest tutors</h3>
-      {% if recent %}
-        {% for tutor in recent %}
-          <div class="split" style="padding:.35rem 0; border-bottom:1px solid var(--line)">
-            <a href="/admin/tutors/{{ tutor.id }}">{{ tutor.name }}</a>
-            <span class="split-end tiny muted">{{ ago(tutor.created_at) }}</span>
+    <div class="col-6 col-sm-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-text">
+            <div class="card-title">Newest tutors</div>
           </div>
-        {% endfor %}
-      {% else %}
-        <p class="small mb0">No tutors have signed up yet.</p>
-      {% endif %}
+        </div>
+        {% if recent %}
+          <div>
+            {% for tutor in recent %}
+              <div class="list-row">
+                <a class="cm-link cm-link-sm" href="/admin/tutors/{{ tutor.id }}">{{ tutor.name }}</a>
+                <span class="type-label-sm" style="color: var(--text-tertiary);">{{ ago(tutor.created_at) }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state empty-state-inline" role="status">
+            <h4 class="empty-state-title">No tutors yet</h4>
+            <p class="empty-state-description">No tutors have signed up yet.</p>
+          </div>
+        {% endif %}
+      </div>
     </div>
   </div>
 
   {% if not is_captain_view %}
     <div class="card">
-      <div class="card-row">
-        <h3 class="mb0">Onboarding Manager's Dashboard</h3>
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Onboarding Manager's Dashboard</div>
+          <div class="card-description">Both Activation Directors' KRAs: onboarding stalls, first-8-class review SLA (48h), coach compliance mix.</div>
+        </div>
       </div>
-      <p class="small muted">Both Activation Directors' KRAs: onboarding stalls, first-8-class review SLA (48h), coach compliance mix.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Activation Director</th><th>Tutors</th><th>Stalled</th>
-            <th>Review SLA breaches</th><th>Critical</th><th>Needs Attention</th>
-            <th>Minor Issues</th><th>Excellent</th></tr></thead>
+      <div class="table-wrap" role="region" aria-label="Manager rollup" tabindex="0">
+        <table class="table table-hoverable">
+          <thead><tr><th>Activation Director</th><th class="cell-right">Tutors</th><th class="cell-right">Stalled</th>
+            <th class="cell-right">Review SLA breaches</th><th class="cell-centre">Critical</th><th class="cell-centre">Needs Attention</th>
+            <th class="cell-centre">Minor Issues</th><th class="cell-centre">Excellent</th></tr></thead>
           <tbody>
             {% for row in manager_rollup %}
               <tr>
-                <td><a href="/admin/tutors?captain_id={{ row.captain.id }}">{{ row.captain.name }}</a></td>
-                <td>{{ row.tutor_count }}</td>
-                <td{% if row.stalled %} style="color:var(--orange)"{% endif %}>{{ row.stalled }}</td>
-                <td{% if row.sla_breaches %} style="color:var(--orange)"{% endif %}>{{ row.sla_breaches }}</td>
-                <td>{{ row.bands['Critical'] }}</td>
-                <td>{{ row.bands['Needs Attention'] }}</td>
-                <td>{{ row.bands['Minor Issues'] }}</td>
-                <td>{{ row.bands['Excellent'] }}</td>
+                <td><a class="cm-link" href="/admin/tutors?captain_id={{ row.captain.id }}">{{ row.captain.name }}</a></td>
+                <td class="cell-right">{{ row.tutor_count }}</td>
+                <td class="cell-right"{% if row.stalled %} style="color:var(--text-warning)"{% endif %}>{{ row.stalled }}</td>
+                <td class="cell-right"{% if row.sla_breaches %} style="color:var(--text-warning)"{% endif %}>{{ row.sla_breaches }}</td>
+                <td class="cell-centre"><span class="badge badge-error">{{ row.bands['Critical'] }}</span></td>
+                <td class="cell-centre"><span class="badge badge-warning">{{ row.bands['Needs Attention'] }}</span></td>
+                <td class="cell-centre"><span class="badge badge-info">{{ row.bands['Minor Issues'] }}</span></td>
+                <td class="cell-centre"><span class="badge badge-success">{{ row.bands['Excellent'] }}</span></td>
               </tr>
             {% endfor %}
           </tbody>
@@ -107,18 +167,20 @@
     </div>
 
     <div class="card">
-      <div class="card-row">
-        <h3 class="mb0">Latest changes</h3>
-        <a class="btn btn-sm" href="/admin/audit">Audit log →</a>
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Latest changes</div>
+        </div>
+        <a class="btn btn-sm btn-secondary" href="/admin/audit">Audit log &rarr;</a>
       </div>
-      <div class="table-wrap mt">
-        <table>
+      <div class="table-wrap" role="region" aria-label="Latest audit changes" tabindex="0">
+        <table class="table table-hoverable">
           <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
           <tbody>
             {% for row in audit_rows %}
               <tr>
-                <td class="nowrap tiny muted">{{ ago(row['created_at']) }}</td>
-                <td class="tiny">{{ row['actor_label'] }}</td>
+                <td class="type-label-sm" style="color: var(--text-tertiary); white-space: nowrap;">{{ ago(row['created_at']) }}</td>
+                <td class="type-label-sm">{{ row['actor_label'] }}</td>
                 <td>{{ row['summary'] or row['action'] }}</td>
               </tr>
             {% endfor %}

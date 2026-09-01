@@ -1,61 +1,88 @@
 {% set page_title = "Reports" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; min-height: 100vh; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); background: var(--bg-secondary);
+    display: flex; flex-direction: column; gap: var(--space-24); }
+  @media (max-width: 768px) {
+    .admin-shell { flex-direction: column; }
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Reports</h1>
-    <p class="muted small mb0">{{ plural(active_tutors, "active tutor") }} in the funnel.</p>
+  <div>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">Reports</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">{{ plural(active_tutors, "active tutor") }} in the funnel.</p>
   </div>
 
   <div class="card">
-    <div class="card-row">
-      <h2 class="mb0">Stage funnel &amp; drop-off</h2>
-      <a class="btn btn-sm" href="/admin/tutors.csv">⬇ Export tutor progress</a>
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Stage funnel &amp; drop-off</div>
+      </div>
+      <a class="btn btn-sm btn-secondary" href="/admin/tutors.csv">Export tutor progress</a>
     </div>
-    <div class="table-wrap mt">
-      <table>
-        <thead><tr><th>Stage</th><th class="num">Reached</th><th class="num">Complete</th>
-          <th class="num">In progress</th><th class="num">Completion</th>
-          <th class="num">Drop-off</th><th class="num">Avg days</th></tr></thead>
+    <div class="table-wrap" role="region" aria-label="Stage funnel and drop-off" tabindex="0">
+      <table class="table table-hoverable">
+        <thead><tr><th>Stage</th><th class="cell-right">Reached</th><th class="cell-right">Complete</th>
+          <th class="cell-right">In progress</th><th class="cell-right">Completion</th>
+          <th class="cell-right">Drop-off</th><th class="cell-right">Avg days</th></tr></thead>
         <tbody>
           {% for row in funnel.stages %}
             <tr>
-              <td><strong>{{ row.title }}</strong></td>
-              <td class="num">{{ row.reached }}</td>
-              <td class="num">{{ row.completed }}</td>
-              <td class="num">{{ row.in_progress }}</td>
-              <td class="num">
-                <span class="mini-bar"><span class="{{ 'done' if row.completion_pct == 100 else '' }}"
-                      style="width:{{ row.completion_pct }}%"></span></span>
-                {{ row.completion_pct }}%
+              <td class="type-label-md">{{ row.title }}</td>
+              <td class="cell-right">{{ row.reached }}</td>
+              <td class="cell-right">{{ row.completed }}</td>
+              <td class="cell-right">{{ row.in_progress }}</td>
+              <td class="cell-right">
+                <div class="progress-row" style="justify-content: flex-end;">
+                  <div class="progress progress-md{% if row.completion_pct == 100 %} progress-success{% endif %}"
+                       role="progressbar" aria-valuenow="{{ row.completion_pct }}" aria-valuemin="0" aria-valuemax="100"
+                       aria-label="{{ row.title }} completion" style="--progress-value: {{ row.completion_pct }}%; width: 80px;">
+                    <div class="progress-bar"></div>
+                  </div>
+                  <span class="progress-label">{{ row.completion_pct }}%</span>
+                </div>
               </td>
-              <td class="num">{% if row.drop_off %}<span class="badge pending">−{{ row.drop_off }}</span>{% else %}—{% endif %}</td>
-              <td class="num">{{ row.avg_days if row.avg_days is not None else "—" }}</td>
+              <td class="cell-right">{% if row.drop_off %}<span class="badge badge-warning">&minus;{{ row.drop_off }}</span>{% else %}&mdash;{% endif %}</td>
+              <td class="cell-right">{{ row.avg_days if row.avg_days is not None else "—" }}</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <p class="hint mt">“Drop-off” is how many tutors finished the previous stage but
-      haven't reached this one. “Avg days” measures unlock → completion.</p>
+    <p class="type-body-sm" style="color: var(--text-tertiary);">&ldquo;Drop-off&rdquo; is how many tutors finished the previous stage but
+      haven't reached this one. &ldquo;Avg days&rdquo; measures unlock &rarr; completion.</p>
   </div>
 
   <div class="card">
-    <h2>By region</h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Region</th><th class="num">Tutors</th><th class="num">Onboarded</th>
-          <th class="num">Avg progress</th></tr></thead>
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">By region</div>
+      </div>
+    </div>
+    <div class="table-wrap" role="region" aria-label="Tutors by region" tabindex="0">
+      <table class="table table-hoverable">
+        <thead><tr><th>Region</th><th class="cell-right">Tutors</th><th class="cell-right">Onboarded</th>
+          <th class="cell-right">Avg progress</th></tr></thead>
         <tbody>
           {% for row in by_region %}
             <tr>
               <td>{{ row.name }}</td>
-              <td class="num">{{ row.total }}</td>
-              <td class="num">{{ row.complete }}</td>
-              <td class="num">
-                <span class="mini-bar"><span style="width:{{ row.avg_percent }}%"></span></span>
-                {{ row.avg_percent }}%
+              <td class="cell-right">{{ row.total }}</td>
+              <td class="cell-right">{{ row.complete }}</td>
+              <td class="cell-right">
+                <div class="progress-row" style="justify-content: flex-end;">
+                  <div class="progress progress-md" role="progressbar"
+                       aria-valuenow="{{ row.avg_percent }}" aria-valuemin="0" aria-valuemax="100"
+                       aria-label="{{ row.name }} average progress" style="--progress-value: {{ row.avg_percent }}%; width: 80px;">
+                    <div class="progress-bar"></div>
+                  </div>
+                  <span class="progress-label">{{ row.avg_percent }}%</span>
+                </div>
               </td>
             </tr>
           {% endfor %}
@@ -65,18 +92,22 @@
   </div>
 
   <div class="card">
-    <h2>Policy acknowledgements</h2>
-    <p class="small muted">How many tutors have acknowledged each policy.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Policy</th><th class="num">Acknowledged by</th>
-          <th class="num">Of active tutors</th></tr></thead>
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Policy acknowledgements</div>
+        <div class="card-description">How many tutors have acknowledged each policy.</div>
+      </div>
+    </div>
+    <div class="table-wrap" role="region" aria-label="Policy acknowledgements" tabindex="0">
+      <table class="table table-hoverable">
+        <thead><tr><th>Policy</th><th class="cell-right">Acknowledged by</th>
+          <th class="cell-right">Of active tutors</th></tr></thead>
         <tbody>
           {% for row in policy_stats %}
             <tr>
               <td>{{ row.title }}</td>
-              <td class="num">{{ row.acks }}</td>
-              <td class="num">{{ pct(row.acks, active_tutors) }}%</td>
+              <td class="cell-right">{{ row.acks }}</td>
+              <td class="cell-right">{{ pct(row.acks, active_tutors) }}%</td>
             </tr>
           {% endfor %}
         </tbody>

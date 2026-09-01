@@ -1,29 +1,37 @@
 {% if doc.current %}
   {% if doc.current.mime_type.startswith("image/") %}
-    <div class="video-box">
-      <div class="video-box-title">{{ doc.title }}</div>
-      <img src="/file/document/{{ doc.current.id }}" alt="{{ doc.title }}"
-           style="max-width:100%;border-radius:var(--radius);display:block">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text"><div class="card-title">{{ doc.title }}</div></div>
+      </div>
+      <div class="card-content">
+        <img src="/file/document/{{ doc.current.id }}" alt="{{ doc.title }}"
+             style="max-width:100%;display:block">
+      </div>
     </div>
   {% elif doc.kind == "video" %}
-    <div class="video-box">
-      <div class="video-box-title">{{ doc.title }}</div>
-      <video controls preload="metadata"
-             poster="/file/document/{{ doc.current.id }}/thumbnail"
-             data-cm-video-timer data-document-id="{{ doc.current.id }}" data-csrf="{{ csrf }}">
-        <source src="/file/document/{{ doc.current.id }}" type="{{ doc.current.mime_type }}">
-      </video>
-      <div class="video-timer">
-        <div class="bar bar-sm"><div class="bar-fill"></div></div>
-        <span class="tiny muted video-timer-label">Loading video length…</span>
+    <div class="card video-box">
+      <div class="card-header">
+        <div class="card-header-text"><div class="card-title">{{ doc.title }}</div></div>
+      </div>
+      <div class="card-content">
+        <video controls preload="metadata"
+               poster="/file/document/{{ doc.current.id }}/thumbnail"
+               data-cm-video-timer data-document-id="{{ doc.current.id }}" data-csrf="{{ csrf }}"
+               style="width:100%;display:block">
+          <source src="/file/document/{{ doc.current.id }}" type="{{ doc.current.mime_type }}">
+        </video>
+        <div class="progress progress-md" style="margin-top: var(--space-16);">
+          <div class="progress-bar bar-fill"></div>
+        </div>
+        <p class="type-body-sm video-timer-label" style="color: var(--text-tertiary); margin-top: var(--space-8);">Loading video length…</p>
       </div>
     </div>
   {% else %}
-    <div class="linkset">
-      <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
-        <span class="ico">{{ icon }}</span>
-        <span class="grow">{{ doc.title }}</span>
-      </a>
-    </div>
+    <a class="card card-compact card-interactive" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener"
+       style="display:flex; align-items:center; gap: var(--space-12); text-decoration:none;">
+      <span aria-hidden="true">{{ icon }}</span>
+      <span class="type-body-md" style="color: var(--text-primary); flex:1;">{{ doc.title }}</span>
+    </a>
   {% endif %}
 {% endif %}

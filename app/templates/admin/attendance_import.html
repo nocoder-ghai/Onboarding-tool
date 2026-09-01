@@ -1,72 +1,124 @@
 {% set page_title = "Import attendance" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: admin sidebar + main shell, and small structural
+     helpers for arranging design-system components on this page. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); display: flex; flex-direction: column; gap: var(--space-24); }
+  .page-head { display: flex; flex-direction: column; gap: var(--space-4); }
+  .format-sample { background: var(--bg-tertiary); border: 1px solid var(--border-secondary); border-radius: var(--radius-sm); padding: var(--space-16); overflow-x: auto; margin: 0; }
+  .format-sample code { color: var(--text-primary); }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
   <div class="page-head">
-    <h1>Import Orientation attendance</h1>
-    <p class="muted small mb0">Upload the attendee export from Zoom (or any CSV).
+    <h1 class="type-heading-lg" style="color: var(--text-primary);">Import Orientation attendance</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">Upload the attendee export from Zoom (or any CSV).
       Marking attendance unlocks Stage 2 for each tutor.</p>
   </div>
 
   {% if result %}
-    <div class="card">
-      <h3>Import result</h3>
-      <div class="flash ok"><span>✓</span><span>{{ plural(result['updated'], "tutor") }} updated.</span></div>
-      {% if result['missing_count'] %}
-        <div class="flash error"><span>!</span>
-          <span>{{ result['missing_count'] }} row(s) didn't match a tutor account.</span></div>
-        <details class="editor" open>
-          <summary>Show unmatched rows</summary>
-          <div>
-            <ul class="small muted">
-              {% for row in result['missing'] %}<li>{{ row }}</li>{% endfor %}
-            </ul>
-          </div>
-        </details>
-      {% endif %}
-      {% if result['matched'] %}
-        <details class="editor">
-          <summary>Show matched rows</summary>
-          <div><ul class="small">{% for row in result['matched'] %}<li>{{ row }}</li>{% endfor %}</ul></div>
-        </details>
-      {% endif %}
-      <div class="btn-row mt"><a class="btn btn-sm btn-primary" href="/admin/tutors">See tutors</a></div>
+    <div class="card card-success-tint">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Import result</div>
+        </div>
+      </div>
+      <div class="card-content" style="display: flex; flex-direction: column; gap: var(--space-16);">
+        <span class="badge badge-success">{{ plural(result['updated'], "tutor") }} updated.</span>
+
+        {% if result['missing_count'] %}
+          <span class="badge badge-error">{{ result['missing_count'] }} row(s) didn't match a tutor account.</span>
+          <details class="card card-expandable" open>
+            <summary>
+              <div><div class="card-title">Show unmatched rows</div></div>
+              <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+              </span>
+            </summary>
+            <div class="card-expand-body">
+              <ul class="type-body-sm" style="color: var(--text-secondary); margin: 0; padding-left: var(--space-20);">
+                {% for row in result['missing'] %}<li>{{ row }}</li>{% endfor %}
+              </ul>
+            </div>
+          </details>
+        {% endif %}
+
+        {% if result['matched'] %}
+          <details class="card card-expandable">
+            <summary>
+              <div><div class="card-title">Show matched rows</div></div>
+              <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+              </span>
+            </summary>
+            <div class="card-expand-body">
+              <ul class="type-body-sm" style="color: var(--text-secondary); margin: 0; padding-left: var(--space-20);">
+                {% for row in result['matched'] %}<li>{{ row }}</li>{% endfor %}
+              </ul>
+            </div>
+          </details>
+        {% endif %}
+
+        <div style="display: flex;">
+          <a class="btn btn-sm btn-primary" href="/admin/tutors">See tutors</a>
+        </div>
+      </div>
     </div>
   {% endif %}
 
   <div class="card">
-    <h3>Upload a CSV</h3>
-    <form method="post" action="/admin/attendance/import" enctype="multipart/form-data">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <div class="field">
-        <label for="session_id">Which session?</label>
-        <select id="session_id" name="session_id">
-          <option value="">Don't record a session</option>
-          {% for s in sessions %}
-            <option value="{{ s.id }}">{{ s.title }} — {{ fmt_datetime(s.starts_at) }}</option>
-          {% endfor %}
-        </select>
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Upload a CSV</div>
       </div>
-      <div class="field">
-        <label for="file">CSV file</label>
-        <input id="file" name="file" type="file" accept=".csv,text/csv" required>
-      </div>
-      <button class="btn btn-primary" type="submit">Import attendance</button>
-    </form>
+    </div>
+    <div class="card-content">
+      <form method="post" action="/admin/attendance/import" enctype="multipart/form-data" class="form-stack" style="gap: var(--space-16);">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="cm-field">
+          <div class="cm-field-wrap">
+            <select id="session_id" name="session_id">
+              <option value="">Don't record a session</option>
+              {% for s in sessions %}
+                <option value="{{ s.id }}">{{ s.title }} — {{ fmt_datetime(s.starts_at) }}</option>
+              {% endfor %}
+            </select>
+            <span class="cm-field-label">Which session?</span>
+            <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Which session?</span></legend></fieldset>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-8);">
+          <label class="type-label-md" for="file" style="color: var(--text-primary);">CSV file</label>
+          <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+        </div>
+        <div style="display: flex;">
+          <button class="btn btn-md btn-primary" type="submit">Import attendance</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <div class="card">
-    <h3>File format</h3>
-    <p class="small muted">A header row is detected automatically. We match on
-      <code>email</code>, then <code>phone</code>, then an exact <code>name</code>.
-      An <code>attended</code> column of <code>no</code>, <code>0</code>,
-      <code>false</code> or <code>absent</code> marks someone absent; anything else
-      counts as present. With no <code>attended</code> column, every listed row is
-      treated as present.</p>
-    <pre class="diff">email,name,attended
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">File format</div>
+      </div>
+    </div>
+    <div class="card-content" style="display: flex; flex-direction: column; gap: var(--space-16);">
+      <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">A header row is detected automatically. We match on
+        <code>email</code>, then <code>phone</code>, then an exact <code>name</code>.
+        An <code>attended</code> column of <code>no</code>, <code>0</code>,
+        <code>false</code> or <code>absent</code> marks someone absent; anything else
+        counts as present. With no <code>attended</code> column, every listed row is
+        treated as present.</p>
+      <pre class="format-sample"><code>email,name,attended
 ananya@example.com,Ananya Rao,yes
-marcus@example.com,Marcus Bell,no</pre>
+marcus@example.com,Marcus Bell,no</code></pre>
+    </div>
   </div>
 </main>
 </div>

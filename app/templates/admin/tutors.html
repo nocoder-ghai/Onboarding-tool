@@ -1,125 +1,180 @@
 {% set page_title = "Tutors" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell, and the filter form's field row. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); }
+  .tutor-filters { display: flex; flex-wrap: wrap; gap: var(--space-16); align-items: flex-end; }
+  .tutor-filters .cm-field { width: 220px; }
+  .tutor-filters-status { display: flex; flex-direction: column; gap: var(--space-8); }
+  @media (max-width: 768px) {
+    .admin-shell > main { padding: var(--space-16); }
+    .tutor-filters .cm-field { width: 100%; }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>{% if is_captain_view %}My candidates{% else %}Tutors{% endif %}</h1>
-    <p class="muted small mb0">{{ plural(len(tutors), "tutor") }} matching your filters.</p>
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap; margin-bottom: var(--space-24);">
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin: 0;">{% if is_captain_view %}My candidates{% else %}Tutors{% endif %}</h1>
+    <span class="type-body-md" style="color: var(--text-secondary);">{{ plural(len(tutors), "tutor") }} matching your filters.</span>
   </div>
 
-  <div class="card card-tight">
-    <form method="get" action="/admin/tutors" class="filters">
-      <div class="field">
-        <label for="q">Search</label>
-        <input id="q" name="q" type="text" value="{{ q }}" placeholder="name, email, phone">
+  <div class="card card-compact" style="margin-bottom: var(--space-24);">
+    <form method="get" action="/admin/tutors" class="tutor-filters">
+      <div class="cm-field cm-search cm-search-labelled cm-field-has-leading">
+        <div class="cm-field-wrap">
+          <span class="cm-field-icon-leading cm-icon">
+            <svg data-icon="search" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.0104 17.392Q14.0679 18.9121 11.506 18.9121Q8.43834 18.9121 6.26917 16.7429Q4.1 14.5737 4.1 11.506Q4.1 8.43835 6.26917 6.26917Q8.43835 4.1 11.506 4.1Q14.5737 4.1 16.7429 6.26917Q18.9121 8.43835 18.9121 11.506Q18.9121 14.1593 17.2969 16.133L20.5277 19.3636L19.2549 20.6364L16.0104 17.392ZM17.1121 11.506Q17.1121 9.18394 15.4701 7.54197Q13.8281 5.9 11.506 5.9Q9.18393 5.9 7.54196 7.54196Q5.9 9.18393 5.9 11.506Q5.9 13.8281 7.54197 15.4701Q9.18393 17.1121 11.506 17.1121Q13.7895 17.1121 15.4228 15.5168L15.4228 15.5168Q17.1121 13.8667 17.1121 11.506Z" fill="currentColor"/></svg>
+          </span>
+          <input id="q" name="q" type="search" placeholder=" " value="{{ q }}">
+          <label class="cm-field-label">Search</label>
+          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Search</span></legend></fieldset>
+        </div>
+        <div class="cm-field-helper">Name, email, or phone</div>
       </div>
-      <div class="field">
-        <label for="region_id">Region</label>
-        <select id="region_id" name="region_id">
-          <option value="">All</option>
-          {% for r in regions_all %}
-            <option value="{{ r.id }}"{% if r.id == region_id %} selected{% endif %}>{{ r.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="field">
-        <label for="grade_cohort_id">Grade cohort</label>
-        <select id="grade_cohort_id" name="grade_cohort_id">
-          <option value="">All</option>
-          {% for g in grade_cohorts_all %}
-            <option value="{{ g.id }}"{% if g.id == grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      {% if not is_captain_view %}
-        <div class="field">
-          <label for="captain_id">Activation Director</label>
-          <select id="captain_id" name="captain_id">
-            <option value="">Everyone</option>
-            {% for c in captains_all %}
-              <option value="{{ c.id }}"{% if c.id == captain_id %} selected{% endif %}>{{ c.name }}</option>
+
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select id="region_id" name="region_id">
+            <option value="">All</option>
+            {% for r in regions_all %}
+              <option value="{{ r.id }}"{% if r.id == region_id %} selected{% endif %}>{{ r.name }}</option>
             {% endfor %}
           </select>
+          <span class="cm-field-label">Region</span>
+          <fieldset class="cm-field-notch"><legend><span>Region</span></legend></fieldset>
+        </div>
+        <div class="cm-field-helper"></div>
+      </div>
+
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select id="grade_cohort_id" name="grade_cohort_id">
+            <option value="">All</option>
+            {% for g in grade_cohorts_all %}
+              <option value="{{ g.id }}"{% if g.id == grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+          </select>
+          <span class="cm-field-label">Grade cohort</span>
+          <fieldset class="cm-field-notch"><legend><span>Grade cohort</span></legend></fieldset>
+        </div>
+        <div class="cm-field-helper"></div>
+      </div>
+
+      {% if not is_captain_view %}
+        <div class="cm-field">
+          <div class="cm-field-wrap">
+            <select id="captain_id" name="captain_id">
+              <option value="">Everyone</option>
+              {% for c in captains_all %}
+                <option value="{{ c.id }}"{% if c.id == captain_id %} selected{% endif %}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+            <span class="cm-field-label">Activation Director</span>
+            <fieldset class="cm-field-notch"><legend><span>Activation Director</span></legend></fieldset>
+          </div>
+          <div class="cm-field-helper"></div>
         </div>
       {% endif %}
-      <div class="field">
-        <label for="stage_id">Currently on</label>
-        <select id="stage_id" name="stage_id">
-          <option value="">Any stage</option>
-          {% for s in stages %}
-            <option value="{{ s.id }}"{% if s.id == stage_id %} selected{% endif %}>{{ s.title }}</option>
-          {% endfor %}
-        </select>
+
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select id="stage_id" name="stage_id">
+            <option value="">Any stage</option>
+            {% for s in stages %}
+              <option value="{{ s.id }}"{% if s.id == stage_id %} selected{% endif %}>{{ s.title }}</option>
+            {% endfor %}
+          </select>
+          <span class="cm-field-label">Currently on</span>
+          <fieldset class="cm-field-notch"><legend><span>Currently on</span></legend></fieldset>
+        </div>
+        <div class="cm-field-helper"></div>
       </div>
-      <div class="field">
-        <label for="status">Status</label>
-        <select id="status" name="status">
-          <option value="">Any</option>
-          <option value="in_progress"{% if status == "in_progress" %} selected{% endif %}>In progress</option>
-          <option value="complete"{% if status == "complete" %} selected{% endif %}>Fully onboarded</option>
-        </select>
+
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <input id="stalled" name="stalled" type="number" min="1" placeholder=" " value="{{ stalled if stalled else '' }}">
+          <label class="cm-field-label">Stalled &ge; days</label>
+          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Stalled &ge; days</span></legend></fieldset>
+        </div>
+        <div class="cm-field-helper">Default {{ default_stalled }}</div>
       </div>
-      <div class="field">
-        <label for="stalled">Stalled ≥ days</label>
-        <input id="stalled" name="stalled" type="number" min="1"
-               value="{{ stalled if stalled else '' }}" placeholder="{{ default_stalled }}">
+
+      <div class="tutor-filters-status">
+        <span class="type-label-sm" style="color: var(--text-tertiary);">Status</span>
+        <div class="filter-chip-group" role="group" aria-label="Status">
+          <button type="submit" name="status" value="" class="filter-chip{% if not status %} is-active{% endif %}" aria-pressed="{{ 'true' if not status else 'false' }}">Any</button>
+          <button type="submit" name="status" value="in_progress" class="filter-chip{% if status == 'in_progress' %} is-active{% endif %}" aria-pressed="{{ 'true' if status == 'in_progress' else 'false' }}">In progress</button>
+          <button type="submit" name="status" value="complete" class="filter-chip{% if status == 'complete' %} is-active{% endif %}" aria-pressed="{{ 'true' if status == 'complete' else 'false' }}">Fully onboarded</button>
+        </div>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-primary btn-sm" type="submit">Filter</button>
-        <a class="btn btn-sm" href="/admin/tutors">Clear</a>
+
+      <div style="display: flex; gap: var(--space-8);">
+        <button class="btn btn-sm btn-primary" type="submit">Filter</button>
+        <a class="btn btn-sm btn-secondary" href="/admin/tutors">Clear</a>
       </div>
     </form>
   </div>
 
-  <div class="btn-row" style="margin-bottom:.7rem">
-    <a class="btn btn-sm" href="/admin/tutors.csv?q={{ q }}&region_id={{ region_id if region_id else '' }}&grade_cohort_id={{ grade_cohort_id if grade_cohort_id else '' }}&stage_id={{ stage_id if stage_id else '' }}&status={{ status }}&stalled={{ stalled if stalled else '' }}&captain_id={{ captain_id if captain_id else '' }}">
-      ⬇ Export this view as CSV</a>
-    <a class="btn btn-sm" href="/admin/attendance/import">Import attendance CSV</a>
+  <div style="display: flex; gap: var(--space-8); margin-bottom: var(--space-16);">
+    <a class="btn btn-sm btn-secondary" href="/admin/tutors.csv?q={{ q }}&region_id={{ region_id if region_id else '' }}&grade_cohort_id={{ grade_cohort_id if grade_cohort_id else '' }}&stage_id={{ stage_id if stage_id else '' }}&status={{ status }}&stalled={{ stalled if stalled else '' }}&captain_id={{ captain_id if captain_id else '' }}">
+      Export this view as CSV</a>
+    <a class="btn btn-sm btn-secondary" href="/admin/attendance/import">Import attendance CSV</a>
   </div>
 
   {% if tutors %}
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Tutor</th><th>Region</th><th>Grade cohort</th>{% if not is_captain_view %}<th>Activation Director</th>{% endif %}<th>Current stage</th>
-          <th>Progress</th><th>Last active</th><th></th></tr></thead>
+    <div class="table-wrap" role="region" aria-label="Tutors" tabindex="0">
+      <table class="table table-hoverable">
+        <thead>
+          <tr>
+            <th>Tutor</th><th>Region</th><th>Grade cohort</th>{% if not is_captain_view %}<th>Activation Director</th>{% endif %}<th>Current stage</th>
+            <th>Progress</th><th>Last active</th><th></th>
+          </tr>
+        </thead>
         <tbody>
           {% for t in tutors %}
             <tr>
               <td>
-                <a href="/admin/tutors/{{ t.id }}"><strong>{{ t.name }}</strong></a>
-                <div class="tiny muted">{{ t.email or t.phone }}</div>
+                <a href="/admin/tutors/{{ t.id }}" class="cm-link" style="color: var(--text-primary); font-weight: var(--type-body-emphasis);">{{ t.name }}</a>
+                <div class="type-body-sm" style="color: var(--text-tertiary);">{{ t.email or t.phone }}</div>
               </td>
-              <td class="tiny">{{ t.region_label }}</td>
-              <td class="tiny">{{ t.grade_cohort_label }}</td>
-              {% if not is_captain_view %}<td class="tiny">{{ t.captain_label }}</td>{% endif %}
-              <td class="tiny">
-                {% if t.summary.all_complete %}<span class="badge done">Onboarded</span>
+              <td class="type-body-sm">{{ t.region_label }}</td>
+              <td class="type-body-sm">{{ t.grade_cohort_label }}</td>
+              {% if not is_captain_view %}<td class="type-body-sm">{{ t.captain_label }}</td>{% endif %}
+              <td class="type-body-sm">
+                {% if t.summary.all_complete %}<span class="badge badge-success">Onboarded</span>
                 {% else %}{{ t.current_stage_title }}{% endif %}
               </td>
-              <td class="nowrap">
-                <span class="mini-bar"><span class="{{ 'done' if t.summary.percent == 100 else '' }}"
-                      style="width:{{ t.summary.percent }}%"></span></span>
-                <span class="tiny muted">{{ t.summary.percent }}%</span>
+              <td style="min-width: 160px;">
+                <div class="progress-row">
+                  <div class="progress progress-md{{ ' progress-success' if t.summary.percent == 100 else '' }}" role="progressbar" aria-valuenow="{{ t.summary.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Onboarding progress" style="--progress-value: {{ t.summary.percent }}%;">
+                    <div class="progress-bar"></div>
+                  </div>
+                  <span class="progress-label">{{ t.summary.percent }}%</span>
+                </div>
               </td>
-              <td class="tiny nowrap">
+              <td class="type-body-sm" style="white-space: nowrap;">
                 {{ ago(t.last_activity_at or t.created_at) }}
                 {% if t.stalled_days is not None and t.stalled_days >= default_stalled and not t.summary.all_complete %}
-                  <span class="badge pending">stalled</span>
+                  <span class="badge badge-warning badge-sm">Stalled</span>
                 {% endif %}
               </td>
-              <td class="right"><a class="btn btn-xs" href="/admin/tutors/{{ t.id }}">Open</a></td>
+              <td class="cell-right"><a class="btn btn-sm btn-secondary" href="/admin/tutors/{{ t.id }}">Open</a></td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   {% else %}
-    <div class="card">
-      <div class="empty">
-        <div class="big">🔍</div>
-        <h3>No tutors match</h3>
-        <p class="muted">Try clearing the filters.</p>
+    <div class="empty-state" role="status">
+      <div class="empty-state-icon">
+        <svg data-icon="search" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.0104 17.392Q14.0679 18.9121 11.506 18.9121Q8.43834 18.9121 6.26917 16.7429Q4.1 14.5737 4.1 11.506Q4.1 8.43835 6.26917 6.26917Q8.43835 4.1 11.506 4.1Q14.5737 4.1 16.7429 6.26917Q18.9121 8.43835 18.9121 11.506Q18.9121 14.1593 17.2969 16.133L20.5277 19.3636L19.2549 20.6364L16.0104 17.392ZM17.1121 11.506Q17.1121 9.18394 15.4701 7.54197Q13.8281 5.9 11.506 5.9Q9.18393 5.9 7.54196 7.54196Q5.9 9.18393 5.9 11.506Q5.9 13.8281 7.54197 15.4701Q9.18393 17.1121 11.506 17.1121Q13.7895 17.1121 15.4228 15.5168L15.4228 15.5168Q17.1121 13.8667 17.1121 11.506Z" fill="currentColor"/></svg>
+      </div>
+      <h3 class="empty-state-title">No tutors match</h3>
+      <p class="empty-state-description">Try clearing the filters.</p>
+      <div class="empty-state-actions">
+        <a class="btn btn-secondary" href="/admin/tutors">Clear filters</a>
       </div>
     </div>
   {% endif %}

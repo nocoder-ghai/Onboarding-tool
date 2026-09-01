@@ -6,8 +6,26 @@
 <div class="tutor-shell">
 {% include "partials/tutor_sidebar.html" %}
 <main class="tutor-main">
+  <style>
+    /* Page-level layout only. */
+    .ts-linkset { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-12); }
+    .ts-stage-card { display: flex; flex-direction: column; gap: var(--space-8); text-decoration: none; }
+    .ts-stage-top { display: flex; align-items: flex-start; gap: var(--space-16); }
+    .ts-stage-n {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: var(--radius-full);
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--border-tertiary); color: var(--text-tertiary); background: var(--bg-primary);
+    }
+    .card.ts-stage.is-done .ts-stage-n { border-color: var(--border-success); background: var(--bg-success-2); color: var(--text-success); }
+    .card.ts-stage.is-open .ts-stage-n { border-color: var(--border-brand); background: var(--bg-brand-2); color: var(--text-brand); }
+    .card.ts-stage.is-locked { opacity: 0.7; }
+    .ts-kv { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-12); }
+    .ts-kv-row { display: flex; gap: var(--space-8); }
+    .ts-kv-row dt { color: var(--text-tertiary); min-width: 88px; flex-shrink: 0; }
+    .ts-kv-row dd { color: var(--text-primary); }
+  </style>
 
-  <div class="day-card">{% include "tutor/_timeline.html" %}</div>
+  <div class="card">{% include "tutor/_timeline.html" %}</div>
 
   {% if welcome_video %}
     <div class="card">
@@ -15,34 +33,35 @@
         {% set doc = welcome_video %}
         {% include "partials/_doc_link.html" %}
       {% else %}
-        <h3 class="mb0">Nancy's Welcome Video</h3>
-        <p class="small muted mb0">Coming soon.</p>
+        <h3 class="type-heading-sm" style="color: var(--text-primary);">Nancy's Welcome Video</h3>
+        <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-4);">Coming soon.</p>
       {% endif %}
     </div>
   {% endif %}
 
-  <div class="banner">
-    <h1>Hi {{ user.name.split(' ')[0] }} 👋</h1>
-    <p>{{ intro or "Work through each stage in order — the next one opens as soon as you're ready." }}</p>
-    <div class="stage-foot" style="margin-top:1rem">
-      <div class="bar"><div class="bar-fill{% if summary.percent == 100 %} done{% endif %}"
-           style="width:{{ summary.percent }}%"></div></div>
-      <div class="pctn" style="color:#fff">{{ summary.percent }}%</div>
+  <div class="card card-brand-tint">
+    <h1 class="type-heading-lg" style="color: var(--text-primary);">Hi {{ user.name.split(' ')[0] }} 👋</h1>
+    <p class="type-body-lg" style="color: var(--text-secondary); margin-top: var(--space-8);">{{ intro or "Work through each stage in order — the next one opens as soon as you're ready." }}</p>
+    <div class="progress-row" style="margin-top: var(--space-16);">
+      <div class="progress{% if summary.percent == 100 %} progress-success{% endif %}" role="progressbar" aria-valuenow="{{ summary.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Overall onboarding progress" style="--progress-value: {{ summary.percent }}%;">
+        <div class="progress-bar"></div>
+      </div>
+      <span class="progress-label">{{ summary.percent }}%</span>
     </div>
-    <p class="small" style="margin-top:.5rem">
+    <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-8);">
       {{ summary.stages_done }} of {{ summary.stages_total }} stages complete
-      {% if summary.current_stage %} · up next: <strong>{{ summary.current_stage.title }}</strong>{% endif %}
+      {% if summary.current_stage %} · up next: <span class="type-emphasis" style="color: var(--text-primary);">{{ summary.current_stage.title }}</span>{% endif %}
     </p>
   </div>
 
   {% if summary.all_complete %}
-    <div class="card" style="border-left:4px solid var(--gold)">
-      <div class="card-row">
+    <div class="card card-success-tint">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap;">
         <div>
-          <h2>You're fully onboarded 🎓</h2>
-          <p class="small muted mb0">Every stage is done. Your certificate is ready.</p>
+          <h2 class="type-heading-sm" style="color: var(--text-primary);">You're fully onboarded 🎓</h2>
+          <p class="type-body-sm" style="color: var(--text-secondary);">Every stage is done. Your certificate is ready.</p>
         </div>
-        <a class="btn btn-go" href="/complete">View certificate</a>
+        <a class="btn btn-primary" href="/complete">View certificate</a>
       </div>
     </div>
   {% endif %}
@@ -50,46 +69,47 @@
   {% for i, stage in enumerate(states, 1) %}
     {% set cls = "is-done" if stage.status == "completed" else ("is-locked" if stage.status == "locked" else "is-open") %}
     {% if stage.status == "locked" %}
-      <div class="stage {{ cls }}">
+      <div class="card ts-stage {{ cls }}">
     {% else %}
-      <a class="stage {{ cls }}" href="/stage/{{ stage.id }}">
+      <a class="card card-interactive ts-stage ts-stage-card {{ cls }}" href="/stage/{{ stage.id }}">
     {% endif %}
-        <div class="stage-top">
-          <div class="stage-n">{% if stage.status == "completed" %}✓{% else %}{{ i }}{% endif %}</div>
-          <div style="flex:1; min-width:0">
-            <div class="split">
-              <h3>{{ stage.title }}</h3>
-              <span class="split-end">
-                {% if stage.status == "completed" %}<span class="badge done">Done</span>
-                {% elif stage.status == "locked" %}<span class="badge locked">Locked</span>
-                {% elif stage.awaiting_admin %}<span class="badge submitted">With your mentor</span>
-                {% else %}<span class="badge active">In progress</span>{% endif %}
+        <div class="ts-stage-top">
+          <div class="ts-stage-n type-label-md">{% if stage.status == "completed" %}✓{% else %}{{ i }}{% endif %}</div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12);">
+              <h3 class="type-heading-xs" style="color: var(--text-primary);">{{ stage.title }}</h3>
+              <span>
+                {% if stage.status == "completed" %}<span class="badge badge-success">Done</span>
+                {% elif stage.status == "locked" %}<span class="badge">Locked</span>
+                {% elif stage.awaiting_admin %}<span class="badge badge-warning">With your mentor</span>
+                {% else %}<span class="badge badge-info">In progress</span>{% endif %}
               </span>
             </div>
-            {% if stage.subtitle %}<div class="sub">{{ stage.subtitle }}</div>{% endif %}
-            {% if stage.description %}<div class="desc">{{ stage.description }}</div>{% endif %}
+            {% if stage.subtitle %}<div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ stage.subtitle }}</div>{% endif %}
+            {% if stage.description %}<div class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-4);">{{ stage.description }}</div>{% endif %}
 
             {% if stage.status == "locked" %}
-              <div class="lock-note"><span>🔒</span><span>{{ stage.lock_reason }}</span></div>
+              <div class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-8); display: flex; align-items: center; gap: var(--space-8);"><span aria-hidden="true">🔒</span><span>{{ stage.lock_reason }}</span></div>
             {% else %}
               {% if stage.due_in_days is not None %}
-                <div class="item-meta">
+                <div class="type-body-sm" style="color: {% if stage.overdue %}var(--text-error){% else %}var(--text-tertiary){% endif %}; margin-top: var(--space-8);">
                   {% if stage.overdue %}⏰ Was due {{ -stage.due_in_days }} day(s) ago — let's finish it.
                   {% elif stage.due_in_days == 0 %}⏰ Due today.
                   {% else %}⏰ Due in {{ stage.due_in_days }} day(s).{% endif %}
                 </div>
               {% endif %}
               {% if stage.pending_titles and stage.status != "completed" %}
-                <div class="item-meta">Pending: {{ truncate(", ".join(stage.pending_titles), 110) }}</div>
+                <div class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-4);">Pending: {{ truncate(", ".join(stage.pending_titles), 110) }}</div>
               {% endif %}
             {% endif %}
           </div>
         </div>
         {% if stage.status != "locked" %}
-          <div class="stage-foot">
-            <div class="bar bar-sm"><div class="bar-fill{% if stage.complete %} done{% endif %}"
-                 style="width:{{ stage.percent }}%"></div></div>
-            <div class="pctn">{{ stage.percent }}%</div>
+          <div class="progress-row">
+            <div class="progress progress-md{% if stage.complete %} progress-success{% endif %}" role="progressbar" aria-valuenow="{{ stage.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ stage.title }} progress" style="--progress-value: {{ stage.percent }}%;">
+              <div class="progress-bar"></div>
+            </div>
+            <span class="progress-label">{{ stage.percent }}%</span>
           </div>
         {% endif %}
     {% if stage.status == "locked" %}
@@ -100,28 +120,29 @@
   {% endfor %}
 
   {% if class_slot and class_slot.status == "booked" %}
-    <div class="card" style="border-left:4px solid var(--blue)">
-      <h2>Your class with a student</h2>
-      <p class="small muted">{{ class_slot.student_name or "Student to be confirmed" }}{% if class_slot.grade_subject %} · {{ class_slot.grade_subject }}{% endif %}</p>
-      <dl class="kv">
-        <dt>When</dt><dd>{{ fmt_datetime(class_slot.starts_at) }} ({{ class_slot.duration_minutes }} min)</dd>
-        {% if class_slot.notes %}<dt>Note</dt><dd>{{ class_slot.notes }}</dd>{% endif %}
+    <div class="card card-info-tint">
+      <h2 class="type-heading-sm" style="color: var(--text-primary);">Your class with a student</h2>
+      <p class="type-body-sm" style="color: var(--text-secondary);">{{ class_slot.student_name or "Student to be confirmed" }}{% if class_slot.grade_subject %} · {{ class_slot.grade_subject }}{% endif %}</p>
+      <dl class="ts-kv">
+        <div class="ts-kv-row"><dt class="type-body-sm">When</dt><dd class="type-body-md">{{ fmt_datetime(class_slot.starts_at) }} ({{ class_slot.duration_minutes }} min)</dd></div>
+        {% if class_slot.notes %}<div class="ts-kv-row"><dt class="type-body-sm">Note</dt><dd class="type-body-md">{{ class_slot.notes }}</dd></div>{% endif %}
       </dl>
-      <div class="btn-row mt">
-        <a class="btn btn-go" href="/class-slot/{{ class_slot.id }}/calendar.ics">Add to calendar</a>
-        {% if class_stage %}<a class="btn btn-sm" href="/stage/{{ class_stage.id }}">Prep tips</a>{% endif %}
+      <div style="display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-16);">
+        <a class="btn btn-primary" href="/class-slot/{{ class_slot.id }}/calendar.ics">Add to calendar</a>
+        {% if class_stage %}<a class="btn btn-secondary" href="/stage/{{ class_stage.id }}">Prep tips</a>{% endif %}
       </div>
     </div>
   {% endif %}
 
   {% if links %}
     <div class="card">
-      <h3>Handy links</h3>
-      <div class="linkset">
+      <h3 class="type-heading-xs" style="color: var(--text-primary);">Handy links</h3>
+      <div class="ts-linkset">
         {% for link in links %}
-          <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
-            <span class="ico">↗</span>
-            <span class="grow">{{ link.label }}</span>
+          <a class="card card-compact card-interactive" href="{{ link.url }}" target="_blank" rel="noopener"
+             style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none;">
+            <span aria-hidden="true">↗</span>
+            <span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
           </a>
         {% endfor %}
       </div>

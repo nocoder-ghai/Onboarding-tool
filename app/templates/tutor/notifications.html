@@ -1,30 +1,49 @@
 {% set page_title = "Updates" %}
 {% include "partials/head.html" %}
-<div class="wrap">
-  <div class="page-head">
-    <div class="crumb"><a href="/dashboard">← Your onboarding</a></div>
-    <h1>Updates</h1>
-    <p class="muted small mb0">Stage unlocks, deadlines and mentor feedback.</p>
+<style>
+  /* Page-level layout only: narrow single-column reading width, and the
+     divider lines between stacked notification rows inside one card. */
+  .page-narrow { max-width: 720px; }
+  .page-head-block { margin-bottom: var(--space-24); }
+  .note-row { padding: var(--space-16) var(--space-24); }
+  .note-row + .note-row { border-top: 1px solid var(--border-tertiary); }
+  .note-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-12); }
+</style>
+<div class="container page-narrow">
+  <div class="page-head-block">
+    <a href="/dashboard" class="cm-link cm-link-sm" style="color: var(--text-secondary);">← Your onboarding</a>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-top: var(--space-8);">Updates</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin-top: var(--space-4);">Stage unlocks, deadlines and mentor feedback.</p>
   </div>
 
   {% if items %}
-    {% for note in items %}
-      <div class="card card-tight">
-        <div class="split">
-          <strong>{{ note.title }}</strong>
-          <span class="split-end tiny muted">{{ ago(note.created_at) }}</span>
-        </div>
-        {% if note.body %}<p class="small muted" style="margin:.35rem 0 0">{{ nl2br(note.body)|safe }}</p>{% endif %}
-        {% if note.url %}<p class="small mb0" style="margin-top:.4rem"><a href="{{ note.url }}">Open →</a></p>{% endif %}
+    <div class="card">
+      <div class="card-content" style="padding: 0;">
+        {% for note in items %}
+          <div class="note-row">
+            <div class="note-row-top">
+              <span class="type-body-md" style="font-weight: 500; color: var(--text-primary);">{{ note.title }}</span>
+              <span class="type-body-sm" style="color: var(--text-tertiary); white-space: nowrap;">{{ ago(note.created_at) }}</span>
+            </div>
+            {% if note.body %}<p class="type-body-sm" style="color: var(--text-secondary); margin: var(--space-4) 0 0;">{{ nl2br(note.body)|safe }}</p>{% endif %}
+            {% if note.url %}
+              <a class="cm-link cm-link-sm" style="color: var(--text-primary); display: inline-block; margin-top: var(--space-8);" href="{{ note.url }}">Open →</a>
+            {% endif %}
+          </div>
+        {% endfor %}
       </div>
-    {% endfor %}
+    </div>
   {% else %}
     <div class="card">
-      <div class="empty">
-        <div class="big">🔔</div>
-        <h2>Nothing new</h2>
-        <p class="muted">We'll drop a note here when a stage unlocks or a deadline is close.</p>
-        <a class="btn btn-primary" href="/dashboard">Back to your dashboard</a>
+      <div class="empty-state" role="status">
+        <div class="empty-state-icon">
+          <svg data-icon="clock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5.4C8.35492 5.4 5.4 8.35492 5.4 12C5.4 15.6451 8.35492 18.6 12 18.6C15.6451 18.6 18.6 15.6451 18.6 12C18.6 8.35492 15.6451 5.4 12 5.4ZM3.6 12C3.6 7.36081 7.36081 3.6 12 3.6C16.6392 3.6 20.4 7.36081 20.4 12C20.4 16.6392 16.6392 20.4 12 20.4C7.36081 20.4 3.6 16.6392 3.6 12ZM11.1328 7.6548L12.9328 7.6548L12.9328 11.4001L15.8551 12.6177L15.509 13.4485L15.1628 14.2793L11.6866 12.8308L11.1328 12.6001L11.1328 7.6548Z" fill="currentColor"/></svg>
+        </div>
+        <h2 class="empty-state-title">Nothing new</h2>
+        <p class="empty-state-description">We'll drop a note here when a stage unlocks or a deadline is close.</p>
+        <div class="empty-state-actions">
+          <a class="btn btn-md btn-primary" href="/dashboard">Back to your dashboard</a>
+        </div>
       </div>
     </div>
   {% endif %}

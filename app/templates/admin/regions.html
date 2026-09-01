@@ -1,64 +1,100 @@
 {% set page_title = "Regions" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; min-height: 100vh; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); background: var(--bg-secondary);
+    display: flex; flex-direction: column; gap: var(--space-24); }
+  @media (max-width: 768px) {
+    .admin-shell { flex-direction: column; }
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Regions</h1>
-    <p class="muted small mb0">A tutor's region is set at signup. Components, steps,
+  <div>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">Regions</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">A tutor's region is set at signup. Components, steps,
       documents and links tagged with a region are only shown to that region;
       untagged content is shown to everyone.</p>
   </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Region</th><th>Key</th><th class="num">Tutors</th>
-        <th class="num">Tagged content</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        {% for r in regions %}
-          <tr>
-            <td><strong>{{ r.name }}</strong></td>
-            <td class="tiny"><code>{{ r.key }}</code></td>
-            <td class="num">{{ r.tutor_count }}</td>
-            <td class="num">{{ r.content_count }}</td>
-            <td>{% if r.is_active %}<span class="badge done">Active</span>{% else %}<span class="badge locked">Hidden</span>{% endif %}</td>
-            <td class="right">
-              {% if can_write %}
-                <details class="editor" style="border:0; margin:0; padding:0">
-                  <summary>Edit</summary>
-                  <div style="text-align:left; min-width:240px">
-                    <form method="post" action="/admin/regions/{{ r.id }}/edit">
-                      <input type="hidden" name="_csrf" value="{{ csrf }}">
-                      <div class="field"><label>Name</label>
-                        <input name="name" type="text" value="{{ r.name }}" required></div>
-                      <label class="check"><input type="checkbox" name="is_active" value="1"
-                        {% if r.is_active %}checked{% endif %}>
-                        <span>Offer this region at signup</span></label>
-                      <div class="btn-row mt">
+  <div class="card">
+    <div class="table-wrap" role="region" aria-label="Regions" tabindex="0">
+      <table class="table table-hoverable">
+        <thead><tr><th>Region</th><th>Key</th><th class="cell-right">Tutors</th>
+          <th class="cell-right">Tagged content</th><th class="cell-centre">Status</th><th style="width: 48px;"></th></tr></thead>
+        <tbody>
+          {% for r in regions %}
+            <tr>
+              <td class="type-body-emphasis">{{ r.name }}</td>
+              <td><code>{{ r.key }}</code></td>
+              <td class="cell-right">{{ r.tutor_count }}</td>
+              <td class="cell-right">{{ r.content_count }}</td>
+              <td class="cell-centre">
+                {% if r.is_active %}<span class="badge badge-success badge-dot">Active</span>
+                {% else %}<span class="badge badge-dot">Hidden</span>{% endif %}
+              </td>
+              <td>
+                {% if can_write %}
+                  <details style="position: relative;">
+                    <summary class="btn btn-sm btn-secondary" style="list-style: none;">Edit</summary>
+                    <div class="card card-compact" style="position: absolute; right: 0; z-index: var(--z-dropdown); margin-top: var(--space-8); min-width: 260px; text-align: left; box-shadow: var(--shadow-lg);">
+                      <form method="post" action="/admin/regions/{{ r.id }}/edit">
+                        <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        <div class="cm-field" style="margin-bottom: var(--space-12);">
+                          <div class="cm-field-wrap">
+                            <input name="name" type="text" placeholder=" " value="{{ r.name }}" required>
+                            <label class="cm-field-label">Name</label>
+                            <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Name</span></legend></fieldset>
+                          </div>
+                        </div>
+                        <label class="cm-checkbox" style="margin-bottom: var(--space-12);">
+                          <input type="checkbox" name="is_active" value="1" {% if r.is_active %}checked{% endif %}>
+                          <span class="cm-checkbox-box">
+                            <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+                          </span>
+                          <span class="cm-checkbox-label">Offer this region at signup</span>
+                        </label>
                         <button class="btn btn-sm btn-primary" type="submit">Save</button>
-                      </div>
-                    </form>
-                  </div>
-                </details>
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+                      </form>
+                    </div>
+                  </details>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
   {% if can_write %}
-    <div class="card mt">
-      <h3>Add a region</h3>
-      <form method="post" action="/admin/regions/new">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="field"><label>Name</label>
-          <input name="name" type="text" placeholder="e.g. Southeast Asia" required></div>
-        <button class="btn btn-primary" type="submit">Add region</button>
-      </form>
-      <p class="hint mt">After adding a region, attach its training material in
-        Journey → Region-Specific Training.</p>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Add a region</div>
+        </div>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/regions/new" class="form-stack">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="name" type="text" placeholder=" " required>
+              <label class="cm-field-label">Name</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Name</span></legend></fieldset>
+            </div>
+            <div class="cm-field-helper">e.g. Southeast Asia</div>
+          </div>
+          <button class="btn btn-primary" type="submit">Add region</button>
+        </form>
+      </div>
+      <div class="card-footer card-footer-borderless">
+        <p class="type-body-sm" style="color: var(--text-tertiary); margin: 0;">After adding a region, attach its training material in
+          Journey &rarr; Region-Specific Training.</p>
+      </div>
     </div>
   {% endif %}
 </main>

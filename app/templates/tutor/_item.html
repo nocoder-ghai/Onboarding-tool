@@ -1,77 +1,77 @@
-<details class="item{% if item.done %} is-done{% elif item.status == 'rejected' %} is-rejected{% endif %}"{% if item.id == current_item_id %} open{% endif %}>
-  <summary class="item-top">
-    <div class="item-mark">✓</div>
-    <div class="item-body">
-      <div class="split">
-        <div class="item-title">{{ item.title }}</div>
-        <span class="split-end">
-          {% if item.done %}<span class="badge done">Done</span>
-          {% elif item.status == "submitted" %}<span class="badge submitted">Checking</span>
-          {% elif item.status == "rejected" %}<span class="badge rejected">Redo</span>
-          {% elif not item.is_mandatory %}<span class="badge plain">Optional</span>{% endif %}
-        </span>
-      </div>
+<details class="card card-expandable ts-item{% if item.done %} is-done card-success-tint{% elif item.status == 'rejected' %} is-rejected card-error-tint{% endif %}"{% if item.id == current_item_id %} open{% endif %}>
+  <summary>
+    <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-12);">
+      <span class="type-body-lg" style="flex: 1; min-width: 0; color: var(--text-primary);">{{ item.title }}</span>
+      {% if item.done %}<span class="badge badge-success">Done</span>
+      {% elif item.status == "submitted" %}<span class="badge badge-warning">Checking</span>
+      {% elif item.status == "rejected" %}<span class="badge badge-error">Redo</span>
+      {% elif not item.is_mandatory %}<span class="badge">Optional</span>{% endif %}
     </div>
-    <span class="chevron">▾</span>
+    <span class="cm-icon card-expand-toggle" aria-hidden="true">
+      <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+      <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+    </span>
   </summary>
 
-  <div class="item-content">
-    {% if item.description %}<div class="item-desc">{{ item.description }}</div>{% endif %}
+  <div class="card-expand-body">
+    {% if item.description %}<p class="type-body-md" style="color: var(--text-secondary);">{{ item.description }}</p>{% endif %}
     {% if item.instructions and not item.done %}
-      <div class="item-instr">{{ nl2br(item.instructions)|safe }}</div>
+      <div class="type-body-md" style="color: var(--text-primary); margin-top: var(--space-8);">{{ nl2br(item.instructions)|safe }}</div>
     {% endif %}
     {% if item.status == "rejected" and item.rejected_reason %}
-      <div class="flash error small" style="margin-top:.5rem">{{ item.rejected_reason }}</div>
+      <div class="card card-compact card-error-tint" style="margin-top: var(--space-12);">
+        <span class="type-body-sm" style="color: var(--text-error);">{{ item.rejected_reason }}</span>
+      </div>
     {% endif %}
 
     {% for link in item.links %}
-      <div class="linkset">
-        <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
-          <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
-        </a>
-      </div>
+      <a class="card card-compact card-interactive" href="{{ link.url }}" target="_blank" rel="noopener"
+         style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none; margin-top: var(--space-12);">
+        <span aria-hidden="true">↗</span>
+        <span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
+      </a>
     {% endfor %}
 
     {% if item.kind != "upload" and item.kind != "policy" %}
       {% for doc in item.documents %}
-        {% include "partials/_doc_link.html" %}
+        <div style="margin-top: var(--space-12);">{% include "partials/_doc_link.html" %}</div>
       {% endfor %}
     {% endif %}
 
     {% if item.kind == "policy" %}
-      <div class="item-actions">
-        <a class="btn btn-sm{% if not item.done %} btn-primary{% endif %}" href="/policy/{{ item.id }}">
+      <div class="btn-row" style="display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-16);">
+        <a class="btn btn-sm{% if not item.done %} btn-primary{% else %} btn-secondary{% endif %}" href="/policy/{{ item.id }}">
           {% if item.done %}Read again{% else %}Read &amp; acknowledge{% endif %}
         </a>
         {% if item.document and item.document.current %}
-          <a class="btn btn-sm" href="/file/document/{{ item.document.current.id }}" target="_blank" rel="noopener">Open document</a>
+          <a class="btn btn-sm btn-secondary" href="/file/document/{{ item.document.current.id }}" target="_blank" rel="noopener">Open document</a>
         {% else %}
-          <span class="badge pending">Document coming soon</span>
+          <span class="badge badge-warning">Document coming soon</span>
         {% endif %}
       </div>
       {% for doc in item.documents[1:] %}
-        {% include "partials/_doc_link.html" %}
+        <div style="margin-top: var(--space-12);">{% include "partials/_doc_link.html" %}</div>
       {% endfor %}
       {% if item.acknowledgement %}
-        <div class="item-meta">Acknowledged {{ fmt_datetime(item.acknowledgement.acknowledged_at) }}{% if item.stale_ack %} · a newer version is now available{% endif %}</div>
+        <div class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-8);">Acknowledged {{ fmt_datetime(item.acknowledgement.acknowledged_at) }}{% if item.stale_ack %} · a newer version is now available{% endif %}</div>
       {% endif %}
 
     {% elif item.kind == "upload" %}
       {% set icon = "👀" %}
       {% for doc in item.documents %}
-        {% include "partials/_doc_link.html" %}
+        <div style="margin-top: var(--space-12);">{% include "partials/_doc_link.html" %}</div>
       {% endfor %}
       {% if item.submission %}
-        <div class="item-meta">
+        <div class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-8);">
           Uploaded {{ item.submission.filename }} · {{ fmt_datetime(item.submission.submitted_at) }} ·
-          <a href="/file/submission/{{ item.submission.id }}" target="_blank" rel="noopener">view</a>
+          <a class="cm-link" style="color: var(--text-brand);" href="/file/submission/{{ item.submission.id }}" target="_blank" rel="noopener">view</a>
         </div>
       {% endif %}
       <form method="post" action="/item/{{ item.id }}/upload" enctype="multipart/form-data"
-            class="item-actions">
+            style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); margin-top: var(--space-16);">
         <input type="hidden" name="_csrf" value="{{ csrf }}">
         <input type="hidden" name="back" value="{{ path }}">
-        <input type="file" name="file" required style="max-width:260px"
+        <input type="file" name="file" required
                {% if item.accept_mime %}accept="{{ item.accept_mime }}"{% endif %}>
         <button class="btn btn-sm btn-primary" type="submit">
           {% if item.submission %}Replace{% else %}Upload{% endif %}
@@ -80,19 +80,19 @@
 
     {% else %}
       {% if item.done %}
-        <form method="post" action="/item/{{ item.id }}/toggle" class="item-actions">
+        <form method="post" action="/item/{{ item.id }}/toggle" style="margin-top: var(--space-16);">
           <input type="hidden" name="_csrf" value="{{ csrf }}">
           <input type="hidden" name="back" value="{{ path }}">
-          <button class="btn btn-sm" type="submit">Undo</button>
+          <button class="btn btn-sm btn-secondary" type="submit">Undo</button>
         </form>
       {% elif item.video_locked %}
-        <div class="item-meta">🔒 Watch the video above to unlock this.</div>
+        <div class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-16);">🔒 Watch the video above to unlock this.</div>
       {% else %}
-        <form method="post" action="/item/{{ item.id }}/toggle" class="item-actions">
+        <form method="post" action="/item/{{ item.id }}/toggle" style="margin-top: var(--space-16);">
           <input type="hidden" name="_csrf" value="{{ csrf }}">
           <input type="hidden" name="back" value="{{ path }}">
           <input type="hidden" name="done" value="1">
-          <button class="btn btn-sm btn-ok" type="submit">
+          <button class="btn btn-sm btn-success" type="submit">
             {% if item.kind == "link" %}I've done this{% else %}Mark done{% endif %}
           </button>
         </form>

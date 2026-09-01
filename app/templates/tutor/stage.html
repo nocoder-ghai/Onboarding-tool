@@ -7,63 +7,98 @@
 <div class="tutor-shell">
 {% include "partials/tutor_sidebar.html" %}
 <main class="tutor-main">
-  <div class="day-card">{% include "tutor/_timeline.html" %}</div>
+  <style>
+    /* Page-level layout only: adapting the Accordion component (button-based
+       in its spec) onto native <details>/<summary> so the server-rendered
+       open/collapsed state — the real "reveal one at a time" product
+       behaviour — keeps working with zero client JS for visibility. A tiny
+       sync script (below) only mirrors the native [open] state onto the
+       is-open class so the +/- icon and spacing match; it does not drive
+       visibility itself. */
+    .ts-comp-list { border-top: 1px solid var(--border-tertiary); }
+    .ts-comp-list > .accordion-item > summary.accordion-trigger { list-style: none; cursor: pointer; }
+    .ts-comp-list > .accordion-item > summary.accordion-trigger::-webkit-details-marker { display: none; }
+    .ts-comp-row { display: flex; align-items: center; gap: var(--space-12); flex: 1; min-width: 0; }
+    .ts-comp-row-title { flex: 1; min-width: 0; }
+    .ts-kv { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-12); }
+    .ts-kv-row { display: flex; gap: var(--space-8); }
+    .ts-kv-row dt { color: var(--text-tertiary); min-width: 88px; flex-shrink: 0; }
+    .ts-kv-row dd { color: var(--text-primary); }
+    .ts-linkset { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-12); }
+    .ts-agenda-row { display: flex; align-items: flex-start; gap: var(--space-12); }
+    .ts-agenda-row + .ts-agenda-row { margin-top: var(--space-12); }
+    .ts-agenda-n {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--radius-full);
+      background: var(--bg-brand-1); color: var(--text-brand); display: flex;
+      align-items: center; justify-content: center;
+    }
+  </style>
 
-  <div class="page-head">
-    <div class="crumb"><a href="/dashboard">← Your onboarding</a></div>
-    <div class="split">
-      <h1>{{ stage.title }}</h1>
-      <span class="split-end">
-        {% if stage.status == "completed" %}<span class="badge done">Done</span>
-        {% elif stage.status == "locked" %}<span class="badge locked">Locked</span>
-        {% else %}<span class="badge active">In progress</span>{% endif %}
-      </span>
+  <div class="card">{% include "tutor/_timeline.html" %}</div>
+
+  <div>
+    <a href="/dashboard" class="cm-link cm-link-sm" style="color: var(--text-secondary); display: inline-flex; align-items: center; gap: var(--space-8);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M10.2285 6C10.2285 8.01167 9.38505 9.83372 8.0332 11.0996H20.5V12.9004H8.0332C9.38505 14.1663 10.2285 15.9883 10.2285 18H8.42871C8.42871 15.1586 6.19756 12.9004 3.5 12.9004V11.0996C6.19756 11.0996 8.42871 8.84142 8.42871 6H10.2285Z" fill="currentColor"/></svg>
+      Your onboarding
+    </a>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-8);">
+      <h1 class="type-heading-lg" style="color: var(--text-primary);">{{ stage.title }}</h1>
+      {% if stage.status == "completed" %}<span class="badge badge-success">Done</span>
+      {% elif stage.status == "locked" %}<span class="badge">Locked</span>
+      {% else %}<span class="badge badge-info">In progress</span>{% endif %}
     </div>
-    {% if stage.subtitle %}<p class="small muted mb0">{{ stage.subtitle }}</p>{% endif %}
+    {% if stage.subtitle %}<p class="type-body-md" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ stage.subtitle }}</p>{% endif %}
   </div>
 
   {% if stage.status == "locked" %}
     <div class="card">
-      <div class="empty">
-        <div class="big">🔒</div>
-        <h2>Not open yet</h2>
-        <p class="muted">{{ stage.lock_reason }}</p>
-        <a class="btn btn-primary" href="/dashboard">Back to your dashboard</a>
+      <div class="empty-state" role="status">
+        <div class="empty-state-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.4998 7.14285L16.4998 9.14026Q16.6949 9.3127 16.8828 9.50281Q18.9 11.544 18.9 14.4286Q18.9 17.3131 16.8828 19.3543Q14.8612 21.4 12 21.4Q9.13881 21.4 7.11721 19.3543Q5.1 17.3131 5.1 14.4286Q5.1 11.544 7.11721 9.50281Q7.30491 9.31287 7.49984 9.14058L7.49984 7.14286Q7.49984 5.26426 8.81409 3.93435Q10.1327 2.6 11.9998 2.6Q13.8669 2.6 15.1856 3.93435Q16.4998 5.26425 16.4998 7.14285ZM14.6998 7.14285Q14.6998 4.4 11.9998 4.4Q9.29984 4.4 9.29984 7.14286L9.29984 7.98928Q10.5407 7.45715 12 7.45715Q13.4591 7.45715 14.6998 7.98912L14.6998 7.14285ZM17.1 14.4286Q17.1 12.2834 15.6025 10.768Q14.1094 9.25715 12 9.25715Q9.89063 9.25715 8.39751 10.768Q6.9 12.2834 6.9 14.4286Q6.9 16.5738 8.39751 18.0891Q9.89064 19.6 12 19.6Q14.1094 19.6 15.6025 18.0891Q17.1 16.5738 17.1 14.4286ZM11.1 15.7Q10.9603 15.5952 10.8484 15.4611Q10.7365 15.327 10.6584 15.1708Q10.5803 15.0146 10.5401 14.8446Q10.5 14.6747 10.5 14.5Q10.5 14.4263 10.5072 14.353Q10.5144 14.2796 10.5288 14.2074Q10.5432 14.1351 10.5646 14.0646Q10.586 13.9941 10.6142 13.926Q10.6424 13.8579 10.6771 13.7929Q10.7119 13.7279 10.7528 13.6666Q10.7937 13.6054 10.8405 13.5484Q10.8872 13.4914 10.9393 13.4393Q10.9914 13.3872 11.0484 13.3405Q11.1054 13.2937 11.1666 13.2528Q11.2279 13.2119 11.2929 13.1771Q11.3579 13.1424 11.426 13.1142Q11.4941 13.086 11.5646 13.0646Q11.6351 13.0432 11.7074 13.0288Q11.7796 13.0144 11.853 13.0072Q11.9263 13 12 13Q12.0737 13 12.147 13.0072Q12.2204 13.0144 12.2926 13.0288Q12.3649 13.0432 12.4354 13.0646Q12.5059 13.086 12.574 13.1142Q12.6421 13.1424 12.7071 13.1771Q12.7721 13.2119 12.8334 13.2528Q12.8946 13.2937 12.9516 13.3405Q13.0086 13.3872 13.0607 13.4393Q13.1128 13.4914 13.1595 13.5484Q13.2063 13.6054 13.2472 13.6666Q13.2881 13.7279 13.3229 13.7929Q13.3576 13.8579 13.3858 13.926Q13.414 13.9941 13.4354 14.0646Q13.4568 14.1351 13.4712 14.2074Q13.4856 14.2796 13.4928 14.353Q13.5 14.4263 13.5 14.5Q13.5 14.6747 13.4599 14.8446Q13.4197 15.0146 13.3416 15.1708Q13.2635 15.327 13.1516 15.4611Q13.0397 15.5952 12.9 15.7L12.9 16.6Q12.9 16.9728 12.6364 17.2364Q12.3728 17.5 12 17.5Q11.6272 17.5 11.3636 17.2364Q11.1 16.9728 11.1 16.6L11.1 15.7Z" fill="currentColor"/></svg>
+        </div>
+        <h2 class="empty-state-title">Not open yet</h2>
+        <p class="empty-state-description">{{ stage.lock_reason }}</p>
+        <div class="empty-state-actions">
+          <a class="btn btn-primary" href="/dashboard">Back to your dashboard</a>
+        </div>
       </div>
     </div>
   {% else %}
 
     <div class="card">
-      {% if stage.description %}<p>{{ stage.description }}</p>{% endif %}
-      <div class="stage-foot">
-        <div class="bar"><div class="bar-fill{% if stage.complete %} done{% endif %}"
-             style="width:{{ stage.percent }}%"></div></div>
-        <div class="pctn">{{ stage.percent }}%</div>
+      {% if stage.description %}<p class="type-body-lg" style="color: var(--text-secondary);">{{ stage.description }}</p>{% endif %}
+      <div class="progress-row" style="margin-top: var(--space-16);">
+        <div class="progress{% if stage.complete %} progress-success{% endif %}" role="progressbar" aria-valuenow="{{ stage.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Stage progress" style="--progress-value: {{ stage.percent }}%;">
+          <div class="progress-bar"></div>
+        </div>
+        <span class="progress-label">{{ stage.percent }}%</span>
       </div>
       {% if stage.due_in_days is not None %}
-        <p class="item-meta mb0">
+        <p class="type-body-sm" style="color: {% if stage.overdue %}var(--text-error){% else %}var(--text-tertiary){% endif %}; margin-top: var(--space-8);">
           {% if stage.overdue %}⏰ This was due {{ -stage.due_in_days }} day(s) ago.
           {% elif stage.due_in_days == 0 %}⏰ Due today.
           {% else %}⏰ Due in {{ stage.due_in_days }} day(s).{% endif %}
         </p>
       {% endif %}
       {% if stage.links %}
-        <div class="linkset">
+        <div class="ts-linkset">
           {% for link in stage.links %}
-            <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
-              <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
+            <a class="card card-compact card-interactive" href="{{ link.url }}" target="_blank" rel="noopener"
+               style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none;">
+              <span aria-hidden="true">↗</span><span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
             </a>
           {% endfor %}
         </div>
       {% endif %}
       {% for doc in stage.documents %}
         {% if doc.current and doc.kind == "video" %}
-          {% include "partials/_doc_link.html" %}
+          <div style="margin-top: var(--space-16);">{% include "partials/_doc_link.html" %}</div>
         {% elif doc.current %}
-          <div class="linkset">
-            <a class="linkrow" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener">
-              <span class="ico">📄</span><span class="grow">{{ doc.title }}</span>
-              <span class="tiny muted">v{{ doc.current.version_no }}</span>
+          <div class="ts-linkset">
+            <a class="card card-compact card-interactive" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener"
+               style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none;">
+              <span aria-hidden="true">📄</span><span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ doc.title }}</span>
+              <span class="type-body-sm" style="color: var(--text-tertiary);">v{{ doc.current.version_no }}</span>
             </a>
           </div>
         {% endif %}
@@ -73,197 +108,224 @@
     <!-- Orientation: agenda + live session details -->
     {% if stage.agenda %}
       <div class="card">
-        <h2>What we'll cover</h2>
-        {% for i, row in enumerate(stage.agenda, 1) %}
-          <div class="item">
-            <div class="item-top">
-              <div class="item-mark" style="background:var(--light-bg); border-color:var(--line); color:var(--blue)">{{ i }}</div>
-              <div class="item-body">
-                <div class="item-title">{{ row.title }}</div>
-                {% if row.description %}<div class="item-desc">{{ row.description }}</div>{% endif %}
+        <h2 class="type-heading-sm" style="color: var(--text-primary);">What we'll cover</h2>
+        <div style="margin-top: var(--space-16);">
+          {% for i, row in enumerate(stage.agenda, 1) %}
+            <div class="ts-agenda-row">
+              <div class="ts-agenda-n type-label-sm">{{ i }}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div class="type-body-lg" style="color: var(--text-primary);">{{ row.title }}</div>
+                {% if row.description %}<div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ row.description }}</div>{% endif %}
               </div>
             </div>
-          </div>
-        {% endfor %}
+          {% endfor %}
+        </div>
       </div>
     {% endif %}
 
     {% if stage.session and stage.completion_rule == "admin_marked" %}
       <div class="card">
-        <h2>Joining details</h2>
-        <dl class="kv">
-          <dt>Session</dt><dd>{{ stage.session.title }}</dd>
-          <dt>When</dt><dd>{{ fmt_datetime(stage.session.starts_at) }} ({{ stage.session.duration_minutes }} min)</dd>
-          <dt>Host</dt><dd>{{ stage.session.host_name or "Cuemath team" }}</dd>
+        <h2 class="type-heading-sm" style="color: var(--text-primary);">Joining details</h2>
+        <dl class="ts-kv">
+          <div class="ts-kv-row"><dt class="type-body-sm">Session</dt><dd class="type-body-md">{{ stage.session.title }}</dd></div>
+          <div class="ts-kv-row"><dt class="type-body-sm">When</dt><dd class="type-body-md">{{ fmt_datetime(stage.session.starts_at) }} ({{ stage.session.duration_minutes }} min)</dd></div>
+          <div class="ts-kv-row"><dt class="type-body-sm">Host</dt><dd class="type-body-md">{{ stage.session.host_name or "Cuemath team" }}</dd></div>
         </dl>
-        {% if stage.session.notes %}<p class="small muted mt">{{ stage.session.notes }}</p>{% endif %}
-        <div class="btn-row mt">
+        {% if stage.session.notes %}<p class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-12);">{{ stage.session.notes }}</p>{% endif %}
+        <div style="display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-16);">
           {% if stage.session.zoom_link %}
-            <a class="btn btn-go" href="{{ stage.session.zoom_link }}" target="_blank" rel="noopener">Join on Zoom</a>
+            <a class="btn btn-primary" href="{{ stage.session.zoom_link }}" target="_blank" rel="noopener">Join on Zoom</a>
           {% endif %}
           {% if stage.session.deck and stage.session.deck.current %}
-            <a class="btn" href="/file/document/{{ stage.session.deck.current.id }}" target="_blank" rel="noopener">Slide deck</a>
+            <a class="btn btn-secondary" href="/file/document/{{ stage.session.deck.current.id }}" target="_blank" rel="noopener">Slide deck</a>
           {% endif %}
         </div>
         {% if stage.complete %}
-          <p class="small mt mb0">✓ Your attendance is recorded — the next stage is open.</p>
+          <p class="type-body-sm" style="color: var(--text-success); margin-top: var(--space-12);">✓ Your attendance is recorded — the next stage is open.</p>
         {% else %}
-          <p class="small muted mt mb0">Your mentor marks attendance after the call.
+          <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-12);">Your mentor marks attendance after the call.
             The next stage opens automatically once they do.</p>
         {% endif %}
       </div>
     {% endif %}
 
     <!-- Components and their checklists -->
-    {% for comp in stage.components %}
-      {% if comp.visible %}
-      <details class="comp{% if comp.complete %} is-done{% endif %}"
-                {% if not comp.complete %}open{% endif %}>
-        <summary class="comp-head">
-          <h3>{{ comp.title }}</h3>
-          {% if comp.complete %}<span class="badge done">Done</span>
-          {% elif comp.awaiting_admin %}<span class="badge submitted">With your mentor</span>
-          {% elif comp.effective_rule == "admin_marked" %}<span class="badge pending">Mentor marks this</span>
-          {% else %}<span class="badge plain">{{ comp.done_units }}/{{ comp.total_units }}</span>{% endif %}
-        </summary>
-        <span id="comp-{{ comp.id }}-body"></span>
-        {% if comp.description %}<p class="small muted">{{ comp.description }}</p>{% endif %}
+    <div class="accordion ts-comp-list">
+      {% for comp in stage.components %}
+        {% if comp.visible %}
+        <details class="accordion-item{% if comp.complete %} is-done{% endif %}{% if not comp.complete %} is-open{% endif %}"
+                  {% if not comp.complete %}open{% endif %}>
+          <summary class="accordion-trigger">
+            <span class="ts-comp-row">
+              <span class="ts-comp-row-title">{{ comp.title }}</span>
+              {% if comp.complete %}<span class="badge badge-success">Done</span>
+              {% elif comp.awaiting_admin %}<span class="badge badge-warning">With your mentor</span>
+              {% elif comp.effective_rule == "admin_marked" %}<span class="badge badge-info">Mentor marks this</span>
+              {% else %}<span class="badge">{{ comp.done_units }}/{{ comp.total_units }}</span>{% endif %}
+            </span>
+            <span class="cm-icon accordion-icon" aria-hidden="true">
+              <svg data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+              <svg data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+            </span>
+          </summary>
+          <span id="comp-{{ comp.id }}-body"></span>
+          <div class="accordion-content">
+            <div class="accordion-body">
+              {% if comp.description %}<p class="type-body-sm" style="color: var(--text-secondary);">{{ comp.description }}</p>{% endif %}
 
-        {% if comp.rejected_reason %}
-          <div class="flash error small">{{ comp.rejected_reason }}</div>
-        {% endif %}
-
-        {% if comp.links %}
-          <div class="linkset">
-            {% for link in comp.links %}
-              <a class="linkrow" href="{{ link.url }}" target="_blank" rel="noopener">
-                <span class="ico">↗</span><span class="grow">{{ link.label }}</span>
-              </a>
-            {% endfor %}
-          </div>
-        {% endif %}
-        {% for doc in comp.documents %}
-          {% include "partials/_doc_link.html" %}
-        {% endfor %}
-
-        {% if comp.key == "actual_class" %}
-          <img src="/static/images/teach_a_student.png" alt="Tutor teaching a student over video call"
-               style="width:100%; max-height:260px; object-fit:cover; border-radius:var(--radius); margin-top:.6rem">
-          {% if comp.prep_tips %}
-            <div class="card-tight" style="margin-top:.6rem; background:var(--light-bg)">
-              <div class="small" style="font-weight:650">Quick prep before you teach</div>
-              <ul class="tiny" style="margin:.4rem 0 0 1.1rem">
-                {% for tip in comp.prep_tips %}<li>{{ tip }}</li>{% endfor %}
-              </ul>
-            </div>
-          {% endif %}
-
-          {% if comp.class_slot %}
-            <div class="card-tight mt">
-              <div class="small" style="font-weight:650">Your class is scheduled</div>
-              <dl class="kv">
-                <dt>Student</dt><dd>{{ comp.class_slot.student_name or "To be confirmed" }}{% if comp.class_slot.grade_subject %} · {{ comp.class_slot.grade_subject }}{% endif %}</dd>
-                <dt>When</dt><dd>{{ fmt_datetime(comp.class_slot.starts_at) }} ({{ comp.class_slot.duration_minutes }} min)</dd>
-                {% if comp.class_slot.notes %}<dt>Note</dt><dd>{{ comp.class_slot.notes }}</dd>{% endif %}
-              </dl>
-              <div class="btn-row mt">
-                <a class="btn btn-sm btn-go" href="/class-slot/{{ comp.class_slot.id }}/calendar.ics">Add to calendar</a>
-                {% if comp.class_slot.status == "booked" %}
-                  <form method="post" action="/class-slot/{{ comp.class_slot.id }}/release" class="inline-form">
-                    <input type="hidden" name="_csrf" value="{{ csrf }}">
-                    <input type="hidden" name="back" value="/stage/{{ stage.id }}">
-                    <button class="btn btn-sm" type="submit">Pick a different time</button>
-                  </form>
-                {% endif %}
-              </div>
-            </div>
-          {% elif comp.open_slots %}
-            <div class="card-tight mt">
-              <div class="small" style="font-weight:650">Pick a time</div>
-              {% for slot in comp.open_slots %}
-                <div class="item-top" style="margin-top:.5rem">
-                  <div class="item-body">
-                    <div class="item-title">{{ fmt_datetime(slot.starts_at) }} ({{ slot.duration_minutes }} min)</div>
-                    <div class="item-desc">{{ slot.student_name or "Student to be confirmed" }}{% if slot.grade_subject %} · {{ slot.grade_subject }}{% endif %}</div>
-                  </div>
-                  <form method="post" action="/class-slot/{{ slot.id }}/book">
-                    <input type="hidden" name="_csrf" value="{{ csrf }}">
-                    <input type="hidden" name="back" value="/stage/{{ stage.id }}">
-                    <button class="btn btn-sm btn-primary" type="submit">Book this</button>
-                  </form>
+              {% if comp.rejected_reason %}
+                <div class="card card-compact card-error-tint" style="margin-top: var(--space-12);">
+                  <span class="type-body-sm" style="color: var(--text-error);">{{ comp.rejected_reason }}</span>
                 </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <p class="small muted mt">No slots are open yet — check back soon, or ask your mentor.</p>
-          {% endif %}
-        {% endif %}
+              {% endif %}
 
-        {% set current_item_id = comp.current_item_id %}
-        {% for node in comp.tree %}
-          {% if not node.future %}
-          {% if node.is_group %}
-            {% set group_done = node.children and len([c for c in node.children if not c.done]) == 0 %}
-            {% set group_has_current = node.children and current_item_id in [c.id for c in node.children] %}
-            <details class="group-block"{% if group_has_current %} open{% endif %}>
-              <summary class="group-title">{{ node.title }}
-                {% if group_done %}<span class="badge done">Done</span>{% endif %}</summary>
-              {% if node.description %}<p class="small muted">{{ node.description }}</p>{% endif %}
-              <div class="nest">
-                {% for child in node.children %}
-                  {% if not child.future %}
-                    {% set item = child %}
+              {% if comp.links %}
+                <div class="ts-linkset">
+                  {% for link in comp.links %}
+                    <a class="card card-compact card-interactive" href="{{ link.url }}" target="_blank" rel="noopener"
+                       style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none;">
+                      <span aria-hidden="true">↗</span><span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
+                    </a>
+                  {% endfor %}
+                </div>
+              {% endif %}
+              {% for doc in comp.documents %}
+                <div style="margin-top: var(--space-12);">{% include "partials/_doc_link.html" %}</div>
+              {% endfor %}
+
+              {% if comp.key == "actual_class" %}
+                <img src="/static/images/teach_a_student.png" alt="Tutor teaching a student over video call"
+                     style="width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-md); margin-top: var(--space-12);">
+                {% if comp.prep_tips %}
+                  <div class="card card-compact" style="margin-top: var(--space-12); background: var(--bg-secondary);">
+                    <div class="type-label-md" style="color: var(--text-primary);">Quick prep before you teach</div>
+                    <ul class="type-body-sm" style="color: var(--text-secondary); margin: var(--space-8) 0 0 var(--space-20);">
+                      {% for tip in comp.prep_tips %}<li>{{ tip }}</li>{% endfor %}
+                    </ul>
+                  </div>
+                {% endif %}
+
+                {% if comp.class_slot %}
+                  <div class="card card-compact" style="margin-top: var(--space-12);">
+                    <div class="type-label-md" style="color: var(--text-primary);">Your class is scheduled</div>
+                    <dl class="ts-kv">
+                      <div class="ts-kv-row"><dt class="type-body-sm">Student</dt><dd class="type-body-md">{{ comp.class_slot.student_name or "To be confirmed" }}{% if comp.class_slot.grade_subject %} · {{ comp.class_slot.grade_subject }}{% endif %}</dd></div>
+                      <div class="ts-kv-row"><dt class="type-body-sm">When</dt><dd class="type-body-md">{{ fmt_datetime(comp.class_slot.starts_at) }} ({{ comp.class_slot.duration_minutes }} min)</dd></div>
+                      {% if comp.class_slot.notes %}<div class="ts-kv-row"><dt class="type-body-sm">Note</dt><dd class="type-body-md">{{ comp.class_slot.notes }}</dd></div>{% endif %}
+                    </dl>
+                    <div style="display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12);">
+                      <a class="btn btn-sm btn-primary" href="/class-slot/{{ comp.class_slot.id }}/calendar.ics">Add to calendar</a>
+                      {% if comp.class_slot.status == "booked" %}
+                        <form method="post" action="/class-slot/{{ comp.class_slot.id }}/release" style="display: inline;">
+                          <input type="hidden" name="_csrf" value="{{ csrf }}">
+                          <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+                          <button class="btn btn-sm btn-secondary" type="submit">Pick a different time</button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% elif comp.open_slots %}
+                  <div class="card card-compact" style="margin-top: var(--space-12);">
+                    <div class="type-label-md" style="color: var(--text-primary);">Pick a time</div>
+                    {% for slot in comp.open_slots %}
+                      <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-12);">
+                        <div style="flex: 1; min-width: 0;">
+                          <div class="type-body-md" style="color: var(--text-primary);">{{ fmt_datetime(slot.starts_at) }} ({{ slot.duration_minutes }} min)</div>
+                          <div class="type-body-sm" style="color: var(--text-secondary);">{{ slot.student_name or "Student to be confirmed" }}{% if slot.grade_subject %} · {{ slot.grade_subject }}{% endif %}</div>
+                        </div>
+                        <form method="post" action="/class-slot/{{ slot.id }}/book">
+                          <input type="hidden" name="_csrf" value="{{ csrf }}">
+                          <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+                          <button class="btn btn-sm btn-primary" type="submit">Book this</button>
+                        </form>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-12);">No slots are open yet — check back soon, or ask your mentor.</p>
+                {% endif %}
+              {% endif %}
+
+              {% set current_item_id = comp.current_item_id %}
+              <div style="display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-12);">
+                {% for node in comp.tree %}
+                  {% if not node.future %}
+                  {% if node.is_group %}
+                    {% set group_done = node.children and len([c for c in node.children if not c.done]) == 0 %}
+                    {% set group_has_current = node.children and current_item_id in [c.id for c in node.children] %}
+                    <details class="card card-expandable"{% if group_has_current %} open{% endif %}>
+                      <summary>
+                        <span style="flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-12);">
+                          <span class="type-body-lg" style="flex: 1; min-width: 0; color: var(--text-primary);">{{ node.title }}</span>
+                          {% if group_done %}<span class="badge badge-success">Done</span>{% endif %}
+                        </span>
+                        <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                          <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                          <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+                        </span>
+                      </summary>
+                      <div class="card-expand-body">
+                        {% if node.description %}<p class="type-body-sm" style="color: var(--text-secondary);">{{ node.description }}</p>{% endif %}
+                        <div style="display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-12);">
+                          {% for child in node.children %}
+                            {% if not child.future %}
+                              {% set item = child %}
+                              {% include "tutor/_item.html" %}
+                            {% endif %}
+                          {% endfor %}
+                        </div>
+                      </div>
+                    </details>
+                  {% else %}
+                    {% set item = node %}
                     {% include "tutor/_item.html" %}
+                  {% endif %}
                   {% endif %}
                 {% endfor %}
               </div>
-            </details>
-          {% else %}
-            {% set item = node %}
-            {% include "tutor/_item.html" %}
-          {% endif %}
-          {% endif %}
-        {% endfor %}
 
-        {% if comp.effective_rule == "self_marked" and not comp.complete %}
-          <form method="post" action="/component/{{ comp.id }}/complete" class="mt">
-            <input type="hidden" name="_csrf" value="{{ csrf }}">
-            <input type="hidden" name="back" value="/stage/{{ stage.id }}">
-            <input type="hidden" name="done" value="1">
-            <button class="btn btn-ok btn-sm" type="submit">Mark “{{ comp.title }}” complete</button>
-          </form>
-        {% elif comp.effective_rule == "self_marked" and comp.complete %}
-          <form method="post" action="/component/{{ comp.id }}/complete" class="mt">
-            <input type="hidden" name="_csrf" value="{{ csrf }}">
-            <input type="hidden" name="back" value="/stage/{{ stage.id }}">
-            <button class="btn btn-sm" type="submit">Reopen this</button>
-          </form>
+              {% if comp.effective_rule == "self_marked" and not comp.complete %}
+                <form method="post" action="/component/{{ comp.id }}/complete" style="margin-top: var(--space-16);">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}">
+                  <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+                  <input type="hidden" name="done" value="1">
+                  <button class="btn btn-sm btn-success" type="submit">Mark “{{ comp.title }}” complete</button>
+                </form>
+              {% elif comp.effective_rule == "self_marked" and comp.complete %}
+                <form method="post" action="/component/{{ comp.id }}/complete" style="margin-top: var(--space-16);">
+                  <input type="hidden" name="_csrf" value="{{ csrf }}">
+                  <input type="hidden" name="back" value="/stage/{{ stage.id }}">
+                  <button class="btn btn-sm btn-secondary" type="submit">Reopen this</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </details>
         {% endif %}
-      </details>
-      {% endif %}
-    {% endfor %}
+      {% endfor %}
+    </div>
 
     {% set hidden_next = next((c for c in stage.components if not c.visible), None) %}
     {% if hidden_next %}
-      <p class="small muted center">Next up: {{ hidden_next.title }}</p>
+      <p class="type-body-sm" style="color: var(--text-tertiary); text-align: center;">Next up: {{ hidden_next.title }}</p>
     {% endif %}
 
     {% if stage.complete %}
-      <div class="card center">
-        <p class="mb0">✓ This stage is complete. <a href="/dashboard">Back to your dashboard</a></p>
+      <div class="card" style="text-align: center;">
+        <p class="type-body-md" style="color: var(--text-primary);">✓ This stage is complete. <a class="cm-link" style="color: var(--text-brand);" href="/dashboard">Back to your dashboard</a></p>
       </div>
     {% endif %}
   {% endif %}
 
   {% if next_stage %}
-    <div class="card ts-whatsnext">
-      <div class="group-title" style="margin-top:0">What's next</div>
-      <div class="split">
+    <div class="card">
+      <div class="type-label-sm" style="color: var(--text-tertiary);">What's next</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-8);">
         <div>
-          <h3 class="mb0">{{ next_stage.title }}</h3>
-          {% if next_stage.subtitle %}<p class="small muted mb0">{{ next_stage.subtitle }}</p>{% endif %}
+          <h3 class="type-heading-xs" style="color: var(--text-primary);">{{ next_stage.title }}</h3>
+          {% if next_stage.subtitle %}<p class="type-body-sm" style="color: var(--text-secondary);">{{ next_stage.subtitle }}</p>{% endif %}
         </div>
-        <span class="split-end badge {{ 'locked' if next_stage.status == 'locked' else 'active' }}">
+        <span class="badge{% if next_stage.status != 'locked' %} badge-info{% endif %}">
           {{ 'Locked' if next_stage.status == 'locked' else 'Up next' }}
         </span>
       </div>
@@ -271,4 +333,16 @@
   {% endif %}
 </main>
 </div>
+<script>
+  document.querySelectorAll('.ts-comp-list > .accordion-item').forEach(function (item) {
+    var content = item.querySelector(':scope > .accordion-content');
+    function sync() {
+      var open = item.hasAttribute('open');
+      item.classList.toggle('is-open', open);
+      if (content) content.style.maxHeight = open ? content.scrollHeight + 'px' : '0';
+    }
+    item.addEventListener('toggle', sync);
+    sync();
+  });
+</script>
 {% include "partials/foot.html" %}

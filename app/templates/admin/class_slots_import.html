@@ -1,70 +1,121 @@
 {% set page_title = "Import class slots" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: admin sidebar + main shell, and small structural
+     helpers for arranging design-system components on this page. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); display: flex; flex-direction: column; gap: var(--space-24); }
+  .page-head { display: flex; flex-direction: column; gap: var(--space-4); }
+  .format-sample { background: var(--bg-tertiary); border: 1px solid var(--border-secondary); border-radius: var(--radius-sm); padding: var(--space-16); overflow-x: auto; margin: 0; }
+  .format-sample code { color: var(--text-primary); }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
   <div class="page-head">
-    <h1>Import class slots</h1>
-    <p class="muted small mb0">Upload a CSV of real classes — student name, class
+    <h1 class="type-heading-lg" style="color: var(--text-primary);">Import class slots</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">Upload a CSV of real classes — student name, class
       date, class time and grade — and each row becomes an open slot tutors can
       pick. Prefer adding one at a time?
-      <a href="/admin/class-slots">Go back to Class with a Student</a>.</p>
+      <a href="/admin/class-slots" class="cm-link" style="color: var(--text-brand);">Go back to Class with a Student</a>.</p>
   </div>
 
   {% if result %}
-    <div class="card">
-      <h3>Import result</h3>
-      <div class="flash {{ 'ok' if result['added_count'] else 'error' }}">
-        <span>{{ '✓' if result['added_count'] else '!' }}</span>
-        <span>{{ plural(result['added_count'], "slot") }} added.</span></div>
-      {% if result['skipped_count'] %}
-        <div class="flash error"><span>!</span>
-          <span>{{ result['skipped_count'] }} row(s) were skipped.</span></div>
-        <details class="editor" open>
-          <summary>Show skipped rows</summary>
-          <div><ul class="small muted">
-            {% for row in result['skipped'] %}<li>{{ row }}</li>{% endfor %}
-          </ul></div>
-        </details>
-      {% endif %}
-      {% if result['added'] %}
-        <details class="editor">
-          <summary>Show added rows</summary>
-          <div><ul class="small">{% for row in result['added'] %}<li>{{ row }}</li>{% endfor %}</ul></div>
-        </details>
-      {% endif %}
-      <div class="btn-row mt"><a class="btn btn-sm btn-primary" href="/admin/class-slots">See class slots</a></div>
+    <div class="card {{ 'card-success-tint' if result['added_count'] else 'card-error-tint' }}">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Import result</div>
+        </div>
+      </div>
+      <div class="card-content" style="display: flex; flex-direction: column; gap: var(--space-16);">
+        <span class="badge {{ 'badge-success' if result['added_count'] else 'badge-error' }}">
+          {{ plural(result['added_count'], "slot") }} added.
+        </span>
+
+        {% if result['skipped_count'] %}
+          <span class="badge badge-error">{{ result['skipped_count'] }} row(s) were skipped.</span>
+          <details class="card card-expandable" open>
+            <summary>
+              <div><div class="card-title">Show skipped rows</div></div>
+              <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+              </span>
+            </summary>
+            <div class="card-expand-body">
+              <ul class="type-body-sm" style="color: var(--text-secondary); margin: 0; padding-left: var(--space-20);">
+                {% for row in result['skipped'] %}<li>{{ row }}</li>{% endfor %}
+              </ul>
+            </div>
+          </details>
+        {% endif %}
+
+        {% if result['added'] %}
+          <details class="card card-expandable">
+            <summary>
+              <div><div class="card-title">Show added rows</div></div>
+              <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+              </span>
+            </summary>
+            <div class="card-expand-body">
+              <ul class="type-body-sm" style="color: var(--text-secondary); margin: 0; padding-left: var(--space-20);">
+                {% for row in result['added'] %}<li>{{ row }}</li>{% endfor %}
+              </ul>
+            </div>
+          </details>
+        {% endif %}
+
+        <div style="display: flex;">
+          <a class="btn btn-sm btn-primary" href="/admin/class-slots">See class slots</a>
+        </div>
+      </div>
     </div>
   {% endif %}
 
   {% if can_write %}
     <div class="card">
-      <h3>Upload a CSV</h3>
-      <form method="post" action="/admin/class-slots/import" enctype="multipart/form-data">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="field">
-          <label for="file">CSV file</label>
-          <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Upload a CSV</div>
         </div>
-        <button class="btn btn-primary" type="submit">Import slots</button>
-      </form>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/class-slots/import" enctype="multipart/form-data" class="form-stack" style="gap: var(--space-16);">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div style="display: flex; flex-direction: column; gap: var(--space-8);">
+            <label class="type-label-md" for="file" style="color: var(--text-primary);">CSV file</label>
+            <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+          </div>
+          <div style="display: flex;">
+            <button class="btn btn-md btn-primary" type="submit">Import slots</button>
+          </div>
+        </form>
+      </div>
     </div>
   {% endif %}
 
   <div class="card">
-    <h3>File format</h3>
-    <p class="small muted">A header row is detected automatically. Expected
-      columns are <code>student name</code>, <code>class date</code>,
-      <code>class time</code> and <code>grade</code>. Dates can be written as
-      <code>2026-09-15</code>, <code>15/09/2026</code> or <code>15 Sep 2026</code>;
-      times as <code>14:30</code> or <code>2:30 PM</code>. You can optionally add
-      <code>duration</code> (minutes, defaults to 60), <code>region</code> and
-      <code>notes</code> columns too. Every row becomes an <strong>open</strong>
-      slot — no tutor assigned yet — for a tutor to pick from
-      <a href="/admin/class-slots">Class with a Student</a>.</p>
-    <pre class="diff">student name,class date,class time,grade,duration,region,notes
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">File format</div>
+      </div>
+    </div>
+    <div class="card-content" style="display: flex; flex-direction: column; gap: var(--space-16);">
+      <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">A header row is detected automatically. Expected
+        columns are <code>student name</code>, <code>class date</code>,
+        <code>class time</code> and <code>grade</code>. Dates can be written as
+        <code>2026-09-15</code>, <code>15/09/2026</code> or <code>15 Sep 2026</code>;
+        times as <code>14:30</code> or <code>2:30 PM</code>. You can optionally add
+        <code>duration</code> (minutes, defaults to 60), <code>region</code> and
+        <code>notes</code> columns too. Every row becomes an <strong>open</strong>
+        slot — no tutor assigned yet — for a tutor to pick from
+        <a href="/admin/class-slots" class="cm-link" style="color: var(--text-brand);">Class with a Student</a>.</p>
+      <pre class="format-sample"><code>student name,class date,class time,grade,duration,region,notes
 Aarav Mehta,2026-09-15,16:30,Grade 5 Math,60,India,Prefers a calm start
-Zoe Carter,2026-09-16,9:00 AM,Grade 3 Math,45,US/Canada,</pre>
+Zoe Carter,2026-09-16,9:00 AM,Grade 3 Math,45,US/Canada,</code></pre>
+    </div>
   </div>
 </main>
 </div>

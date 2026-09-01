@@ -1,32 +1,52 @@
 {% set page_title = "You're onboarded" %}
 {% include "partials/head.html" %}
-<div class="wrap">
-  <div class="cert">
-    <div class="seal">🎓</div>
-    <p class="small muted mb0" style="text-transform:uppercase; letter-spacing:.12em">
-      {{ brand }} coach onboarding</p>
-    <div class="name">{{ tutor.name }}</div>
-    {% if region %}<p class="small muted mb0">{{ region.name }}</p>{% endif %}
-    <div class="rule"></div>
-    <p>{{ body or "has completed the Cuemath coach onboarding and training programme." }}</p>
-    <p class="small muted mb0">Completed {{ fmt_date(tutor.completed_at) }}</p>
-    {% if signatory %}<p class="small strong" style="margin-top:1rem">{{ signatory }}</p>{% endif %}
-  </div>
+<style>
+  /* Page-level layout only: narrow single-column width, the certificate
+     panel's centred text arrangement, and hiding the actions card on print. */
+  .page-narrow { max-width: 720px; }
+  .stack { display: flex; flex-direction: column; gap: var(--space-24); }
+  .cert-panel { text-align: center; padding: var(--space-48) var(--space-24); }
+  .cert-rule { height: 3px; width: 70px; background: var(--bg-brand); margin: var(--space-16) auto; border: 0; }
+  .finished-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-12); padding: var(--space-8) var(--space-24); }
+  .finished-row + .finished-row { border-top: 1px solid var(--border-tertiary); }
+  @media print { .print-hide { display: none; } }
+</style>
+<div class="container page-narrow">
+  <div class="stack">
 
-  <div class="card mt print-hide">
-    <h3>What you finished</h3>
-    {% for stage in states %}
-      <div class="split" style="padding:.3rem 0; border-bottom:1px solid var(--line)">
-        <span>✓ {{ stage.title }}</span>
-        <span class="split-end tiny muted">
-          {% if stage.completed_at %}{{ fmt_date(stage.completed_at) }}{% endif %}
-        </span>
-      </div>
-    {% endfor %}
-    <div class="btn-row mt">
-      <button class="btn btn-primary" onclick="window.print()">Print or save as PDF</button>
-      <a class="btn" href="/dashboard">Back to your dashboard</a>
+    <div class="card card-brand-tint cert-panel">
+      <div class="type-display-sm" aria-hidden="true">🎓</div>
+      <p class="type-label-sm type-caps" style="color: var(--text-tertiary); margin-top: var(--space-16);">{{ brand }} coach onboarding</p>
+      <div class="type-heading-xl" style="font-family: var(--font-heading); color: var(--text-primary); margin-top: var(--space-8);">{{ tutor.name }}</div>
+      {% if region %}<p class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ region.name }}</p>{% endif %}
+      <hr class="cert-rule">
+      <p class="type-body-md" style="color: var(--text-primary);">{{ body or "has completed the Cuemath coach onboarding and training programme." }}</p>
+      <p class="type-body-sm" style="color: var(--text-tertiary);">Completed {{ fmt_date(tutor.completed_at) }}</p>
+      {% if signatory %}<p class="type-body-sm" style="font-weight: 500; color: var(--text-primary); margin-top: var(--space-16);">{{ signatory }}</p>{% endif %}
     </div>
+
+    <div class="card print-hide">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">What you finished</div>
+        </div>
+      </div>
+      <div class="card-content" style="padding: 0;">
+        {% for stage in states %}
+          <div class="finished-row">
+            <span class="type-body-md" style="color: var(--text-primary);">✓ {{ stage.title }}</span>
+            <span class="type-body-sm" style="color: var(--text-tertiary); white-space: nowrap;">
+              {% if stage.completed_at %}{{ fmt_date(stage.completed_at) }}{% endif %}
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-md btn-primary" onclick="window.print()">Print or save as PDF</button>
+        <a class="btn btn-md btn-secondary" href="/dashboard">Back to your dashboard</a>
+      </div>
+    </div>
+
   </div>
 </div>
 {% include "partials/foot.html" %}

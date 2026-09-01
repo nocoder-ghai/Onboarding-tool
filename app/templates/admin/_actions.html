@@ -1,4 +1,4 @@
-<span class="btn-row" style="display:inline-flex">
+<span style="display: inline-flex; gap: var(--space-8); align-items: center; flex-wrap: wrap;">
   {% if not done_now %}
     <form method="post" action="/admin/tutors/{{ tutor.id }}/status" class="inline-form">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
@@ -6,7 +6,7 @@
       <input type="hidden" name="target_id" value="{{ ti }}">
       <input type="hidden" name="action" value="approve">
       <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
-      <button class="btn btn-xs btn-ok" type="submit">Approve</button>
+      <button class="btn btn-sm btn-success" type="submit">Approve</button>
     </form>
   {% endif %}
   <form method="post" action="/admin/tutors/{{ tutor.id }}/status" class="inline-form">
@@ -15,20 +15,26 @@
     <input type="hidden" name="target_id" value="{{ ti }}">
     <input type="hidden" name="action" value="reset">
     <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
-    <button class="btn btn-xs" type="submit">Reset</button>
+    <button class="btn btn-sm btn-secondary" type="submit">Reset</button>
   </form>
-  <details class="editor" style="border:0; margin:0; padding:0; display:inline-block">
-    <summary style="font-size:.72rem">Reject</summary>
-    <div style="min-width:240px; text-align:left">
+  <details style="position: relative;">
+    <summary class="btn btn-sm btn-destructive" style="list-style: none;">Reject</summary>
+    <div class="card card-compact" style="position: absolute; z-index: var(--z-dropdown); margin-top: var(--space-8); min-width: 260px; text-align: left; box-shadow: var(--shadow-lg);">
       <form method="post" action="/admin/tutors/{{ tutor.id }}/status">
         <input type="hidden" name="_csrf" value="{{ csrf }}">
         <input type="hidden" name="target_type" value="{{ tt }}">
         <input type="hidden" name="target_id" value="{{ ti }}">
         <input type="hidden" name="action" value="reject">
         <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
-        <div class="field"><label>Reason the tutor will see</label>
-          <textarea name="reason" required placeholder="What should they change?"></textarea></div>
-        <button class="btn btn-xs btn-danger" type="submit">Send back</button>
+        <div class="cm-field" style="margin-bottom: var(--space-12);">
+          <div class="cm-field-wrap">
+            <textarea name="reason" required placeholder=" " rows="3"></textarea>
+            <label class="cm-field-label">Reason the tutor will see</label>
+            <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Reason the tutor will see</span></legend></fieldset>
+          </div>
+          <div class="cm-field-helper">What should they change?</div>
+        </div>
+        <button class="btn btn-sm btn-destructive" type="submit">Send back</button>
       </form>
     </div>
   </details>

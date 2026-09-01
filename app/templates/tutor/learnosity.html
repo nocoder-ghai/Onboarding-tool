@@ -2,27 +2,38 @@
 {% set hide_topbar = True %}
 {% include "partials/head.html" %}
 {% include "partials/tutor_topbar.html" %}
+<style>
+  /* Page-level layout only: place the sidebar (already 240px + flex-shrink:0
+     from navigation.css) beside the main content column. */
+  .tutor-shell { display: flex; align-items: flex-start; }
+  .tutor-main { flex: 1; min-width: 0; padding: var(--space-24); max-width: 900px; }
+  .link-row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-24); text-decoration: none; }
+  .link-row + .link-row { border-top: 1px solid var(--border-tertiary); }
+  .link-row:hover { background: var(--bg-secondary); }
+</style>
 <div class="tutor-shell">
 {% include "partials/tutor_sidebar.html" %}
 <main class="tutor-main">
-  <div class="page-head">
-    <h1>Learnosity</h1>
-    {% if comp and comp.description %}<p class="small muted mb0">{{ comp.description }}</p>{% endif %}
+  <div style="margin-bottom: var(--space-24);">
+    <h1 class="type-heading-lg" style="color: var(--text-primary);">Learnosity</h1>
+    {% if comp and comp.description %}<p class="type-body-md" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ comp.description }}</p>{% endif %}
   </div>
 
   <div class="card">
     {% if links %}
-      <div class="linkset">
+      <div class="card-content" style="padding: 0;">
         {% for link in links %}
-          <a class="linkrow" href="{{ link.url if '://' in link.url else 'https://' + link.url }}"
+          <a class="link-row" href="{{ link.url if '://' in link.url else 'https://' + link.url }}"
              target="_blank" rel="noopener">
-            <span class="ico">↗</span>
-            <span class="grow">{{ link.label }}</span>
+            <span aria-hidden="true" style="color: var(--text-tertiary);">↗</span>
+            <span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
           </a>
         {% endfor %}
       </div>
     {% else %}
-      <p class="small muted mb0">No Learnosity link has been set up yet.</p>
+      <div class="card-content">
+        <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">No Learnosity link has been set up yet.</p>
+      </div>
     {% endif %}
   </div>
 </main>

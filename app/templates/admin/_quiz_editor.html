@@ -1,56 +1,101 @@
-<div class="mt">
-  <div class="tiny muted" style="font-weight:650">
+<div style="margin-top: var(--space-16);">
+  <div class="type-label-sm" style="color: var(--text-tertiary);">
     CFU quiz — {{ plural(len([q for q in item.quiz if not q.archived_at]), "question") }}
   </div>
   {% for q in item.quiz %}
-    <div class="item{% if q.archived_at %} archived{% endif %}" style="margin-top:.4rem">
-      <div class="split">
-        <span class="small">{{ q.question }}</span>
+    <div class="card card-compact" style="margin-top: var(--space-8);{% if q.archived_at %} opacity: 0.5;{% endif %}">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-8);">
+        <span class="type-body-sm" style="color: var(--text-primary);">{{ q.question }}</span>
         {% if can_write and not q.archived_at %}
           <form method="post" action="/admin/quiz-questions/{{ q.id }}/archive" class="inline-form">
             <input type="hidden" name="_csrf" value="{{ csrf }}">
-            <button class="btn btn-xs btn-danger" type="submit">Remove</button>
+            <button class="btn btn-sm btn-destructive" type="submit">Remove</button>
           </form>
         {% endif %}
       </div>
-      <ul class="tiny" style="margin:.3rem 0 0 1.1rem">
+      <ul style="margin: var(--space-8) 0 0 1.1rem; padding: 0; display: flex; flex-direction: column; gap: var(--space-4);">
         {% for c in q.choices %}
-          <li{% if c.is_correct %} style="font-weight:650; color:var(--green)"{% endif %}>
+          <li class="type-body-sm" style="{% if c.is_correct %}color: var(--text-success); font-weight: var(--type-body-emphasis);{% else %}color: var(--text-secondary);{% endif %}">
             {{ c.label }}{% if c.is_correct %} ✓{% endif %}</li>
         {% endfor %}
       </ul>
     </div>
   {% endfor %}
   {% if can_write %}
-    <details class="editor">
-      <summary>Add a quiz question</summary>
-      <div>
-        <form method="post" action="/admin/items/{{ item.id }}/quiz/new">
-          <input type="hidden" name="_csrf" value="{{ csrf }}">
-          <div class="field"><label>Question</label>
-            <input name="question" type="text" required></div>
-          <div class="row2">
-            <div class="field"><label>Choice 1</label>
-              <input name="choice_1" type="text" required></div>
-            <div class="field"><label>Choice 2</label>
-              <input name="choice_2" type="text" required></div>
+    <div class="accordion" style="margin-top: var(--space-12);">
+      <div class="accordion-item">
+        <button class="accordion-trigger" aria-expanded="false" aria-controls="quiz-{{ item.id }}-panel" id="quiz-{{ item.id }}-trigger">
+          <span class="type-label-sm">Add a quiz question</span>
+          <span class="cm-icon accordion-icon"><svg data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg><svg data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg></span>
+        </button>
+        <div class="accordion-content" id="quiz-{{ item.id }}-panel" role="region" aria-labelledby="quiz-{{ item.id }}-trigger" style="max-height: 0;">
+          <div class="accordion-body">
+            <form method="post" action="/admin/items/{{ item.id }}/quiz/new" class="form-stack">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="question" type="text" placeholder=" " required>
+                  <label class="cm-field-label">Question</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Question</span></legend></fieldset>
+                </div>
+              </div>
+              <div class="grid">
+                <div class="col-6 col-sm-12">
+                  <div class="cm-field">
+                    <div class="cm-field-wrap">
+                      <input name="choice_1" type="text" placeholder=" " required>
+                      <label class="cm-field-label">Choice 1</label>
+                      <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Choice 1</span></legend></fieldset>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6 col-sm-12">
+                  <div class="cm-field">
+                    <div class="cm-field-wrap">
+                      <input name="choice_2" type="text" placeholder=" " required>
+                      <label class="cm-field-label">Choice 2</label>
+                      <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Choice 2</span></legend></fieldset>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="grid">
+                <div class="col-6 col-sm-12">
+                  <div class="cm-field">
+                    <div class="cm-field-wrap">
+                      <input name="choice_3" type="text" placeholder=" ">
+                      <label class="cm-field-label">Choice 3 (optional)</label>
+                      <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Choice 3 (optional)</span></legend></fieldset>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6 col-sm-12">
+                  <div class="cm-field">
+                    <div class="cm-field-wrap">
+                      <input name="choice_4" type="text" placeholder=" ">
+                      <label class="cm-field-label">Choice 4 (optional)</label>
+                      <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Choice 4 (optional)</span></legend></fieldset>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="correct">
+                    <option value="1">Choice 1</option>
+                    <option value="2">Choice 2</option>
+                    <option value="3">Choice 3</option>
+                    <option value="4">Choice 4</option>
+                  </select>
+                  <span class="cm-field-label">Correct choice</span>
+                  <fieldset class="cm-field-notch"><legend><span>Correct choice</span></legend></fieldset>
+                </div>
+              </div>
+              <div><button class="btn btn-sm btn-primary" type="submit">Add question</button></div>
+            </form>
           </div>
-          <div class="row2">
-            <div class="field"><label>Choice 3 (optional)</label>
-              <input name="choice_3" type="text"></div>
-            <div class="field"><label>Choice 4 (optional)</label>
-              <input name="choice_4" type="text"></div>
-          </div>
-          <div class="field"><label>Correct choice</label>
-            <select name="correct">
-              <option value="1">Choice 1</option>
-              <option value="2">Choice 2</option>
-              <option value="3">Choice 3</option>
-              <option value="4">Choice 4</option>
-            </select></div>
-          <button class="btn btn-sm btn-primary mt" type="submit">Add question</button>
-        </form>
+        </div>
       </div>
-    </details>
+    </div>
   {% endif %}
 </div>

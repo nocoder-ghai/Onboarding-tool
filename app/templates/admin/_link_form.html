@@ -1,36 +1,88 @@
-<details class="editor">
-  <summary>Add a link</summary>
-  <div>
-    <form method="post" action="/admin/links/new">
+<details class="card card-expandable">
+  <summary>
+    <div>
+      <div class="card-title">Add a link</div>
+    </div>
+    <span class="cm-icon card-expand-toggle" aria-hidden="true">
+      <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/>
+</svg>
+      <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/>
+</svg>
+    </span>
+  </summary>
+  <div class="card-expand-body">
+    <form method="post" action="/admin/links/new" class="form-stack">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
       <input type="hidden" name="target_type" value="{{ link_target_type }}">
       <input type="hidden" name="target_id" value="{{ link_target_id }}">
       <input type="hidden" name="back" value="{{ link_back }}">
-      <div class="row2">
-        <div class="field"><label>Label</label>
-          <input name="label" type="text" required></div>
-        <div class="field"><label>URL</label>
-          <input name="url" type="url" required placeholder="https://…"></div>
+      <div class="grid">
+        <div class="col-6 col-sm-12">
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="label" type="text" placeholder=" " required>
+              <label class="cm-field-label">Label</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Label</span></legend></fieldset>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-12">
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="url" type="url" placeholder="https://…" required>
+              <label class="cm-field-label">URL</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>URL</span></legend></fieldset>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="row2">
-        <div class="field"><label>Description</label>
-          <input name="description" type="text"></div>
-        <div class="field"><label>Region</label>
-          <select name="region_id">
-            <option value="">All regions</option>
-            {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
-          </select></div>
+
+      <div class="grid">
+        <div class="col-6 col-sm-12">
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="description" type="text" placeholder=" ">
+              <label class="cm-field-label">Description</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-sm-12">
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <select name="region_id">
+                <option value="">All regions</option>
+                {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+              </select>
+              <span class="cm-field-label">Region</span>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Region</span></legend></fieldset>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="row2">
-        <div class="field"><label>Grade cohort</label>
+
+      <div class="cm-field">
+        <div class="cm-field-wrap">
           <select name="grade_cohort_id">
             <option value="">All grade cohorts</option>
             {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
-          </select></div>
+          </select>
+          <span class="cm-field-label">Grade cohort</span>
+          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Grade cohort</span></legend></fieldset>
+        </div>
       </div>
-      <label class="check"><input type="checkbox" name="is_active" value="1" checked>
-        <span>Visible to tutors</span></label>
-      <div class="btn-row mt">
+
+      <label class="cm-checkbox">
+        <input type="checkbox" name="is_active" value="1" checked>
+        <span class="cm-checkbox-box">
+          <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+        </span>
+        <span class="cm-checkbox-label">Visible to tutors</span>
+      </label>
+
+      <div>
         <button class="btn btn-sm btn-primary" type="submit">Add link to “{{ link_target_label }}”</button>
       </div>
     </form>

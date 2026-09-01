@@ -1,71 +1,141 @@
 {% set page_title = doc.title %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); }
+  @media (max-width: 768px) {
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <div class="crumb"><a href="/admin/documents">← Documents</a></div>
-    <h1>{{ doc.title }}</h1>
-    <p class="muted small mb0">
-      <span class="badge plain">{{ doc.kind }}</span>
-      {% if doc.archived_at %}<span class="badge locked">Archived</span>{% endif %}
-      · {{ ack_count }} acknowledgement(s) recorded across all versions
+  <div style="margin-bottom: var(--space-32);">
+    <nav aria-label="Breadcrumb" style="margin-bottom: var(--space-16);">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="/admin/documents">Documents</a>
+          <span class="breadcrumb-separator">
+            <svg data-icon="chevron-right" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.7674 13.2674Q11.5381 12.4967 12.4224 12Q11.5381 11.5033 10.7674 10.7326Q8.6 8.56519 8.6 5.5L10.4 5.5Q10.4 7.81961 12.0402 9.4598Q13.6804 11.1 16 11.1L16 12.9Q13.6804 12.9 12.0402 14.5402Q10.4 16.1804 10.4 18.5L8.6 18.5Q8.6 15.4348 10.7674 13.2674Z" fill="currentColor"/></svg>
+          </span>
+        </li>
+        <li class="breadcrumb-item is-current" aria-current="page">{{ doc.title }}</li>
+      </ol>
+    </nav>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">{{ doc.title }}</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0; display: flex; align-items: center; gap: var(--space-8);">
+      <span class="badge">{{ doc.kind }}</span>
+      {% if doc.archived_at %}<span class="badge badge-neutral-strong">Archived</span>{% endif %}
+      <span>{{ ack_count }} acknowledgement(s) recorded across all versions</span>
     </p>
   </div>
 
-  <div class="card">
-    <h3>Current version</h3>
-    {% if doc.current %}
-      <dl class="kv">
-        <dt>Version</dt><dd>v{{ doc.current.version_no }}</dd>
-        <dt>File</dt><dd><a href="/admin/versions/{{ doc.current.id }}/download" target="_blank" rel="noopener">{{ doc.current.filename }}</a></dd>
-        <dt>Effective from</dt><dd>{{ fmt_date(doc.current.effective_from) }}</dd>
-        <dt>Type</dt><dd>{{ doc.current.mime_type }}</dd>
-      </dl>
-    {% else %}
-      <div class="flash error">No file has been uploaded yet. Tutors see a friendly
-        “coming soon” message and cannot acknowledge this document.</div>
-    {% endif %}
+  <div class="card" style="margin-bottom: var(--space-24);">
+    <div class="card-header">
+      <div class="card-header-text"><div class="card-title">Current version</div></div>
+    </div>
+    <div class="card-content">
+      {% if doc.current %}
+        <div style="display: flex; flex-direction: column; gap: var(--space-12);">
+          <div style="display: flex; justify-content: space-between; gap: var(--space-16);">
+            <span class="type-label-sm" style="color: var(--text-tertiary);">Version</span>
+            <span class="type-body-md" style="color: var(--text-primary);">v{{ doc.current.version_no }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; gap: var(--space-16);">
+            <span class="type-label-sm" style="color: var(--text-tertiary);">File</span>
+            <a class="cm-link" style="color: var(--text-brand);" href="/admin/versions/{{ doc.current.id }}/download" target="_blank" rel="noopener">{{ doc.current.filename }}</a>
+          </div>
+          <div style="display: flex; justify-content: space-between; gap: var(--space-16);">
+            <span class="type-label-sm" style="color: var(--text-tertiary);">Effective from</span>
+            <span class="type-body-md" style="color: var(--text-primary);">{{ fmt_date(doc.current.effective_from) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; gap: var(--space-16);">
+            <span class="type-label-sm" style="color: var(--text-tertiary);">Type</span>
+            <span class="type-body-md" style="color: var(--text-primary);">{{ doc.current.mime_type }}</span>
+          </div>
+        </div>
+      {% else %}
+        <div class="toast toast-error is-visible" role="status" style="position: static; max-width: none;">
+          <div class="toast-content">
+            <div class="toast-message">No file has been uploaded yet. Tutors see a friendly
+              “coming soon” message and cannot acknowledge this document.</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
   </div>
 
   {% if can_write %}
-    <div class="card">
-      <h3>Upload a new version</h3>
-      <p class="small muted">The old file stays on record. Tutors who already
-        acknowledged an earlier version keep that record, and see a note that a newer
-        version exists.</p>
-      <form method="post" action="/admin/documents/{{ doc.id }}/version"
-            enctype="multipart/form-data">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="row3">
-          <div class="field"><label>File</label>
-            <input name="file" type="file" required></div>
-          <div class="field"><label>Effective from</label>
-            <input name="effective_from" type="date"></div>
-          <div class="field"><label>What changed?</label>
-            <input name="notes" type="text"></div>
+    <div class="card" style="margin-bottom: var(--space-24);">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Upload a new version</div>
+          <div class="card-description">The old file stays on record. Tutors who already
+            acknowledged an earlier version keep that record, and see a note that a newer
+            version exists.</div>
         </div>
-        <button class="btn btn-primary" type="submit">Upload version</button>
-      </form>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/documents/{{ doc.id }}/version"
+              enctype="multipart/form-data" class="form-stack">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="grid">
+            <div class="col-4 col-sm-12">
+              <label class="type-label-sm" style="display: block; color: var(--text-secondary); margin-bottom: var(--space-4);">File</label>
+              <input name="file" type="file" required>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="effective_from" type="date" placeholder=" ">
+                  <label class="cm-field-label">Effective from</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Effective from</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="notes" type="text" placeholder=" ">
+                  <label class="cm-field-label">What changed?</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>What changed?</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div><button class="btn btn-primary" type="submit">Upload version</button></div>
+        </form>
+      </div>
     </div>
   {% endif %}
 
-  <div class="card">
-    <h3>Version history</h3>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Version</th><th>File</th><th>Effective from</th><th>Size</th>
-          <th>Note</th><th>Uploaded</th></tr></thead>
+  <div class="card" style="margin-bottom: var(--space-24);">
+    <div class="card-header">
+      <div class="card-header-text"><div class="card-title">Version history</div></div>
+    </div>
+    <div class="table-wrap" role="region" aria-label="Version history" tabindex="0">
+      <table class="table table-hoverable">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>File</th>
+            <th>Effective from</th>
+            <th class="cell-right">Size</th>
+            <th>Note</th>
+            <th>Uploaded</th>
+          </tr>
+        </thead>
         <tbody>
           {% for v in versions %}
             <tr>
               <td>v{{ v.version_no }}
-                {% if doc.current and v.id == doc.current.id %}<span class="badge done">Current</span>{% endif %}</td>
-              <td class="tiny"><a href="/admin/versions/{{ v.id }}/download" target="_blank" rel="noopener">{{ v.filename }}</a></td>
-              <td class="tiny nowrap">{{ fmt_date(v.effective_from) }}</td>
-              <td class="tiny nowrap">{{ round(v.size_bytes / 1024) }} KB</td>
-              <td class="tiny">{{ v.notes }}</td>
-              <td class="tiny nowrap">{{ ago(v.created_at) }}</td>
+                {% if doc.current and v.id == doc.current.id %}<span class="badge badge-success">Current</span>{% endif %}</td>
+              <td><a class="cm-link cm-link-sm" style="color: var(--text-brand);" href="/admin/versions/{{ v.id }}/download" target="_blank" rel="noopener">{{ v.filename }}</a></td>
+              <td class="type-body-sm" style="color: var(--text-secondary); white-space: nowrap;">{{ fmt_date(v.effective_from) }}</td>
+              <td class="cell-right type-body-sm" style="color: var(--text-secondary); white-space: nowrap;">{{ round(v.size_bytes / 1024) }} KB</td>
+              <td class="type-body-sm" style="color: var(--text-secondary);">{{ v.notes }}</td>
+              <td class="type-body-sm" style="color: var(--text-secondary); white-space: nowrap;">{{ ago(v.created_at) }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -75,50 +145,97 @@
 
   {% if can_write %}
     <div class="card">
-      <h3>Document settings</h3>
-      <form method="post" action="/admin/documents/{{ doc.id }}/edit">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="row2">
-          <div class="field"><label>Title</label>
-            <input name="title" type="text" value="{{ doc.title }}" required></div>
-          <div class="field">
-            <label>Kind</label>
-            <select name="kind">
-              {% for k in ["policy", "deck", "video", "sample", "guide"] %}
-                <option value="{{ k }}"{% if doc.kind == k %} selected{% endif %}>{{ k }}</option>
-              {% endfor %}
-            </select>
+      <div class="card-header">
+        <div class="card-header-text"><div class="card-title">Document settings</div></div>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/documents/{{ doc.id }}/edit" class="form-stack">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="grid">
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="title" type="text" placeholder=" " value="{{ doc.title }}" required>
+                  <label class="cm-field-label">Title</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="kind">
+                    {% for k in ["policy", "deck", "video", "sample", "guide"] %}
+                      <option value="{{ k }}"{% if doc.kind == k %} selected{% endif %}>{{ k }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="cm-field-label">Kind</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Kind</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="field"><label>Description</label>
-          <input name="description" type="text" value="{{ doc.description }}"></div>
-        <div class="field"><label>Region</label>
-          <select name="region_id">
-            <option value="">All regions</option>
-            {% for r in regions_all %}
-              <option value="{{ r.id }}"{% if r.id == doc.region_id %} selected{% endif %}>{{ r.name }}</option>
-            {% endfor %}
-          </select></div>
-        <div class="field"><label>Grade cohort</label>
-          <select name="grade_cohort_id">
-            <option value="">All grade cohorts</option>
-            {% for g in grade_cohorts_all %}
-              <option value="{{ g.id }}"{% if g.id == doc.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
-            {% endfor %}
-          </select></div>
-        <label class="check"><input type="checkbox" name="is_active" value="1"
-          {% if doc.is_active %}checked{% endif %}><span>Visible to tutors</span></label>
-        <div class="btn-row mt">
-          <button class="btn btn-primary" type="submit">Save</button>
-        </div>
-      </form>
-      <form method="post" action="/admin/documents/{{ doc.id }}/archive" class="mt">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <input type="hidden" name="back" value="/admin/documents">
-        {% if doc.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
-        <button class="btn btn-sm{% if not doc.archived_at %} btn-danger{% endif %}" type="submit">
-          {{ "Restore document" if doc.archived_at else "Archive document" }}</button>
-      </form>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="description" type="text" placeholder=" " value="{{ doc.description }}">
+              <label class="cm-field-label">Description</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="region_id">
+                    <option value="">All regions</option>
+                    {% for r in regions_all %}
+                      <option value="{{ r.id }}"{% if r.id == doc.region_id %} selected{% endif %}>{{ r.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="cm-field-label">Region</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Region</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="grade_cohort_id">
+                    <option value="">All grade cohorts</option>
+                    {% for g in grade_cohorts_all %}
+                      <option value="{{ g.id }}"{% if g.id == doc.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="cm-field-label">Grade cohort</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Grade cohort</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label class="cm-checkbox">
+            <input type="checkbox" name="is_active" value="1" {% if doc.is_active %}checked{% endif %}>
+            <span class="cm-checkbox-box">
+              <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+            </span>
+            <span class="cm-checkbox-label">Visible to tutors</span>
+          </label>
+
+          <div><button class="btn btn-primary" type="submit">Save</button></div>
+        </form>
+
+        <div class="divider" style="margin: var(--space-24) 0;"></div>
+
+        <form method="post" action="/admin/documents/{{ doc.id }}/archive">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <input type="hidden" name="back" value="/admin/documents">
+          {% if doc.archived_at %}<input type="hidden" name="restore" value="1">{% endif %}
+          <button class="btn btn-sm{% if not doc.archived_at %} btn-destructive{% else %} btn-secondary{% endif %}" type="submit">
+            {{ "Restore document" if doc.archived_at else "Archive document" }}</button>
+        </form>
+      </div>
     </div>
   {% endif %}
 </main>

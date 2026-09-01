@@ -1,78 +1,138 @@
 {% set page_title = "Your account" %}
 {% include "partials/head.html" %}
-<div class="wrap">
-  <div class="page-head">
-    <div class="crumb"><a href="/dashboard">← Your onboarding</a></div>
-    <h1>Your account</h1>
+<style>
+  /* Page-level layout only: narrow single-column reading width, stacked
+     cards, and the read-only detail rows rendered as a definition list
+     (a table isn't right for single-record detail rows — see table.md's
+     "when not to use" guidance). */
+  .page-narrow { max-width: 720px; }
+  .page-head-block { margin-bottom: var(--space-24); }
+  .stack { display: flex; flex-direction: column; gap: var(--space-24); }
+  .detail-list { display: grid; grid-template-columns: auto 1fr; gap: var(--space-8) var(--space-16); margin: 0; }
+  .detail-list dt { color: var(--text-tertiary); }
+  .detail-list dd { margin: 0; color: var(--text-primary); }
+</style>
+<div class="container page-narrow">
+  <div class="page-head-block">
+    <a href="/dashboard" class="cm-link cm-link-sm" style="color: var(--text-secondary);">← Your onboarding</a>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-top: var(--space-8);">Your account</h1>
   </div>
 
-  <div class="card">
-    <form method="post" action="/profile">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <div class="field">
-        <label for="name">Your name</label>
-        <input id="name" name="name" type="text" value="{{ user.name }}">
-      </div>
-      <dl class="kv mt">
-        {% if user.email %}<dt>Email</dt><dd>{{ user.email }}</dd>{% endif %}
-        {% if user.phone %}<dt>Mobile</dt><dd>{{ user.phone }}</dd>{% endif %}
-        <dt>Region</dt><dd>{{ region.name if region else "Not set" }}</dd>
-        <dt>Joined</dt><dd>{{ fmt_date(user.created_at) }}</dd>
-      </dl>
-      <p class="hint">Email, mobile and region are managed by your mentor — ask them if
-        something needs changing.</p>
-      <div class="field mt">
-        <label for="password">Set a new password</label>
-        <input id="password" name="password" type="password" autocomplete="new-password">
-        <div class="hint">Leave blank to keep signing in with one-time codes.</div>
-      </div>
-      <button class="btn btn-primary" type="submit">Save</button>
-    </form>
-  </div>
+  <div class="stack">
 
-  <div class="card">
-    <h3>Policies you've acknowledged</h3>
-    {% if acks %}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Policy</th><th>Version</th><th>When</th></tr></thead>
-          <tbody>
-            {% for ack in acks %}
-              <tr>
-                <td>{{ ack.item_title }}</td>
-                <td>{% if ack.version_no %}v{{ ack.version_no }}{% else %}—{% endif %}</td>
-                <td class="nowrap">{{ fmt_datetime(ack.acknowledged_at) }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Personal information</div>
+        </div>
       </div>
-    {% else %}
-      <p class="small muted mb0">Nothing yet — policies show up during Training.</p>
-    {% endif %}
-  </div>
+      <div class="card-content">
+        <form method="post" action="/profile" class="form-stack" style="gap: var(--space-24);">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
 
-  <div class="card">
-    <h3>Your uploads</h3>
-    {% if submissions %}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Step</th><th>File</th><th>Status</th><th>When</th></tr></thead>
-          <tbody>
-            {% for sub in submissions %}
-              <tr>
-                <td>{{ sub.item_title }}</td>
-                <td><a href="/file/submission/{{ sub.id }}" target="_blank" rel="noopener">{{ sub.filename }}</a></td>
-                <td><span class="badge {{ 'done' if sub.status == 'approved' else ('rejected' if sub.status == 'rejected' else 'submitted') }}">{{ sub.status }}</span></td>
-                <td class="nowrap">{{ fmt_date(sub.submitted_at) }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="name" name="name" type="text" value="{{ user.name }}" placeholder=" ">
+              <label class="cm-field-label" for="name">Your name</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Your name</span></legend>
+              </fieldset>
+            </div>
+          </div>
+
+          <dl class="detail-list type-body-md">
+            {% if user.email %}<dt>Email</dt><dd>{{ user.email }}</dd>{% endif %}
+            {% if user.phone %}<dt>Mobile</dt><dd>{{ user.phone }}</dd>{% endif %}
+            <dt>Region</dt><dd>{{ region.name if region else "Not set" }}</dd>
+            <dt>Joined</dt><dd>{{ fmt_date(user.created_at) }}</dd>
+          </dl>
+          <p class="type-body-sm" style="color: var(--text-tertiary); margin: 0;">Email, mobile and region are managed by your mentor — ask them if something needs changing.</p>
+
+          <div class="divider"></div>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input id="password" name="password" type="password" autocomplete="new-password" placeholder=" ">
+              <label class="cm-field-label" for="password">Set a new password</label>
+              <fieldset class="cm-field-notch" aria-hidden="true">
+                <legend><span>Set a new password</span></legend>
+              </fieldset>
+            </div>
+            <div class="cm-field-helper">Leave blank to keep signing in with one-time codes.</div>
+          </div>
+
+          <div>
+            <button class="btn btn-md btn-primary" type="submit">Save</button>
+          </div>
+        </form>
       </div>
-    {% else %}
-      <p class="small muted mb0">Your headshot and intro video will appear here.</p>
-    {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Policies you've acknowledged</div>
+        </div>
+      </div>
+      {% if acks %}
+        <div class="table-wrap" role="region" aria-label="Acknowledged policies" tabindex="0">
+          <table class="table">
+            <thead><tr><th>Policy</th><th>Version</th><th>When</th></tr></thead>
+            <tbody>
+              {% for ack in acks %}
+                <tr>
+                  <td>{{ ack.item_title }}</td>
+                  <td>{% if ack.version_no %}v{{ ack.version_no }}{% else %}—{% endif %}</td>
+                  <td>{{ fmt_datetime(ack.acknowledged_at) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="card-content">
+          <div class="empty-state empty-state-inline" role="status">
+            <p class="empty-state-description">Nothing yet — policies show up during Training.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Your uploads</div>
+        </div>
+      </div>
+      {% if submissions %}
+        <div class="table-wrap" role="region" aria-label="Your uploads" tabindex="0">
+          <table class="table">
+            <thead><tr><th>Step</th><th>File</th><th>Status</th><th>When</th></tr></thead>
+            <tbody>
+              {% for sub in submissions %}
+                <tr>
+                  <td>{{ sub.item_title }}</td>
+                  <td><a class="cm-link" style="color: var(--text-brand);" href="/file/submission/{{ sub.id }}" target="_blank" rel="noopener">{{ sub.filename }}</a></td>
+                  <td>
+                    {% if sub.status == "approved" %}<span class="badge badge-success">{{ sub.status }}</span>
+                    {% elif sub.status == "rejected" %}<span class="badge badge-error">{{ sub.status }}</span>
+                    {% else %}<span class="badge badge-info">{{ sub.status }}</span>{% endif %}
+                  </td>
+                  <td>{{ fmt_date(sub.submitted_at) }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="card-content">
+          <div class="empty-state empty-state-inline" role="status">
+            <p class="empty-state-description">Your headshot and intro video will appear here.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
   </div>
 </div>
 {% include "partials/foot.html" %}

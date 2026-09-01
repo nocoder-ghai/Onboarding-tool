@@ -1,11 +1,19 @@
 {% set page_title = "Bulk-create tutors" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); }
+  @media (max-width: 768px) {
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Bulk-create tutor logins</h1>
-    <p class="muted small mb0">Upload a sheet of name, email, phone, region,
+  <div style="margin-bottom: var(--space-24);">
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin: 0 0 var(--space-8);">Bulk-create tutor logins</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">Upload a sheet of name, email, phone, region,
       grade cohort and DB ID. Each row becomes a tutor account with a
       generated password (<code>Cue@</code> plus their phone number) — copy
       these out to share with each tutor, they're shown only once. Region and
@@ -16,69 +24,87 @@
   </div>
 
   {% if result %}
-    <div class="card">
-      <h3>Import result</h3>
-      {% if result['created'] %}
-        <div class="flash ok"><span>✓</span>
-          <span>{{ len(result['created']) }} account(s) created.</span></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>DB ID</th><th>Grade cohort</th><th>Password</th></tr></thead>
-            <tbody>
-              {% for row in result['created'] %}
-                <tr>
-                  <td>{{ row['name'] }}</td>
-                  <td>{{ row['email'] or '—' }}</td>
-                  <td>{{ row['phone'] }}</td>
-                  <td>{{ row['db_id'] or '—' }}</td>
-                  <td>{{ row['grade_cohort'] }}</td>
-                  <td><code>{{ row['password'] }}</code></td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% endif %}
-      {% if result['skipped_count'] %}
-        <div class="flash error"><span>!</span>
-          <span>{{ result['skipped_count'] }} row(s) were skipped.</span></div>
-        <details class="editor" open>
-          <summary>Show skipped rows</summary>
-          <div><ul class="small muted">
-            {% for row in result['skipped'] %}<li>{{ row }}</li>{% endfor %}
-          </ul></div>
-        </details>
-      {% endif %}
-      <div class="btn-row mt"><a class="btn btn-sm btn-primary" href="/admin/tutors">See tutors</a></div>
+    <div class="card" style="margin-bottom: var(--space-16);">
+      <div class="card-header"><div class="card-header-text"><div class="card-title">Import result</div></div></div>
+      <div class="card-content">
+        {% if result['created'] %}
+          <div class="card card-success-tint card-compact" style="display: flex; align-items: center; gap: var(--space-8); margin-bottom: var(--space-16);">
+            <svg data-icon="submit" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.134 6.28251L10.0256 18.8483L8.4416 18.2829C8.4416 15.4101 6.30538 12.9428 3.32832 12.2114L3.77168 10.5256C6.77013 11.2622 9.16316 13.4453 9.95821 16.2449L19.7658 5.15166L21.134 6.28251Z" fill="currentColor"/></svg>
+            <span class="type-body-md" style="color: var(--text-success);">{{ len(result['created']) }} account(s) created.</span>
+          </div>
+          <div class="table-wrap" role="region" aria-label="Created accounts" tabindex="0">
+            <table class="table table-hoverable">
+              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>DB ID</th><th>Grade cohort</th><th>Password</th></tr></thead>
+              <tbody>
+                {% for row in result['created'] %}
+                  <tr>
+                    <td>{{ row['name'] }}</td>
+                    <td class="type-body-sm">{{ row['email'] or '—' }}</td>
+                    <td class="type-body-sm">{{ row['phone'] }}</td>
+                    <td class="type-body-sm">{{ row['db_id'] or '—' }}</td>
+                    <td class="type-body-sm">{{ row['grade_cohort'] }}</td>
+                    <td><code>{{ row['password'] }}</code></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+        {% if result['skipped_count'] %}
+          <div class="card card-error-tint card-compact" style="display: flex; align-items: center; gap: var(--space-8); margin: var(--space-16) 0;">
+            <svg data-icon="exclamation" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.5 18.6C13.5 19.4284 12.8284 20.1 12 20.1C11.1716 20.1 10.5 19.4284 10.5 18.6C10.5 17.7716 11.1716 17.1 12 17.1C12.8284 17.1 13.5 17.7716 13.5 18.6Z" fill="currentColor"/> <path d="M13.8838 4.2002L12.7959 15.0801H11.2041L10.1162 4.2002H13.8838Z" fill="currentColor"/></svg>
+            <span class="type-body-md" style="color: var(--text-error);">{{ result['skipped_count'] }} row(s) were skipped.</span>
+          </div>
+          <details class="card card-expandable" open>
+            <summary>
+              <div><div class="card-title">Show skipped rows</div></div>
+              <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+              </span>
+            </summary>
+            <div class="card-expand-body">
+              <ul style="margin: 0; padding-left: var(--space-20);">
+                {% for row in result['skipped'] %}<li class="type-body-sm" style="color: var(--text-secondary);">{{ row }}</li>{% endfor %}
+              </ul>
+            </div>
+          </details>
+        {% endif %}
+        <div style="margin-top: var(--space-16);"><a class="btn btn-sm btn-primary" href="/admin/tutors">See tutors</a></div>
+      </div>
     </div>
   {% endif %}
 
-  <div class="card">
-    <h3>Upload a CSV</h3>
-    <form method="post" action="/admin/tutors/bulk-create" enctype="multipart/form-data">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <div class="field">
-        <label for="file">CSV file</label>
-        <input id="file" name="file" type="file" accept=".csv,text/csv" required>
-      </div>
-      <button class="btn btn-primary" type="submit">Create accounts</button>
-    </form>
+  <div class="card" style="margin-bottom: var(--space-16);">
+    <div class="card-header"><div class="card-header-text"><div class="card-title">Upload a CSV</div></div></div>
+    <div class="card-content">
+      <form method="post" action="/admin/tutors/bulk-create" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start;">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <label class="type-label-md" style="color: var(--text-primary); display: flex; flex-direction: column; gap: var(--space-8);">
+          CSV file
+          <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+        </label>
+        <button class="btn btn-primary" type="submit">Create accounts</button>
+      </form>
+    </div>
   </div>
 
   <div class="card">
-    <h3>File format</h3>
-    <p class="small muted">A header row is detected automatically —
-      <code>name</code>, <code>email</code>, <code>phone</code>, an optional
-      <code>region</code>, an optional <code>grade</code> (matched by name
-      — e.g. {{ ", ".join([g.name for g in grade_cohorts_all]) }}) and an
-      optional <code>db id</code>. Without a header, columns are read in that
-      order. A phone number is required for every row since it's used to
-      generate the password; rows missing one, with an invalid email/phone or
-      grade cohort, or matching an existing account (by email, phone, or a DB
-      ID already assigned to someone else) are skipped.</p>
-    <pre class="diff">name,email,phone,region,grade,db id
+    <div class="card-header"><div class="card-header-text"><div class="card-title">File format</div></div></div>
+    <div class="card-content">
+      <p class="type-body-sm" style="color: var(--text-secondary);">A header row is detected automatically —
+        <code>name</code>, <code>email</code>, <code>phone</code>, an optional
+        <code>region</code>, an optional <code>grade</code> (matched by name
+        — e.g. {{ ", ".join([g.name for g in grade_cohorts_all]) }}) and an
+        optional <code>db id</code>. Without a header, columns are read in that
+        order. A phone number is required for every row since it's used to
+        generate the password; rows missing one, with an invalid email/phone or
+        grade cohort, or matching an existing account (by email, phone, or a DB
+        ID already assigned to someone else) are skipped.</p>
+      <pre style="background: var(--bg-secondary); border: 1px solid var(--border-tertiary); padding: var(--space-12); overflow-x: auto; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">name,email,phone,region,grade,db id
 Ananya Rao,ananya@example.com,9876543210,North,K-5,TCH-10234
 Marcus Bell,marcus@example.com,9123456780,South,9-12,TCH-10577</pre>
+    </div>
   </div>
 </main>
 </div>

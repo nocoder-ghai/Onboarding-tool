@@ -1,47 +1,66 @@
 {% set page_title = "Documents" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); }
+  @media (max-width: 768px) {
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Documents</h1>
-    <p class="muted small mb0">Policy PDFs, slide decks, training videos and samples.
+  <div style="margin-bottom: var(--space-32);">
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">Documents</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">Policy PDFs, slide decks, training videos and samples.
       Every upload becomes a new version — tutors only see the current one, and old
       versions stay on record with their effective dates.</p>
   </div>
 
-  <div class="card card-tight">
-    <div class="split">
-      <span class="small muted">{{ plural(len(documents), "document") }}</span>
-      <span class="split-end">
-        <a class="btn btn-sm" href="/admin/documents{{ '' if show_archived else '?archived=1' }}">
-          {{ "Hide archived" if show_archived else "Show archived" }}</a>
-      </span>
+  <div class="card card-compact" style="margin-bottom: var(--space-24);">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-16);">
+      <span class="type-body-sm" style="color: var(--text-secondary);">{{ plural(len(documents), "document") }}</span>
+      <a class="btn btn-sm btn-secondary" href="/admin/documents{{ '' if show_archived else '?archived=1' }}">
+        {{ "Hide archived" if show_archived else "Show archived" }}</a>
     </div>
   </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Document</th><th>Kind</th><th>Attached to</th><th>Region</th><th>Grade cohort</th>
-        <th>Current</th><th>Versions</th><th></th></tr></thead>
+  <div class="table-wrap" role="region" aria-label="Documents" tabindex="0">
+    <table class="table table-hoverable">
+      <thead>
+        <tr>
+          <th>Document</th>
+          <th>Kind</th>
+          <th>Attached to</th>
+          <th>Region</th>
+          <th>Grade cohort</th>
+          <th>Current</th>
+          <th class="cell-right">Versions</th>
+          <th></th>
+        </tr>
+      </thead>
       <tbody>
         {% for doc in documents %}
-          <tr{% if doc.archived_at %} class="archived"{% endif %}>
-            <td><a href="/admin/documents/{{ doc.id }}"><strong>{{ doc.title }}</strong></a>
-              {% if doc.description %}<div class="tiny muted">{{ truncate(doc.description, 64) }}</div>{% endif %}</td>
-            <td><span class="badge plain">{{ doc.kind }}</span></td>
-            <td class="tiny">{{ doc.target }}</td>
-            <td class="tiny">{{ doc.region_label }}</td>
-            <td class="tiny">{{ doc.grade_cohort_label }}</td>
-            <td class="tiny">
+          <tr>
+            <td>
+              <a class="cm-link cm-link-md" style="color: var(--text-primary);" href="/admin/documents/{{ doc.id }}">{{ doc.title }}</a>
+              {% if doc.archived_at %} <span class="badge badge-neutral-strong">Archived</span>{% endif %}
+              {% if doc.description %}<div class="type-body-sm" style="color: var(--text-secondary); margin-top: var(--space-4);">{{ truncate(doc.description, 64) }}</div>{% endif %}
+            </td>
+            <td><span class="badge">{{ doc.kind }}</span></td>
+            <td class="type-body-sm" style="color: var(--text-secondary);">{{ doc.target }}</td>
+            <td class="type-body-sm" style="color: var(--text-secondary);">{{ doc.region_label }}</td>
+            <td class="type-body-sm" style="color: var(--text-secondary);">{{ doc.grade_cohort_label }}</td>
+            <td class="type-body-sm" style="color: var(--text-secondary);">
               {% if doc.current %}
                 v{{ doc.current.version_no }} · {{ fmt_date(doc.current.effective_from) }}
               {% else %}
-                <span style="color:var(--red)">No file yet</span>
+                <span class="badge badge-error">No file yet</span>
               {% endif %}
             </td>
-            <td class="num">{{ doc.version_count }}</td>
-            <td class="right"><a class="btn btn-xs" href="/admin/documents/{{ doc.id }}">Manage</a></td>
+            <td class="cell-right">{{ doc.version_count }}</td>
+            <td class="cell-right"><a class="btn btn-sm btn-secondary" href="/admin/documents/{{ doc.id }}">Manage</a></td>
           </tr>
         {% endfor %}
       </tbody>
@@ -49,73 +68,144 @@
   </div>
 
   {% if can_write %}
-    <div class="card mt">
-      <h3>Add a document</h3>
-      <form method="post" action="/admin/documents/new" enctype="multipart/form-data">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="row2">
-          <div class="field"><label>Title</label>
-            <input name="title" type="text" required></div>
-          <div class="field">
-            <label>Kind</label>
-            <select name="kind">
-              <option value="policy">Policy (read &amp; acknowledge)</option>
-              <option value="deck">Slide deck</option>
-              <option value="video">Training video (or a photo, if there's no video yet)</option>
-              <option value="sample">Sample for tutors</option>
-              <option value="guide">Guide</option>
-            </select>
-          </div>
+    <div class="card" style="margin-top: var(--space-24);">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Add a document</div>
         </div>
-        <div class="field"><label>Description</label>
-          <input name="description" type="text"></div>
-        <div class="row3">
-          <div class="field">
-            <label>Attach to</label>
-            <select name="target_type">
-              <option value="none">Nothing yet</option>
-              <option value="stage">A stage</option>
-              <option value="component">A component</option>
-              <option value="sub_item">A step (use this for policies)</option>
-            </select>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/documents/new" enctype="multipart/form-data" class="form-stack">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="grid">
+            <div class="col-8 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="title" type="text" placeholder=" " required>
+                  <label class="cm-field-label">Title</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="kind">
+                    <option value="policy">Policy (read &amp; acknowledge)</option>
+                    <option value="deck">Slide deck</option>
+                    <option value="video">Training video (or a photo, if there's no video yet)</option>
+                    <option value="sample">Sample for tutors</option>
+                    <option value="guide">Guide</option>
+                  </select>
+                  <span class="cm-field-label">Kind</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Kind</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="field">
-            <label>Which one</label>
-            <select name="target_id">
-              <option value="">—</option>
-              {% for s in stages %}<option value="{{ s.id }}">Stage: {{ s.title }}</option>{% endfor %}
-              {% for c in components %}<option value="{{ c.id }}">Component: {{ c.title }}</option>{% endfor %}
-              {% for i in items %}<option value="{{ i.id }}">Step: {{ i.title }}</option>{% endfor %}
-            </select>
+
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="description" type="text" placeholder=" ">
+              <label class="cm-field-label">Description</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
+            </div>
           </div>
-          <div class="field">
-            <label>Region</label>
-            <select name="region_id">
-              <option value="">All regions</option>
-              {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
-            </select>
+
+          <div class="grid">
+            <div class="col-3 col-md-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="target_type">
+                    <option value="none">Nothing yet</option>
+                    <option value="stage">A stage</option>
+                    <option value="component">A component</option>
+                    <option value="sub_item">A step (use this for policies)</option>
+                  </select>
+                  <span class="cm-field-label">Attach to</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Attach to</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-3 col-md-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="target_id">
+                    <option value="">—</option>
+                    {% for s in stages %}<option value="{{ s.id }}">Stage: {{ s.title }}</option>{% endfor %}
+                    {% for c in components %}<option value="{{ c.id }}">Component: {{ c.title }}</option>{% endfor %}
+                    {% for i in items %}<option value="{{ i.id }}">Step: {{ i.title }}</option>{% endfor %}
+                  </select>
+                  <span class="cm-field-label">Which one</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Which one</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-3 col-md-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="region_id">
+                    <option value="">All regions</option>
+                    {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                  </select>
+                  <span class="cm-field-label">Region</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Region</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-3 col-md-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="grade_cohort_id">
+                    <option value="">All grade cohorts</option>
+                    {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+                  </select>
+                  <span class="cm-field-label">Grade cohort</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Grade cohort</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="field">
-            <label>Grade cohort</label>
-            <select name="grade_cohort_id">
-              <option value="">All grade cohorts</option>
-              {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
-            </select>
+
+          <div class="grid">
+            <div class="col-4 col-sm-12">
+              <label class="type-label-sm" style="display: block; color: var(--text-secondary); margin-bottom: var(--space-4);">File</label>
+              <input name="file" type="file">
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="effective_from" type="date" placeholder=" ">
+                  <label class="cm-field-label">Effective from</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Effective from</span></legend></fieldset>
+                </div>
+                <div class="cm-field-helper">Blank = live immediately.</div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="notes" type="text" placeholder=" ">
+                  <label class="cm-field-label">Version note</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Version note</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="row3">
-          <div class="field"><label>File</label>
-            <input name="file" type="file"></div>
-          <div class="field"><label>Effective from</label>
-            <input name="effective_from" type="date">
-            <div class="hint">Blank = live immediately.</div></div>
-          <div class="field"><label>Version note</label>
-            <input name="notes" type="text"></div>
-        </div>
-        <label class="check"><input type="checkbox" name="is_active" value="1" checked>
-          <span>Visible to tutors</span></label>
-        <div class="btn-row mt"><button class="btn btn-primary" type="submit">Add document</button></div>
-      </form>
+
+          <label class="cm-checkbox">
+            <input type="checkbox" name="is_active" value="1" checked>
+            <span class="cm-checkbox-box">
+              <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+            </span>
+            <span class="cm-checkbox-label">Visible to tutors</span>
+          </label>
+
+          <div>
+            <button class="btn btn-primary" type="submit">Add document</button>
+          </div>
+        </form>
+      </div>
     </div>
   {% endif %}
 </main>

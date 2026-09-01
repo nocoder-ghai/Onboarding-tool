@@ -1,143 +1,290 @@
 {% set page_title = "Orientation" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: admin sidebar + main shell, and small structural
+     helpers for arranging design-system components on this page. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); display: flex; flex-direction: column; gap: var(--space-24); }
+  .page-head { display: flex; flex-direction: column; gap: var(--space-4); }
+  .inline-form { display: inline-block; }
+  .kv-list { display: grid; grid-template-columns: max-content 1fr; column-gap: var(--space-16); row-gap: var(--space-8); margin: 0; }
+  .kv-list dt { color: var(--text-tertiary); }
+  .kv-list dd { margin: 0; color: var(--text-primary); }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
   <div class="page-head">
-    <h1>Orientation</h1>
-    <p class="muted small mb0">Zoom link, date, host and deck for the Day 1 call.
+    <h1 class="type-heading-lg" style="color: var(--text-primary);">Orientation</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">Zoom link, date, host and deck for the Day 1 call.
       Attendance here is what unlocks Stage 2.</p>
   </div>
 
   {% if stage %}
-    <div class="card card-tight">
-      <div class="split">
-        <span class="small">Agenda is managed on the stage:
-          <a href="/admin/stages/{{ stage.id }}">{{ stage.title }}</a></span>
-        <span class="split-end tiny muted">{{ plural(len(agenda), "agenda item") }}</span>
+    <div class="card card-compact">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-16);">
+        <span class="type-body-sm" style="color: var(--text-secondary);">Agenda is managed on the stage:
+          <a href="/admin/stages/{{ stage.id }}" class="cm-link" style="color: var(--text-brand);">{{ stage.title }}</a></span>
+        <span class="type-body-sm" style="color: var(--text-tertiary);">{{ plural(len(agenda), "agenda item") }}</span>
       </div>
     </div>
   {% endif %}
 
   {% for s in sessions %}
     <div class="card">
-      <div class="card-row">
-        <div>
-          <h3 class="mb0">{{ s.title }}</h3>
-          <p class="small muted mb0">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">{{ s.title }}</div>
+          <div class="card-description">
             {{ fmt_datetime(s.starts_at) }} · {{ s.duration_minutes }} min ·
             {{ s.host_name or "no host set" }} · {{ s.region_label }}
-          </p>
-        </div>
-        <div>
-          {% if s.is_active %}<span class="badge done">Active</span>
-          {% else %}<span class="badge locked">Inactive</span>{% endif %}
-        </div>
-      </div>
-      <dl class="kv mt">
-        <dt>Zoom link</dt>
-        <dd>{% if s.zoom_link %}<a href="{{ s.zoom_link }}" target="_blank" rel="noopener">{{ truncate(s.zoom_link, 56) }}</a>{% else %}<span style="color:var(--red)">not set</span>{% endif %}</dd>
-        <dt>Invited</dt><dd>{{ s.invited }}</dd>
-        <dt>Attended</dt><dd>{{ s.attended }}</dd>
-        {% if s.deck %}<dt>Deck</dt><dd><a href="/admin/documents/{{ s.deck.id }}">{{ s.deck.title }}</a></dd>{% endif %}
-      </dl>
-      {% if s.notes %}<p class="small muted mt">{{ s.notes }}</p>{% endif %}
-
-      {% if can_write %}
-        <div class="btn-row mt">
-          <form method="post" action="/admin/orientation/{{ s.id }}/invite" class="inline-form">
-            <input type="hidden" name="_csrf" value="{{ csrf }}">
-            <button class="btn btn-sm btn-primary" type="submit">Invite tutors who haven't attended</button>
-          </form>
-          <a class="btn btn-sm" href="/admin/attendance/import">Import attendance CSV</a>
-        </div>
-        <details class="editor">
-          <summary>Edit this session</summary>
-          <div>
-            <form method="post" action="/admin/orientation/{{ s.id }}/edit">
-              <input type="hidden" name="_csrf" value="{{ csrf }}">
-              <div class="row2">
-                <div class="field"><label>Title</label>
-                  <input name="title" type="text" value="{{ s.title }}" required></div>
-                <div class="field"><label>Zoom link</label>
-                  <input name="zoom_link" type="url" value="{{ s.zoom_link }}"></div>
-              </div>
-              <div class="row3">
-                <div class="field"><label>Starts at</label>
-                  <input name="starts_at" type="datetime-local"
-                         value="{{ s.starts_at.replace(' ', 'T') if s.starts_at else '' }}"></div>
-                <div class="field"><label>Duration (min)</label>
-                  <input name="duration_minutes" type="number" min="15" value="{{ s.duration_minutes }}"></div>
-                <div class="field"><label>Host</label>
-                  <input name="host_name" type="text" value="{{ s.host_name }}"></div>
-              </div>
-              <div class="row3">
-                <div class="field"><label>Region</label>
-                  <select name="region_id">
-                    <option value="">All regions</option>
-                    {% for r in regions_all %}
-                      <option value="{{ r.id }}"{% if r.id == s.region_id %} selected{% endif %}>{{ r.name }}</option>
-                    {% endfor %}
-                  </select></div>
-                <div class="field"><label>Slide deck</label>
-                  <select name="deck_document_id">
-                    <option value="">None</option>
-                    {% for d in decks %}
-                      <option value="{{ d.id }}"{% if d.id == s.deck_document_id %} selected{% endif %}>{{ d.title }}</option>
-                    {% endfor %}
-                  </select></div>
-                <div class="field" style="align-self:end">
-                  <label class="check"><input type="checkbox" name="is_active" value="1"
-                    {% if s.is_active %}checked{% endif %}><span>Active</span></label>
-                </div>
-              </div>
-              <div class="field"><label>Note for tutors</label>
-                <textarea name="notes">{{ s.notes }}</textarea></div>
-              <button class="btn btn-sm btn-primary" type="submit">Save session</button>
-            </form>
           </div>
-        </details>
-      {% endif %}
+        </div>
+        {% if s.is_active %}<span class="badge badge-success">Active</span>
+        {% else %}<span class="badge">Inactive</span>{% endif %}
+      </div>
+      <div class="card-content" style="display: flex; flex-direction: column; gap: var(--space-16);">
+        <dl class="kv-list">
+          <dt class="type-label-sm">Zoom link</dt>
+          <dd class="type-body-md">{% if s.zoom_link %}<a href="{{ s.zoom_link }}" target="_blank" rel="noopener" class="cm-link" style="color: var(--text-brand);">{{ truncate(s.zoom_link, 56) }}</a>{% else %}<span style="color: var(--text-error);">not set</span>{% endif %}</dd>
+          <dt class="type-label-sm">Invited</dt><dd class="type-body-md">{{ s.invited }}</dd>
+          <dt class="type-label-sm">Attended</dt><dd class="type-body-md">{{ s.attended }}</dd>
+          {% if s.deck %}<dt class="type-label-sm">Deck</dt><dd class="type-body-md"><a href="/admin/documents/{{ s.deck.id }}" class="cm-link" style="color: var(--text-brand);">{{ s.deck.title }}</a></dd>{% endif %}
+        </dl>
+        {% if s.notes %}<p class="type-body-sm" style="color: var(--text-secondary); margin: 0;">{{ s.notes }}</p>{% endif %}
+
+        {% if can_write %}
+          <div style="display: flex; flex-wrap: wrap; gap: var(--space-8);">
+            <form method="post" action="/admin/orientation/{{ s.id }}/invite" class="inline-form">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <button class="btn btn-sm btn-primary" type="submit">Invite tutors who haven't attended</button>
+            </form>
+            <a class="btn btn-sm btn-secondary" href="/admin/attendance/import">Import attendance CSV</a>
+          </div>
+
+          <details class="card card-expandable">
+            <summary>
+              <div><div class="card-title">Edit this session</div></div>
+              <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+              </span>
+            </summary>
+            <div class="card-expand-body">
+              <form method="post" action="/admin/orientation/{{ s.id }}/edit" class="form-stack" style="gap: var(--space-24);">
+                <input type="hidden" name="_csrf" value="{{ csrf }}">
+                <div class="grid">
+                  <div class="col-6 col-sm-12">
+                    <div class="cm-field">
+                      <div class="cm-field-wrap">
+                        <input name="title" type="text" value="{{ s.title }}" placeholder=" " required>
+                        <label class="cm-field-label">Title</label>
+                        <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-6 col-sm-12">
+                    <div class="cm-field">
+                      <div class="cm-field-wrap">
+                        <input name="zoom_link" type="url" value="{{ s.zoom_link }}" placeholder=" ">
+                        <label class="cm-field-label">Zoom link</label>
+                        <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Zoom link</span></legend></fieldset>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid">
+                  <div class="col-4 col-sm-12">
+                    <div class="cm-field">
+                      <div class="cm-field-wrap">
+                        <input name="starts_at" type="datetime-local" placeholder=" "
+                               value="{{ s.starts_at.replace(' ', 'T') if s.starts_at else '' }}">
+                        <label class="cm-field-label">Starts at</label>
+                        <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Starts at</span></legend></fieldset>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-4 col-sm-12">
+                    <div class="cm-field">
+                      <div class="cm-field-wrap">
+                        <input name="duration_minutes" type="number" min="15" value="{{ s.duration_minutes }}" placeholder=" ">
+                        <label class="cm-field-label">Duration (min)</label>
+                        <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Duration (min)</span></legend></fieldset>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-4 col-sm-12">
+                    <div class="cm-field">
+                      <div class="cm-field-wrap">
+                        <input name="host_name" type="text" value="{{ s.host_name }}" placeholder=" ">
+                        <label class="cm-field-label">Host</label>
+                        <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Host</span></legend></fieldset>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid">
+                  <div class="col-4 col-sm-12">
+                    <div class="cm-field">
+                      <div class="cm-field-wrap">
+                        <select name="region_id">
+                          <option value="">All regions</option>
+                          {% for r in regions_all %}
+                            <option value="{{ r.id }}"{% if r.id == s.region_id %} selected{% endif %}>{{ r.name }}</option>
+                          {% endfor %}
+                        </select>
+                        <span class="cm-field-label">Region</span>
+                        <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Region</span></legend></fieldset>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-4 col-sm-12">
+                    <div class="cm-field">
+                      <div class="cm-field-wrap">
+                        <select name="deck_document_id">
+                          <option value="">None</option>
+                          {% for d in decks %}
+                            <option value="{{ d.id }}"{% if d.id == s.deck_document_id %} selected{% endif %}>{{ d.title }}</option>
+                          {% endfor %}
+                        </select>
+                        <span class="cm-field-label">Slide deck</span>
+                        <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Slide deck</span></legend></fieldset>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-4 col-sm-12" style="display: flex; align-items: center;">
+                    <label class="cm-checkbox">
+                      <input type="checkbox" name="is_active" value="1"{% if s.is_active %} checked{% endif %}>
+                      <span class="cm-checkbox-box">
+                        <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+                      </span>
+                      <span class="cm-checkbox-label">Active</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="cm-field">
+                  <div class="cm-field-wrap">
+                    <textarea name="notes" placeholder=" " rows="3">{{ s.notes }}</textarea>
+                    <label class="cm-field-label">Note for tutors</label>
+                    <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Note for tutors</span></legend></fieldset>
+                  </div>
+                </div>
+                <div style="display: flex;">
+                  <button class="btn btn-sm btn-primary" type="submit">Save session</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        {% endif %}
+      </div>
     </div>
   {% endfor %}
 
   {% if can_write %}
     <div class="card">
-      <h3>Schedule a session</h3>
-      <form method="post" action="/admin/orientation/new">
-        <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <div class="row2">
-          <div class="field"><label>Title</label>
-            <input name="title" type="text" value="Cuemath Tutor Orientation" required></div>
-          <div class="field"><label>Zoom link</label>
-            <input name="zoom_link" type="url" placeholder="https://…"></div>
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">Schedule a session</div>
         </div>
-        <div class="row3">
-          <div class="field"><label>Starts at</label>
-            <input name="starts_at" type="datetime-local"></div>
-          <div class="field"><label>Duration (min)</label>
-            <input name="duration_minutes" type="number" min="15" value="60"></div>
-          <div class="field"><label>Host</label>
-            <input name="host_name" type="text"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Region</label>
-            <select name="region_id">
-              <option value="">All regions</option>
-              {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
-            </select></div>
-          <div class="field"><label>Slide deck</label>
-            <select name="deck_document_id">
-              <option value="">None</option>
-              {% for d in decks %}<option value="{{ d.id }}">{{ d.title }}</option>{% endfor %}
-            </select></div>
-        </div>
-        <div class="field"><label>Note for tutors</label>
-          <textarea name="notes"></textarea></div>
-        <label class="check"><input type="checkbox" name="is_active" value="1" checked>
-          <span>Active</span></label>
-        <div class="btn-row mt"><button class="btn btn-primary" type="submit">Create session</button></div>
-      </form>
+      </div>
+      <div class="card-content">
+        <form method="post" action="/admin/orientation/new" class="form-stack" style="gap: var(--space-24);">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <div class="grid">
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="title" type="text" value="Cuemath Tutor Orientation" placeholder=" " required>
+                  <label class="cm-field-label">Title</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="zoom_link" type="url" placeholder=" ">
+                  <label class="cm-field-label">Zoom link</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Zoom link</span></legend></fieldset>
+                </div>
+                <div class="cm-field-helper">https://…</div>
+              </div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="starts_at" type="datetime-local" placeholder=" ">
+                  <label class="cm-field-label">Starts at</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Starts at</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="duration_minutes" type="number" min="15" value="60" placeholder=" ">
+                  <label class="cm-field-label">Duration (min)</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Duration (min)</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="host_name" type="text" placeholder=" ">
+                  <label class="cm-field-label">Host</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Host</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="region_id">
+                    <option value="">All regions</option>
+                    {% for r in regions_all %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                  </select>
+                  <span class="cm-field-label">Region</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Region</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <select name="deck_document_id">
+                    <option value="">None</option>
+                    {% for d in decks %}<option value="{{ d.id }}">{{ d.title }}</option>{% endfor %}
+                  </select>
+                  <span class="cm-field-label">Slide deck</span>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Slide deck</span></legend></fieldset>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <textarea name="notes" placeholder=" " rows="3"></textarea>
+              <label class="cm-field-label">Note for tutors</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Note for tutors</span></legend></fieldset>
+            </div>
+          </div>
+          <label class="cm-checkbox">
+            <input type="checkbox" name="is_active" value="1" checked>
+            <span class="cm-checkbox-box">
+              <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+            </span>
+            <span class="cm-checkbox-label">Active</span>
+          </label>
+          <div style="display: flex;">
+            <button class="btn btn-md btn-primary" type="submit">Create session</button>
+          </div>
+        </form>
+      </div>
     </div>
   {% endif %}
 </main>

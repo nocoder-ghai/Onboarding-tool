@@ -1,72 +1,125 @@
-<form method="post" action="/admin/items/{{ item.id }}/edit">
+<form method="post" action="/admin/items/{{ item.id }}/edit" class="form-stack">
   <input type="hidden" name="_csrf" value="{{ csrf }}">
   <input type="hidden" name="back" value="/admin/components/{{ comp.id }}">
-  <div class="row2">
-    <div class="field"><label>Title</label>
-      <input name="title" type="text" value="{{ item.title }}" required></div>
-    <div class="field">
-      <label>Type</label>
-      <select name="kind">
-        <option value="task"{% if item.kind == "task" %} selected{% endif %}>Task</option>
-        <option value="policy"{% if item.kind == "policy" %} selected{% endif %}>Policy</option>
-        <option value="upload"{% if item.kind == "upload" %} selected{% endif %}>Upload</option>
-        <option value="link"{% if item.kind == "link" %} selected{% endif %}>Link</option>
-        <option value="group"{% if item.kind == "group" %} selected{% endif %}>Group</option>
-      </select>
+  <div class="grid">
+    <div class="col-6 col-sm-12">
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <input name="title" type="text" value="{{ item.title }}" placeholder=" " required>
+          <label class="cm-field-label">Title</label>
+          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Title</span></legend></fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-12">
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select name="kind">
+            <option value="task"{% if item.kind == "task" %} selected{% endif %}>Task</option>
+            <option value="policy"{% if item.kind == "policy" %} selected{% endif %}>Policy</option>
+            <option value="upload"{% if item.kind == "upload" %} selected{% endif %}>Upload</option>
+            <option value="link"{% if item.kind == "link" %} selected{% endif %}>Link</option>
+            <option value="group"{% if item.kind == "group" %} selected{% endif %}>Group</option>
+          </select>
+          <span class="cm-field-label">Type</span>
+          <fieldset class="cm-field-notch"><legend><span>Type</span></legend></fieldset>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="field"><label>Description</label>
-    <textarea name="description">{{ item.description }}</textarea></div>
-  <div class="field"><label>Instructions</label>
-    <textarea name="instructions">{{ item.instructions }}</textarea></div>
-  <div class="row3">
-    <div class="field">
-      <label>Nest under</label>
-      <select name="parent_id">
-        <option value="">Top level</option>
-        {% for g in groups %}
-          {% if g.id != item.id %}
-            <option value="{{ g.id }}"{% if g.id == item.parent_id %} selected{% endif %}>{{ g.title }}</option>
-          {% endif %}
-        {% endfor %}
-      </select>
-    </div>
-    <div class="field">
-      <label>Region</label>
-      <select name="region_id">
-        <option value="">All regions</option>
-        {% for r in regions_all %}
-          <option value="{{ r.id }}"{% if r.id == item.region_id %} selected{% endif %}>{{ r.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="field">
-      <label>Grade cohort</label>
-      <select name="grade_cohort_id">
-        <option value="">All grade cohorts</option>
-        {% for g in grade_cohorts_all %}
-          <option value="{{ g.id }}"{% if g.id == item.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="field">
-      <label>Upload accepts</label>
-      <select name="accept_mime">
-        <option value=""{% if not item.accept_mime %} selected{% endif %}>n/a</option>
-        <option value="image/*"{% if item.accept_mime == "image/*" %} selected{% endif %}>Images</option>
-        <option value="video/*"{% if item.accept_mime == "video/*" %} selected{% endif %}>Video</option>
-        <option value="application/pdf"{% if item.accept_mime == "application/pdf" %} selected{% endif %}>PDF</option>
-      </select>
+  <div class="cm-field">
+    <div class="cm-field-wrap">
+      <textarea name="description" placeholder=" " rows="2">{{ item.description }}</textarea>
+      <label class="cm-field-label">Description</label>
+      <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Description</span></legend></fieldset>
     </div>
   </div>
-  <div class="row2">
-    <div class="field"><label>Max upload size (MB)</label>
-      <input name="max_upload_mb" type="number" min="1"
-             value="{{ item.max_upload_mb if item.max_upload_mb else '' }}"></div>
-    <div class="field" style="align-self:end">
-      <label class="check"><input type="checkbox" name="is_mandatory" value="1"
-        {% if item.is_mandatory %}checked{% endif %}><span>Mandatory</span></label>
+  <div class="cm-field">
+    <div class="cm-field-wrap">
+      <textarea name="instructions" placeholder=" " rows="2">{{ item.instructions }}</textarea>
+      <label class="cm-field-label">Instructions</label>
+      <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Instructions</span></legend></fieldset>
     </div>
   </div>
-  <button class="btn btn-sm btn-primary" type="submit">Save step</button>
+  <div class="grid">
+    <div class="col-3 col-sm-12">
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select name="parent_id"{% if not item.parent_id %} class="is-placeholder"{% endif %}>
+            <option value=""{% if not item.parent_id %} selected{% endif %}>Top level</option>
+            {% for g in groups %}
+              {% if g.id != item.id %}
+                <option value="{{ g.id }}"{% if g.id == item.parent_id %} selected{% endif %}>{{ g.title }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <span class="cm-field-label">Nest under</span>
+          <fieldset class="cm-field-notch"><legend><span>Nest under</span></legend></fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="col-3 col-sm-12">
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select name="region_id"{% if not item.region_id %} class="is-placeholder"{% endif %}>
+            <option value=""{% if not item.region_id %} selected{% endif %}>All regions</option>
+            {% for r in regions_all %}
+              <option value="{{ r.id }}"{% if r.id == item.region_id %} selected{% endif %}>{{ r.name }}</option>
+            {% endfor %}
+          </select>
+          <span class="cm-field-label">Region</span>
+          <fieldset class="cm-field-notch"><legend><span>Region</span></legend></fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="col-3 col-sm-12">
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select name="grade_cohort_id"{% if not item.grade_cohort_id %} class="is-placeholder"{% endif %}>
+            <option value=""{% if not item.grade_cohort_id %} selected{% endif %}>All grade cohorts</option>
+            {% for g in grade_cohorts_all %}
+              <option value="{{ g.id }}"{% if g.id == item.grade_cohort_id %} selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+          </select>
+          <span class="cm-field-label">Grade cohort</span>
+          <fieldset class="cm-field-notch"><legend><span>Grade cohort</span></legend></fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="col-3 col-sm-12">
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <select name="accept_mime"{% if not item.accept_mime %} class="is-placeholder"{% endif %}>
+            <option value=""{% if not item.accept_mime %} selected{% endif %}>n/a</option>
+            <option value="image/*"{% if item.accept_mime == "image/*" %} selected{% endif %}>Images</option>
+            <option value="video/*"{% if item.accept_mime == "video/*" %} selected{% endif %}>Video</option>
+            <option value="application/pdf"{% if item.accept_mime == "application/pdf" %} selected{% endif %}>PDF</option>
+          </select>
+          <span class="cm-field-label">Upload accepts</span>
+          <fieldset class="cm-field-notch"><legend><span>Upload accepts</span></legend></fieldset>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="col-6 col-sm-12">
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <input name="max_upload_mb" type="number" min="1" placeholder=" "
+                 value="{{ item.max_upload_mb if item.max_upload_mb else '' }}">
+          <label class="cm-field-label">Max upload size (MB)</label>
+          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Max upload size (MB)</span></legend></fieldset>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-12" style="display: flex; align-items: center;">
+      <label class="cm-checkbox">
+        <input type="checkbox" name="is_mandatory" value="1"
+          {% if item.is_mandatory %}checked{% endif %}>
+        <span class="cm-checkbox-box"><svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg></span>
+        <span class="cm-checkbox-label">Mandatory</span>
+      </label>
+    </div>
+  </div>
+  <div><button class="btn btn-sm btn-primary" type="submit">Save step</button></div>
 </form>

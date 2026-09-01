@@ -1,76 +1,99 @@
 {% set page_title = "Settings & copy" %}
 {% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell shared by admin pages. */
+  .admin-shell { display: flex; min-height: 100vh; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); background: var(--bg-secondary);
+    display: flex; flex-direction: column; gap: var(--space-24); }
+  @media (max-width: 768px) {
+    .admin-shell { flex-direction: column; }
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
 <main>
-  <div class="page-head">
-    <h1>Settings &amp; copy</h1>
-    <p class="muted small mb0">One-off wording and behaviour toggles, so none of it
+  <div>
+    <h1 class="type-heading-lg" style="color: var(--text-primary); margin-bottom: var(--space-4);">Settings &amp; copy</h1>
+    <p class="type-body-md" style="color: var(--text-secondary);">One-off wording and behaviour toggles, so none of it
       lives in code.</p>
   </div>
 
   <div class="card">
-    <form method="post" action="/admin/settings">
-      <input type="hidden" name="_csrf" value="{{ csrf }}">
-      {% for s in settings %}
-        <div class="field">
-          <label for="{{ s.key }}">{{ s.label }}</label>
-          {% if s.kind == "textarea" %}
-            <textarea id="{{ s.key }}" name="{{ s.key }}">{{ s.value }}</textarea>
-          {% elif s.kind == "number" %}
-            <input id="{{ s.key }}" name="{{ s.key }}" type="number" value="{{ s.value }}">
-          {% else %}
-            <input id="{{ s.key }}" name="{{ s.key }}" type="text" value="{{ s.value }}">
-          {% endif %}
-          <div class="hint"><code>{{ s.key }}</code></div>
-        </div>
-      {% endfor %}
-      {% if can_write %}
-        <button class="btn btn-primary" type="submit">Save settings</button>
-      {% endif %}
-    </form>
+    <div class="card-content">
+      <form method="post" action="/admin/settings" class="form-stack" style="gap: var(--space-20);">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        {% for s in settings %}
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              {% if s.kind == "textarea" %}
+                <textarea id="{{ s.key }}" name="{{ s.key }}" placeholder=" ">{{ s.value }}</textarea>
+              {% elif s.kind == "number" %}
+                <input id="{{ s.key }}" name="{{ s.key }}" type="number" placeholder=" " value="{{ s.value }}">
+              {% else %}
+                <input id="{{ s.key }}" name="{{ s.key }}" type="text" placeholder=" " value="{{ s.value }}">
+              {% endif %}
+              <label for="{{ s.key }}" class="cm-field-label">{{ s.label }}</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>{{ s.label }}</span></legend></fieldset>
+            </div>
+            <div class="cm-field-helper"><code>{{ s.key }}</code></div>
+          </div>
+        {% endfor %}
+        {% if can_write %}
+          <button class="btn btn-primary" type="submit">Save settings</button>
+        {% endif %}
+      </form>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-row">
-      <div>
-        <h3 class="mb0">Deadline reminders</h3>
-        <p class="small muted mb0">Queues a nudge for every tutor whose current stage
-          is due within two days.</p>
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Deadline reminders</div>
+        <div class="card-description">Queues a nudge for every tutor whose current stage
+          is due within two days.</div>
       </div>
       {% if can_write %}
-        <form method="post" action="/admin/notifications/sweep">
+        <form method="post" action="/admin/notifications/sweep" class="inline-form">
           <input type="hidden" name="_csrf" value="{{ csrf }}">
           <button class="btn btn-sm btn-primary" type="submit">Run now</button>
         </form>
       {% endif %}
     </div>
-    <p class="hint">In production, run <code>python3 run.py sweep</code> daily from cron
-      instead of clicking this.</p>
+    <div class="card-content">
+      <p class="type-body-sm" style="color: var(--text-tertiary); margin: 0;">In production, run <code>python3 run.py sweep</code> daily from cron
+        instead of clicking this.</p>
+    </div>
   </div>
 
   <div class="card">
-    <h3>Email outbox</h3>
-    <p class="small muted">Mail is queued in the database rather than sent inline.
-      Point your SMTP worker at the <code>email_outbox</code> table, or inspect it with
-      <code>python3 run.py outbox</code>.</p>
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Email outbox</div>
+        <div class="card-description">Mail is queued in the database rather than sent inline.
+          Point your SMTP worker at the <code>email_outbox</code> table, or inspect it with
+          <code>python3 run.py outbox</code>.</div>
+      </div>
+    </div>
     {% if outbox %}
-      <div class="table-wrap">
-        <table>
+      <div class="table-wrap" role="region" aria-label="Email outbox" tabindex="0">
+        <table class="table table-hoverable">
           <thead><tr><th>To</th><th>Subject</th><th>Queued</th></tr></thead>
           <tbody>
             {% for mail in outbox %}
               <tr>
-                <td class="tiny">{{ mail.to_address }}</td>
-                <td class="tiny">{{ mail.subject }}</td>
-                <td class="tiny nowrap">{{ ago(mail.created_at) }}</td>
+                <td class="type-label-sm" style="color: var(--text-tertiary);">{{ mail.to_address }}</td>
+                <td class="type-label-sm" style="color: var(--text-tertiary);">{{ mail.subject }}</td>
+                <td class="type-label-sm" style="color: var(--text-tertiary); white-space: nowrap;">{{ ago(mail.created_at) }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     {% else %}
-      <p class="small mb0">Nothing waiting to send.</p>
+      <div class="empty-state empty-state-inline" role="status">
+        <h4 class="empty-state-title">Nothing waiting to send</h4>
+      </div>
     {% endif %}
   </div>
 </main>
