@@ -28,7 +28,7 @@
   <div class="card">{% include "tutor/_timeline.html" %}</div>
 
   <div class="card card-brand-tint">
-    <h1 class="type-heading-lg" style="color: var(--text-primary);">Hi {{ user.name.split(' ')[0] }} 👋</h1>
+    <h1 class="type-heading-xl" style="color: var(--text-primary);">Hi {{ user.name.split(' ')[0] }} 👋</h1>
 
     {% if welcome_video %}
       <div style="margin-top: var(--space-16);">
@@ -82,7 +82,7 @@
           <div class="ts-stage-n type-label-md">{% if stage.status == "completed" %}✓{% else %}{{ i }}{% endif %}</div>
           <div style="flex: 1; min-width: 0;">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12);">
-              <h3 class="type-heading-xs" style="color: var(--text-primary);">{{ stage.title }}</h3>
+              <h3 class="type-heading-sm" style="color: var(--text-primary);">{{ stage.title }}</h3>
               <span>
                 {% if stage.status == "completed" %}<span class="badge badge-success">Done</span>
                 {% elif stage.status == "locked" %}<span class="badge">Locked</span>
@@ -141,7 +141,7 @@
 
   {% if links %}
     <div class="card">
-      <h3 class="type-heading-xs" style="color: var(--text-primary);">Handy links</h3>
+      <h3 class="type-heading-sm" style="color: var(--text-primary);">Handy links</h3>
       <div class="ts-linkset">
         {% for link in links %}
           <a class="card card-compact card-interactive" href="{{ link.url }}" target="_blank" rel="noopener"

@@ -42,7 +42,7 @@
       Your onboarding
     </a>
     <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-8);">
-      <h1 class="type-heading-lg" style="color: var(--text-primary);">{{ stage.title }}</h1>
+      <h1 class="type-heading-xl" style="color: var(--text-primary);">{{ stage.title }}</h1>
       {% if stage.status == "completed" %}<span class="badge badge-success">Done</span>
       {% elif stage.status == "locked" %}<span class="badge">Locked</span>
       {% else %}<span class="badge badge-info">In progress</span>{% endif %}
@@ -322,7 +322,7 @@
       <div class="type-label-sm" style="color: var(--text-tertiary);">What's next</div>
       <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-8);">
         <div>
-          <h3 class="type-heading-xs" style="color: var(--text-primary);">{{ next_stage.title }}</h3>
+          <h3 class="type-heading-sm" style="color: var(--text-primary);">{{ next_stage.title }}</h3>
           {% if next_stage.subtitle %}<p class="type-body-sm" style="color: var(--text-secondary);">{{ next_stage.subtitle }}</p>{% endif %}
         </div>
         <span class="badge{% if next_stage.status != 'locked' %} badge-info{% endif %}">

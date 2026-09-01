@@ -19,6 +19,9 @@
   .tsnav-children li.is-current a,
   .tsnav-children li.is-current { color: var(--text-brand); font-weight: var(--type-body-emphasis); }
   .ts-sidebar-foot { margin-top: auto; padding-top: var(--space-16); border-top: 1px solid var(--border-tertiary); }
+  .ts-am-card { margin: var(--space-16) var(--space-8) 0; padding: var(--space-12);
+                border-radius: var(--radius-md); background: var(--bg-secondary); }
+  .ts-am-card a { display: block; margin-top: var(--space-2); }
 </style>
 <aside class="nav-sidebar" aria-label="Sidebar" style="height: 100%;">
   <div style="padding: 0 var(--space-16) var(--space-16);">
@@ -75,5 +78,12 @@
   <div class="ts-sidebar-foot" style="padding: 0 var(--space-8);">
     <a href="/notifications" class="nav-link">Updates{% if nav_unread %} <span class="badge badge-error badge-sm badge-count">{{ nav_unread }}</span>{% endif %}</a>
     <a href="/profile" class="nav-link">You</a>
+  </div>
+
+  <div class="ts-am-card">
+    <div class="type-label-sm type-caps" style="color: var(--text-tertiary);">Activation Manager</div>
+    <div class="type-body-md type-body-emphasis" style="color: var(--text-primary); margin-top: var(--space-4);">Palak Ghai</div>
+    <a href="mailto:palak.ghai@cuemath.com" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">palak.ghai@cuemath.com</a>
+    <a href="tel:+919988646710" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">9988646710</a>
   </div>
 </aside>

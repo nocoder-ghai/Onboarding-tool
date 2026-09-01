@@ -16,7 +16,7 @@
 {% include "partials/admin_nav.html" %}
 <main>
   <div style="display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap; margin-bottom: var(--space-24);">
-    <h1 class="type-heading-lg" style="color: var(--text-primary); margin: 0;">{% if is_captain_view %}My candidates{% else %}Tutors{% endif %}</h1>
+    <h1 class="type-heading-xl" style="color: var(--text-primary); margin: 0;">{% if is_captain_view %}My candidates{% else %}Tutors{% endif %}</h1>
     <span class="type-body-md" style="color: var(--text-secondary);">{{ plural(len(tutors), "tutor") }} matching your filters.</span>
   </div>
 

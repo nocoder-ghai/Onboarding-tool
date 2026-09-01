@@ -27,7 +27,7 @@
       <li class="breadcrumb-item is-current" aria-current="page">{{ tutor.name }}</li>
     </ol>
   </nav>
-  <h1 class="type-heading-lg" style="color: var(--text-primary); margin: 0 0 var(--space-4);">{{ tutor.name }}</h1>
+  <h1 class="type-heading-xl" style="color: var(--text-primary); margin: 0 0 var(--space-4);">{{ tutor.name }}</h1>
   <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">
     {{ tutor.email or "no email" }}{% if tutor.phone %} &middot; {{ tutor.phone }}{% endif %}
     {% if tutor.db_id %} &middot; DB ID: {{ tutor.db_id }}{% endif %}
