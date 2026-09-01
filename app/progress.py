@@ -351,6 +351,21 @@ def _hydrate_tree(user, comp, region_id, grade_cohort_id=None):
         _attach_item_extras(user, node_state, region_id, grade_cohort_id)
         node_state.is_group = node.kind == "group" or bool(node_state.children)
         out.append(node_state)
+
+    # Reveal one task at a time: mark everything after the first not-done
+    # leaf as "future" so the template hides it until its turn comes.
+    reached_current = False
+    for node in out:
+        if node.is_group:
+            for leaf in node.children:
+                leaf.future = reached_current
+                if not leaf.done and not reached_current:
+                    reached_current = True
+            node.future = all(c.future for c in node.children) if node.children else True
+        else:
+            node.future = reached_current
+            if not node.done and not reached_current:
+                reached_current = True
     return out
 
 

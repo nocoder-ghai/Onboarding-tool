@@ -201,6 +201,7 @@
 
         {% set current_item_id = comp.current_item_id %}
         {% for node in comp.tree %}
+          {% if not node.future %}
           {% if node.is_group %}
             {% set group_done = node.children and len([c for c in node.children if not c.done]) == 0 %}
             {% set group_has_current = node.children and current_item_id in [c.id for c in node.children] %}
@@ -210,14 +211,17 @@
               {% if node.description %}<p class="small muted">{{ node.description }}</p>{% endif %}
               <div class="nest">
                 {% for child in node.children %}
-                  {% set item = child %}
-                  {% include "tutor/_item.html" %}
+                  {% if not child.future %}
+                    {% set item = child %}
+                    {% include "tutor/_item.html" %}
+                  {% endif %}
                 {% endfor %}
               </div>
             </details>
           {% else %}
             {% set item = node %}
             {% include "tutor/_item.html" %}
+          {% endif %}
           {% endif %}
         {% endfor %}
 
