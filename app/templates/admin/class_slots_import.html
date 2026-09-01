@@ -1,0 +1,71 @@
+{% set page_title = "Import class slots" %}
+{% include "partials/head.html" %}
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div class="page-head">
+    <h1>Import class slots</h1>
+    <p class="muted small mb0">Upload a CSV of real classes — student name, class
+      date, class time and grade — and each row becomes an open slot tutors can
+      pick. Prefer adding one at a time?
+      <a href="/admin/class-slots">Go back to Class with a Student</a>.</p>
+  </div>
+
+  {% if result %}
+    <div class="card">
+      <h3>Import result</h3>
+      <div class="flash {{ 'ok' if result['added_count'] else 'error' }}">
+        <span>{{ '✓' if result['added_count'] else '!' }}</span>
+        <span>{{ plural(result['added_count'], "slot") }} added.</span></div>
+      {% if result['skipped_count'] %}
+        <div class="flash error"><span>!</span>
+          <span>{{ result['skipped_count'] }} row(s) were skipped.</span></div>
+        <details class="editor" open>
+          <summary>Show skipped rows</summary>
+          <div><ul class="small muted">
+            {% for row in result['skipped'] %}<li>{{ row }}</li>{% endfor %}
+          </ul></div>
+        </details>
+      {% endif %}
+      {% if result['added'] %}
+        <details class="editor">
+          <summary>Show added rows</summary>
+          <div><ul class="small">{% for row in result['added'] %}<li>{{ row }}</li>{% endfor %}</ul></div>
+        </details>
+      {% endif %}
+      <div class="btn-row mt"><a class="btn btn-sm btn-primary" href="/admin/class-slots">See class slots</a></div>
+    </div>
+  {% endif %}
+
+  {% if can_write %}
+    <div class="card">
+      <h3>Upload a CSV</h3>
+      <form method="post" action="/admin/class-slots/import" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <div class="field">
+          <label for="file">CSV file</label>
+          <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+        </div>
+        <button class="btn btn-primary" type="submit">Import slots</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <h3>File format</h3>
+    <p class="small muted">A header row is detected automatically. Expected
+      columns are <code>student name</code>, <code>class date</code>,
+      <code>class time</code> and <code>grade</code>. Dates can be written as
+      <code>2026-09-15</code>, <code>15/09/2026</code> or <code>15 Sep 2026</code>;
+      times as <code>14:30</code> or <code>2:30 PM</code>. You can optionally add
+      <code>duration</code> (minutes, defaults to 60), <code>region</code> and
+      <code>notes</code> columns too. Every row becomes an <strong>open</strong>
+      slot — no tutor assigned yet — for a tutor to pick from
+      <a href="/admin/class-slots">Class with a Student</a>.</p>
+    <pre class="diff">student name,class date,class time,grade,duration,region,notes
+Aarav Mehta,2026-09-15,16:30,Grade 5 Math,60,India,Prefers a calm start
+Zoe Carter,2026-09-16,9:00 AM,Grade 3 Math,45,US/Canada,</pre>
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

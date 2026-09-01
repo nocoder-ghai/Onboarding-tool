@@ -7,6 +7,7 @@ both enforced by the @writes decorator.
 """
 
 import csv
+import datetime
 import io
 import re
 
@@ -69,6 +70,41 @@ def collect(request, spec):
 def _require(values, field, message):
     if not values.get(field):
         raise HttpError(400, message)
+
+
+_CLASS_DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y",
+                       "%d %b %Y", "%d %B %Y", "%b %d %Y", "%B %d %Y",
+                       "%b %d, %Y", "%B %d, %Y")
+_CLASS_TIME_FORMATS = ("%H:%M", "%H:%M:%S", "%I:%M %p", "%I:%M%p", "%I %p")
+
+
+def _parse_class_datetime(date_text, time_text):
+    """Combine loose CSV 'date' and 'time' cells into a starts_at string."""
+    date_text = (date_text or "").strip()
+    time_text = (time_text or "").strip()
+    if not date_text:
+        return None
+    date_val = None
+    for fmt in _CLASS_DATE_FORMATS:
+        try:
+            date_val = datetime.datetime.strptime(date_text, fmt).date()
+            break
+        except ValueError:
+            continue
+    if date_val is None:
+        return None
+    if not time_text:
+        return date_val.isoformat()
+    time_val = None
+    for fmt in _CLASS_TIME_FORMATS:
+        try:
+            time_val = datetime.datetime.strptime(time_text.upper(), fmt).time()
+            break
+        except ValueError:
+            continue
+    if time_val is None:
+        return None
+    return "%s %02d:%02d" % (date_val.isoformat(), time_val.hour, time_val.minute)
 
 
 def _would_cycle(stage_id, prereq_id):
@@ -986,6 +1022,107 @@ def register(app):
                      "Deleted an open slot")
         request.flash("Slot removed.", "ok")
         return back_to(request, "/admin/class-slots")
+
+    # ------------------------------------------------- bulk class-slot CSV -- #
+    @app.route("/admin/class-slots/import", methods=["GET", "POST"])
+    @admin_required
+    def class_slots_import(request):
+        if request.method == "GET":
+            return render(request, "admin/class_slots_import.html", result=None)
+
+        request.verify_csrf()
+        from .auth import can_write
+        if not can_write(request):
+            raise HttpError(403, "Your account has read-only access.")
+        upload = request.file("file")
+        if not upload:
+            request.flash("Choose a CSV file to upload.", "error")
+            return redirect("/admin/class-slots/import")
+        try:
+            text = upload.data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = upload.data.decode("latin-1")
+        reader = csv.reader(io.StringIO(text))
+        rows = [r for r in reader if any((c or "").strip() for c in r)]
+        if not rows:
+            request.flash("That file looks empty.", "error")
+            return redirect("/admin/class-slots/import")
+
+        header = [c.strip().lower() for c in rows[0]]
+        known = {"student", "student name", "name", "date", "class date",
+                 "time", "class time", "grade", "grade/subject", "grade_subject"}
+        has_header = bool(known & set(header))
+        data_rows = rows[1:] if has_header else rows
+
+        def column(names):
+            for name in names:
+                if name in header:
+                    return header.index(name)
+            return None
+
+        idx_name = column(["student name", "student", "name"]) if has_header else 0
+        idx_date = column(["class date", "date"]) if has_header else 1
+        idx_time = column(["class time", "time"]) if has_header else 2
+        idx_grade = (column(["grade", "grade/subject", "grade & subject",
+                            "grade_subject"]) if has_header else 3)
+        idx_duration = column(["duration", "duration (min)", "duration_minutes"])
+        idx_region = column(["region"])
+        idx_notes = column(["notes", "note"])
+
+        region_by_name = {r.name.strip().lower(): r.id
+                         for r in content.regions(active_only=False)}
+
+        added, skipped = [], []
+        for row in data_rows:
+            def cell(index):
+                if index is None or index >= len(row):
+                    return ""
+                return (row[index] or "").strip()
+
+            student_name = cell(idx_name)
+            date_text = cell(idx_date)
+            time_text = cell(idx_time)
+            grade_text = cell(idx_grade)
+            label = student_name or " ".join(row).strip()[:40] or "row"
+
+            starts_at = _parse_class_datetime(date_text, time_text)
+            if starts_at is None:
+                skipped.append("%s — couldn't read the date/time (%r / %r)"
+                              % (label, date_text, time_text))
+                continue
+
+            duration = None
+            if idx_duration is not None:
+                try:
+                    duration = int(cell(idx_duration))
+                except ValueError:
+                    duration = None
+            duration = duration or 60
+
+            region_id = (region_by_name.get(cell(idx_region).lower())
+                        if idx_region is not None else None)
+
+            values = {
+                "starts_at": starts_at, "duration_minutes": duration,
+                "student_name": student_name, "grade_subject": grade_text,
+                "region_id": region_id, "notes": cell(idx_notes),
+                "status": "open", "tutor_id": None, "booked_at": None,
+                "created_at": db.now(), "updated_at": db.now(),
+            }
+            db.insert("class_slots", values)
+            added.append("%s — %s" % (label, starts_at))
+
+        audit.record(request, "class_slot.import", "class_slot", None,
+                     "CSV import: %d added, %d skipped" % (len(added), len(skipped)))
+        request.flash(
+            "%s added.%s" % (
+                util.plural(len(added), "slot"),
+                " %d skipped — see details below." % len(skipped) if skipped else ""),
+            "ok" if added else "error")
+        return render(request, "admin/class_slots_import.html",
+                      result={"added": added[:50], "skipped": skipped[:50],
+                              "added_count": len(added),
+                              "skipped_count": len(skipped)})
 
     # ==================================================================== #
     # Tutor management

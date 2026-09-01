@@ -7,7 +7,8 @@
     <h1>Class with a Student</h1>
     <p class="muted small mb0">Feed real class slots here — tutors pick a preferred
       time from what's open. Prep-tip copy lives in
-      <a href="/admin/settings">Settings &amp; copy</a>.</p>
+      <a href="/admin/settings">Settings &amp; copy</a>. Adding a lot at once?
+      <a href="/admin/class-slots/import">Bulk upload via CSV</a>.</p>
   </div>
 
   {% set open_slots = [s for s in slots if s.status == "open"] %}
