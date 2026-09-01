@@ -1,14 +1,25 @@
-"""SQLite access. One connection per thread (the HTTP server is threaded)."""
+"""Database access — Postgres in production (DATABASE_URL set), SQLite for
+local dev so no external database is required to run this app. Every other
+module talks to the database only through the functions in this file, so
+this is the only place that needs to know which backend is active.
+"""
 
 import contextlib
 import datetime
 import os
-import sqlite3
 import threading
 
 from . import config
 
 _local = threading.local()
+
+USE_POSTGRES = bool(config.DATABASE_URL)
+
+if USE_POSTGRES:
+    import psycopg
+    from psycopg.rows import dict_row
+else:
+    import sqlite3
 
 
 def now():
@@ -38,13 +49,17 @@ def days_since(value):
 def connect():
     conn = getattr(_local, "conn", None)
     if conn is None:
-        os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
-        conn = sqlite3.connect(config.DB_PATH, timeout=15,
-                               detect_types=sqlite3.PARSE_DECLTYPES)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA busy_timeout = 15000")
+        if USE_POSTGRES:
+            conn = psycopg.connect(config.DATABASE_URL, row_factory=dict_row,
+                                   autocommit=True)
+        else:
+            os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
+            conn = sqlite3.connect(config.DB_PATH, timeout=15,
+                                   detect_types=sqlite3.PARSE_DECLTYPES)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA busy_timeout = 15000")
         _local.conn = conn
     return conn
 
@@ -56,11 +71,30 @@ def close():
         _local.conn = None
 
 
+def _translate(sql):
+    """SQLite '?' placeholders -> psycopg's '%s'. Nothing in this codebase's
+    SQL text has a literal '?' or '%' inside a string literal, so a plain
+    substring replace is safe."""
+    return sql.replace("?", "%s") if USE_POSTGRES else sql
+
+
 def query(sql, args=()):
+    if USE_POSTGRES:
+        cur = connect().cursor()
+        cur.execute(_translate(sql), args)
+        rows = cur.fetchall()
+        cur.close()
+        return rows
     return connect().execute(sql, args).fetchall()
 
 
 def one(sql, args=()):
+    if USE_POSTGRES:
+        cur = connect().cursor()
+        cur.execute(_translate(sql), args)
+        row = cur.fetchone()
+        cur.close()
+        return row
     return connect().execute(sql, args).fetchone()
 
 
@@ -68,11 +102,16 @@ def scalar(sql, args=(), default=None):
     row = one(sql, args)
     if row is None:
         return default
-    value = row[0]
+    value = next(iter(row.values())) if USE_POSTGRES else row[0]
     return default if value is None else value
 
 
 def execute(sql, args=()):
+    if USE_POSTGRES:
+        cur = connect().cursor()
+        cur.execute(_translate(sql), args)
+        cur.close()
+        return None
     conn = connect()
     with conn:
         cur = conn.execute(sql, args)
@@ -80,6 +119,11 @@ def execute(sql, args=()):
 
 
 def execute_many(sql, seq):
+    if USE_POSTGRES:
+        cur = connect().cursor()
+        cur.executemany(_translate(sql), seq)
+        cur.close()
+        return
     conn = connect()
     with conn:
         conn.executemany(sql, seq)
@@ -89,6 +133,10 @@ def execute_many(sql, seq):
 def transaction():
     """Commit on success, roll back on any exception."""
     conn = connect()
+    if USE_POSTGRES:
+        with conn.transaction():
+            yield conn
+        return
     try:
         yield conn
         conn.commit()
@@ -101,6 +149,9 @@ def insert(table, values):
     cols = list(values.keys())
     sql = "INSERT INTO %s (%s) VALUES (%s)" % (
         table, ", ".join(cols), ", ".join("?" * len(cols)))
+    if USE_POSTGRES:
+        row = one(sql + " RETURNING id", [values[c] for c in cols])
+        return row["id"] if row else None
     return execute(sql, [values[c] for c in cols])
 
 
@@ -116,9 +167,16 @@ def update(table, row_id, values):
 def init_db():
     """Create every table. Safe to run repeatedly."""
     config.ensure_dirs()
+    conn = connect()
+    if USE_POSTGRES:
+        with open(config.SCHEMA_POSTGRES_PATH, "r", encoding="utf-8") as fh:
+            script = fh.read()
+        cur = conn.cursor()
+        cur.execute(script)
+        cur.close()
+        return config.DATABASE_URL
     with open(config.SCHEMA_PATH, "r", encoding="utf-8") as fh:
         script = fh.read()
-    conn = connect()
     with conn:
         conn.executescript(script)
         _migrate(conn)
@@ -126,7 +184,9 @@ def init_db():
 
 
 def _migrate(conn):
-    """Small additive migrations for columns added after a DB already exists.
+    """Small additive migrations for columns added after a SQLite database
+    already exists. Postgres always starts from the current, complete
+    schema_postgres.sql, so this only runs for the SQLite backend.
     `executescript`'s CREATE TABLE IF NOT EXISTS can't add columns to a table
     that's already there, so new columns get an explicit ALTER TABLE here."""
     cols = [row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
@@ -154,6 +214,9 @@ def _migrate(conn):
 
 
 def table_exists(name):
+    if USE_POSTGRES:
+        return one("SELECT 1 FROM information_schema.tables "
+                   "WHERE table_name = ?", (name,)) is not None
     return one("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
                (name,)) is not None
 

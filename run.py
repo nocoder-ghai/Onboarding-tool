@@ -41,7 +41,9 @@ def cmd_seed(args):
 
 
 def cmd_serve(args):
-    first_run = not os.path.exists(config.DB_PATH)
+    # Postgres always starts from schema_postgres.sql (no local file to check),
+    # and ensure_admin() is idempotent, so just skip this SQLite-only shortcut.
+    first_run = not db.USE_POSTGRES and not os.path.exists(config.DB_PATH)
     db.init_db()
     if not db.scalar("SELECT COUNT(*) FROM stages", (), 0):
         print("No content found — seeding the onboarding journey...")
@@ -107,6 +109,11 @@ def cmd_outbox(args):
 
 
 def cmd_reset(args):
+    if db.USE_POSTGRES:
+        sys.exit("reset only deletes the local SQLite file — it does nothing to "
+                 "the Postgres database DATABASE_URL points at, so it's disabled "
+                 "here to avoid a misleading 'Reset done'. Drop/recreate the "
+                 "Postgres database directly if you really want to wipe it.")
     if "--yes" not in args:
         sys.exit("This deletes the database and every upload. Re-run with --yes.")
     for path in (config.DB_PATH, config.DB_PATH + "-wal", config.DB_PATH + "-shm"):

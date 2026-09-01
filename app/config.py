@@ -8,6 +8,12 @@ VAR_DIR = os.environ.get("CUEMATH_VAR_DIR", os.path.join(BASE_DIR, "var"))
 
 DB_PATH = os.environ.get("CUEMATH_DB", os.path.join(VAR_DIR, "onboarding.db"))
 SCHEMA_PATH = os.path.join(APP_DIR, "schema.sql")
+SCHEMA_POSTGRES_PATH = os.path.join(APP_DIR, "schema_postgres.sql")
+
+# When set, the app stores everything in this Postgres database instead of the
+# local SQLite file — used in production (Railway). Local dev without this
+# variable set keeps using SQLite so no external database is required.
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 TEMPLATE_DIR = os.path.join(APP_DIR, "templates")
 STATIC_DIR = os.path.join(APP_DIR, "static")
 

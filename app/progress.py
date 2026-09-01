@@ -392,8 +392,9 @@ def video_watched(user_id, document_id):
 
 def mark_video_watched(user_id, document_id):
     db.execute(
-        "INSERT OR IGNORE INTO video_views (user_id, document_id, watched_at) "
-        "VALUES (?, ?, ?)", (user_id, document_id, db.now()))
+        "INSERT INTO video_views (user_id, document_id, watched_at) "
+        "VALUES (?, ?, ?) ON CONFLICT (user_id, document_id) DO NOTHING",
+        (user_id, document_id, db.now()))
 
 
 def unwatched_videos(user, item_documents):
@@ -501,9 +502,10 @@ def acknowledge_policy(user, item, ip_address=""):
             "This policy document hasn't been uploaded yet. Your mentor has been "
             "notified — please check back shortly.")
     db.execute(
-        "INSERT OR IGNORE INTO policy_acknowledgements "
+        "INSERT INTO policy_acknowledgements "
         "(user_id, sub_item_id, document_version_id, acknowledged_at, ip_address) "
-        "VALUES (?,?,?,?,?)",
+        "VALUES (?,?,?,?,?) ON CONFLICT (user_id, sub_item_id, document_version_id) "
+        "DO NOTHING",
         (user["id"], item.id, version.id, db.now(), ip_address))
     set_progress(user["id"], "sub_item", item.id, DONE, rejected_reason="")
     touch_activity(user["id"])
@@ -536,9 +538,10 @@ def submit_quiz(user, item, answers):
         version = doc.current if doc else None
         if version:
             db.execute(
-                "INSERT OR IGNORE INTO policy_acknowledgements "
+                "INSERT INTO policy_acknowledgements "
                 "(user_id, sub_item_id, document_version_id, acknowledged_at, "
-                "ip_address) VALUES (?,?,?,?,?)",
+                "ip_address) VALUES (?,?,?,?,?) ON CONFLICT "
+                "(user_id, sub_item_id, document_version_id) DO NOTHING",
                 (user["id"], item.id, version.id, db.now(), ""))
         set_progress(user["id"], "sub_item", item.id, DONE, rejected_reason="")
         touch_activity(user["id"])
@@ -635,8 +638,9 @@ def orientation_session_for(user):
 
 
 def invite_to_orientation(user, session_id):
-    db.execute("INSERT OR IGNORE INTO orientation_invites "
-               "(user_id, session_id, invited_at) VALUES (?,?,?)",
+    db.execute("INSERT INTO orientation_invites "
+               "(user_id, session_id, invited_at) VALUES (?,?,?) "
+               "ON CONFLICT (user_id, session_id) DO NOTHING",
                (user["id"], session_id, db.now()))
     session = wrap(db.one("SELECT * FROM orientation_sessions WHERE id = ?",
                           (session_id,)))
