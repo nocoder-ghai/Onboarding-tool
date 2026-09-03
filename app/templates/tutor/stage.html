@@ -191,8 +191,9 @@
               {% endfor %}
 
               {% if comp.key == "actual_class" %}
-                <img src="/static/images/teach_a_student.png" alt="Tutor teaching a student over video call"
-                     style="width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-md); margin-top: var(--space-12);">
+                <div class="cm-media" style="margin-top: var(--space-12);">
+                  <img src="/static/images/teach_a_student.png" alt="Tutor teaching a student over video call">
+                </div>
                 {% if comp.prep_tips %}
                   <div class="card card-compact" style="margin-top: var(--space-12); background: var(--bg-secondary);">
                     <div class="type-label-md" style="color: var(--text-primary);">Quick prep before you teach</div>

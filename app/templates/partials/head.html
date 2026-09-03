@@ -9,6 +9,17 @@
   /* Page-level layout only: stacking flash toasts inline at the top of the page. */
   .flash-stack { display: flex; flex-direction: column; gap: var(--space-8); padding-top: var(--space-16); }
   .flash-stack .toast { position: static; max-width: none; }
+
+  /* Pictures and videos sit in one centred, width-capped block so a large
+     upload stays in proportion with the text around it instead of running
+     the full width of the page. Natural aspect ratio is preserved — nothing
+     is cropped to fit. */
+  .cm-media { max-width: 640px; margin-left: auto; margin-right: auto; }
+  .cm-media img,
+  .cm-media video {
+    display: block; width: 100%; height: auto;
+    border-radius: var(--radius-md);
+  }
 </style>
 </head>
 <body>
