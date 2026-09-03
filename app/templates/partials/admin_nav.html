@@ -18,9 +18,10 @@
   {% endif %}
   <div class="nav-sidebar-section">
     <div class="nav-sidebar-section-title">Tutors</div>
-    <a href="/admin/tutors" class="nav-link{% if path.startswith('/admin/tutors') and path != '/admin/tutors/bulk-create' %} is-active{% endif %}"{% if path.startswith('/admin/tutors') and path != '/admin/tutors/bulk-create' %} aria-current="page"{% endif %}>{% if role and role["key"] == "viewer" %}My candidates{% else %}All tutors{% endif %}</a>
+    <a href="/admin/tutors" class="nav-link{% if path.startswith('/admin/tutors') and path not in ('/admin/tutors/bulk-create', '/admin/tutors/directors') %} is-active{% endif %}"{% if path.startswith('/admin/tutors') and path not in ('/admin/tutors/bulk-create', '/admin/tutors/directors') %} aria-current="page"{% endif %}>{% if role and role["key"] == "viewer" %}My candidates{% else %}All tutors{% endif %}</a>
     {% if not (role and role["key"] == "viewer") %}
       <a href="/admin/tutors/bulk-create" class="nav-link{% if path == '/admin/tutors/bulk-create' %} is-active{% endif %}"{% if path == '/admin/tutors/bulk-create' %} aria-current="page"{% endif %}>Bulk-create logins</a>
+      <a href="/admin/tutors/directors" class="nav-link{% if path == '/admin/tutors/directors' %} is-active{% endif %}"{% if path == '/admin/tutors/directors' %} aria-current="page"{% endif %}>Assign Directors</a>
     {% endif %}
   </div>
   {% if not (role and role["key"] == "viewer") %}

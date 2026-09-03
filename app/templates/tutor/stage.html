@@ -27,6 +27,7 @@
     .ts-linkset { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-12); }
     .ts-agenda-row { display: flex; align-items: flex-start; gap: var(--space-12); }
     .ts-agenda-row + .ts-agenda-row { margin-top: var(--space-12); }
+    .ts-done-roll { background: var(--bg-success-2); border-color: var(--border-success); }
     .ts-agenda-n {
       flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--radius-full);
       background: var(--bg-brand-1); color: var(--text-brand); display: flex;
@@ -90,17 +91,12 @@
           {% endfor %}
         </div>
       {% endif %}
+      <!-- A stage can carry its own visual. _doc_link.html shows images inline
+           and videos in a player, and falls back to a file link for everything
+           else — the same treatment components and steps already get. -->
       {% for doc in stage.documents %}
-        {% if doc.current and doc.kind == "video" %}
+        {% if doc.current %}
           <div style="margin-top: var(--space-16);">{% include "partials/_doc_link.html" %}</div>
-        {% elif doc.current %}
-          <div class="ts-linkset">
-            <a class="card card-compact card-interactive" href="/file/document/{{ doc.current.id }}" target="_blank" rel="noopener"
-               style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none;">
-              <span aria-hidden="true">📄</span><span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ doc.title }}</span>
-              <span class="type-body-sm" style="color: var(--text-tertiary);">v{{ doc.current.version_no }}</span>
-            </a>
-          </div>
         {% endif %}
       {% endfor %}
     </div>
@@ -159,8 +155,9 @@
             <span class="ts-comp-row">
               <span class="ts-comp-row-title">{{ comp.title }}</span>
               {% if comp.complete %}<span class="badge badge-success">Done</span>
-              {% elif comp.awaiting_admin %}<span class="badge badge-warning">With your mentor</span>
-              {% elif comp.effective_rule == "admin_marked" %}<span class="badge badge-info">Mentor marks this</span>
+              {% elif comp.class_slot %}<span class="badge badge-info">Scheduled</span>
+              {% elif comp.awaiting_admin %}<span class="badge badge-info">Scheduled</span>
+              {% elif comp.effective_rule == "admin_marked" %}<span class="badge">Not scheduled</span>
               {% else %}<span class="badge">{{ comp.done_units }}/{{ comp.total_units }}</span>{% endif %}
             </span>
             <span class="cm-icon accordion-icon" aria-hidden="true">
@@ -247,36 +244,60 @@
               {% endif %}
 
               {% set current_item_id = comp.current_item_id %}
+
+              <!-- Finished steps fold into one line so the live step is the only
+                   thing competing for attention. They stay openable because the
+                   Undo button lives inside them. -->
+              {% if comp.done_leaves %}
+                <details class="card card-expandable ts-done-roll" style="margin-top: var(--space-12);">
+                  <summary>
+                    <span class="type-body-md" style="flex: 1; min-width: 0; color: var(--text-success);">
+                      ✓ {{ plural(len(comp.done_leaves), "completed step") }}
+                    </span>
+                    <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                      <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                      <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+                    </span>
+                  </summary>
+                  <div class="card-expand-body">
+                    <div style="display: flex; flex-direction: column; gap: var(--space-12);">
+                      {% for leaf in comp.done_leaves %}
+                        {% set item = leaf %}
+                        {% include "tutor/_item.html" %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                </details>
+              {% endif %}
+
               <div style="display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-12);">
                 {% for node in comp.tree %}
                   {% if not node.future %}
                   {% if node.is_group %}
-                    {% set group_done = node.children and len([c for c in node.children if not c.done]) == 0 %}
-                    {% set group_has_current = node.children and current_item_id in [c.id for c in node.children] %}
-                    <details class="card card-expandable"{% if group_has_current %} open{% endif %}>
-                      <summary>
-                        <span style="flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-12);">
-                          <span class="type-body-lg" style="flex: 1; min-width: 0; color: var(--text-primary);">{{ node.title }}</span>
-                          {% if group_done %}<span class="badge badge-success">Done</span>{% endif %}
-                        </span>
-                        <span class="cm-icon card-expand-toggle" aria-hidden="true">
-                          <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
-                          <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
-                        </span>
-                      </summary>
-                      <div class="card-expand-body">
-                        {% if node.description %}<p class="type-body-sm" style="color: var(--text-secondary);">{{ node.description }}</p>{% endif %}
-                        <div style="display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-12);">
-                          {% for child in node.children %}
-                            {% if not child.future %}
+                    {% set live_children = [c for c in node.children if not c.future and not c.done] %}
+                    {% if live_children %}
+                      <details class="card card-expandable" open>
+                        <summary>
+                          <span style="flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-12);">
+                            <span class="type-body-lg" style="flex: 1; min-width: 0; color: var(--text-primary);">{{ node.title }}</span>
+                          </span>
+                          <span class="cm-icon card-expand-toggle" aria-hidden="true">
+                            <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                            <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+                          </span>
+                        </summary>
+                        <div class="card-expand-body">
+                          {% if node.description %}<p class="type-body-sm" style="color: var(--text-secondary);">{{ node.description }}</p>{% endif %}
+                          <div style="display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-12);">
+                            {% for child in live_children %}
                               {% set item = child %}
                               {% include "tutor/_item.html" %}
-                            {% endif %}
-                          {% endfor %}
+                            {% endfor %}
+                          </div>
                         </div>
-                      </div>
-                    </details>
-                  {% else %}
+                      </details>
+                    {% endif %}
+                  {% elif not node.done %}
                     {% set item = node %}
                     {% include "tutor/_item.html" %}
                   {% endif %}
@@ -317,7 +338,7 @@
     {% endif %}
   {% endif %}
 
-  {% if next_stage %}
+  {% if next_stage and stage.complete %}
     <div class="card">
       <div class="type-label-sm" style="color: var(--text-tertiary);">What's next</div>
       <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-8);">

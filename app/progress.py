@@ -318,6 +318,7 @@ def stage_detail(user, stage_id, states=None):
                                                grade_cohort_id)
         comp.tree = _hydrate_tree(user, comp, region_id, grade_cohort_id)
         comp.current_item_id = _first_incomplete_leaf_id(comp.tree)
+        comp.done_leaves = _done_leaves(comp.tree)
         if comp.key == CLASS_SLOT_COMPONENT_KEY:
             comp.class_slot = class_slot_for(user)
             comp.open_slots = [] if comp.class_slot else open_class_slots(region_id)
@@ -335,6 +336,19 @@ def stage_detail(user, stage_id, states=None):
         else:
             previous_passed = comp.complete
     return state
+
+
+def _done_leaves(tree):
+    """Finished steps, flattened out of their groups. The stage page folds these
+    into a single "N completed" disclosure so only the live step is on show —
+    they stay reachable because that's where the Undo button lives."""
+    out = []
+    for node in tree:
+        if node.is_group:
+            out.extend([c for c in node.children if c.done and not c.future])
+        elif node.done and not node.future:
+            out.append(node)
+    return out
 
 
 def _hydrate_tree(user, comp, region_id, grade_cohort_id=None):

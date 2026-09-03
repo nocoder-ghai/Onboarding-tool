@@ -1304,6 +1304,106 @@ def register(app):
                       result={"created": created, "skipped": skipped[:50],
                               "skipped_count": len(skipped)})
 
+    @app.route("/admin/tutors/directors", methods=["GET", "POST"])
+    @admin_required
+    def tutors_assign_directors(request):
+        """Bulk version of the per-tutor Activation Director dropdown: a sheet
+        of tutor -> director, matched on whatever identifier the sheet happens
+        to carry."""
+        if request.method == "GET":
+            return render(request, "admin/tutors_directors.html", result=None,
+                          captains_all=content.captains())
+
+        request.verify_csrf()
+        from .auth import can_write
+        if not can_write(request):
+            raise HttpError(403, "Your account has read-only access.")
+        upload = request.file("file")
+        if not upload:
+            request.flash("Choose a CSV file to upload.", "error")
+            return redirect("/admin/tutors/directors")
+        try:
+            text = upload.data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = upload.data.decode("latin-1")
+        reader = csv.reader(io.StringIO(text))
+        rows = [r for r in reader if any((c or "").strip() for c in r)]
+        if not rows:
+            request.flash("That file looks empty.", "error")
+            return redirect("/admin/tutors/directors")
+
+        header = [c.strip().lower() for c in rows[0]]
+        known = {"tutor", "director", "activation director", "email", "phone",
+                 "db id", "db_id", "dbid", "tutor email", "director email"}
+        has_header = bool(known & set(header))
+        data_rows = rows[1:] if has_header else rows
+
+        def column(names):
+            for name in names:
+                if name in header:
+                    return header.index(name)
+            return None
+
+        idx_tutor = (column(["tutor", "tutor email", "email", "phone", "db id",
+                             "db_id", "dbid"]) if has_header else 0)
+        idx_director = (column(["director", "activation director",
+                                "director email"]) if has_header else 1)
+
+        assigned, skipped = [], []
+        for row in data_rows:
+            def cell(index):
+                if index is None or index >= len(row):
+                    return ""
+                return (row[index] or "").strip()
+
+            tutor_ref = cell(idx_tutor)
+            director_ref = cell(idx_director)
+            if not tutor_ref or not director_ref:
+                skipped.append("%s — needs both a tutor and a director"
+                               % (" ".join(row)[:40] or "blank row"))
+                continue
+
+            tutor = _find_tutor(tutor_ref)
+            if tutor is None:
+                skipped.append("%s — no tutor matches that email, phone or DB ID"
+                               % tutor_ref)
+                continue
+            director = wrap(db.one(
+                "SELECT * FROM users WHERE email = ? AND role_key IN "
+                "('admin', 'viewer') AND is_active = 1",
+                (security.normalise_email(director_ref),)))
+            if director is None:
+                skipped.append("%s — “%s” is not an active team member"
+                               % (tutor_ref, director_ref))
+                continue
+
+            db.update("users", tutor.id, {"captain_id": director.id})
+            assigned.append({"tutor": tutor.name,
+                             "identifier": tutor.email or tutor.phone,
+                             "director": director.name})
+
+        audit.record(request, "tutor.assign_directors", "report", None,
+                     "Assigned Activation Directors for %d tutor(s), %d skipped"
+                     % (len(assigned), len(skipped)))
+        return render(request, "admin/tutors_directors.html",
+                      captains_all=content.captains(),
+                      result={"assigned": assigned, "skipped": skipped[:50],
+                              "skipped_count": len(skipped)})
+
+    def _find_tutor(ref):
+        """Match a tutor on email, phone or DB ID — whichever the sheet used."""
+        email = security.normalise_email(ref)
+        phone = security.normalise_phone(ref)
+        for sql, arg in (("email = ?", email), ("phone = ?", phone),
+                         ("db_id = ?", ref)):
+            if not arg:
+                continue
+            row = db.one("SELECT * FROM users WHERE %s AND role_key = 'tutor'"
+                         % sql, (arg,))
+            if row:
+                return wrap(row)
+        return None
+
     @app.route("/admin/tutors/<int:user_id>")
     @admin_required
     def tutor_detail(request, user_id):

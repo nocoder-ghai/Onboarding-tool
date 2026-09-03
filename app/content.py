@@ -73,10 +73,18 @@ def captains():
         "AND is_active = 1 ORDER BY name"))
 
 
+def captain(captain_id):
+    """The full Activation Director record — the tutor sidebar shows their
+    name, email and phone so a tutor knows who to reach."""
+    if not captain_id:
+        return None
+    return wrap(db.one("SELECT * FROM users WHERE id = ?", (captain_id,)))
+
+
 def captain_name(captain_id):
     if not captain_id:
         return "Unassigned"
-    row = wrap(db.one("SELECT * FROM users WHERE id = ?", (captain_id,)))
+    row = captain(captain_id)
     return row.name if row else "Unassigned"
 
 

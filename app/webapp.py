@@ -26,6 +26,7 @@ def create_app():
             "brand": db.setting("brand_name", "Cuemath"),
             "support_email": db.setting("support_email", ""),
             "nav_unread": 0,
+            "director": None,
             "path": request.path,
             "hide_topbar": False,
             "current_stage_id": None,
@@ -39,6 +40,7 @@ def create_app():
             ctx["region"] = content.region(user["region_id"])
             ctx["mentor_name"] = (content.captain_name(user["captain_id"])
                                   if user["captain_id"] else None)
+            ctx["director"] = content.captain(user["captain_id"])
         return ctx
 
     def _error(request, status, message):

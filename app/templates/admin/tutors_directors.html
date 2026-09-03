@@ -1,0 +1,99 @@
+{% set page_title = "Assign Activation Directors" %}
+{% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); }
+  @media (max-width: 768px) {
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div style="margin-bottom: var(--space-24);">
+    <h1 class="type-heading-xl" style="color: var(--text-primary); margin: 0 0 var(--space-8);">Assign Activation Directors</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">Upload a sheet pairing each tutor with their
+      Activation Director. This is the bulk version of the dropdown on a tutor's own
+      page — same result, one row per tutor. Each tutor sees their Director's name,
+      email and phone in their sidebar, so they always know who to reach.</p>
+  </div>
+
+  {% if result %}
+    <div class="card" style="margin-bottom: var(--space-16);">
+      <div class="card-header"><div class="card-header-text"><div class="card-title">Result</div></div></div>
+      <div class="card-content">
+        {% if result['assigned'] %}
+          <div class="card card-success-tint card-compact" style="display: flex; align-items: center; gap: var(--space-8); margin-bottom: var(--space-16);">
+            <svg data-icon="submit" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.134 6.28251L10.0256 18.8483L8.4416 18.2829C8.4416 15.4101 6.30538 12.9428 3.32832 12.2114L3.77168 10.5256C6.77013 11.2622 9.16316 13.4453 9.95821 16.2449L19.7658 5.15166L21.134 6.28251Z" fill="currentColor"/></svg>
+            <span class="type-body-md" style="color: var(--text-success);">{{ plural(len(result['assigned']), "tutor") }} assigned.</span>
+          </div>
+          <div class="table-wrap" role="region" aria-label="Assigned tutors" tabindex="0">
+            <table class="table table-hoverable">
+              <thead><tr><th>Tutor</th><th>Matched on</th><th>Activation Director</th></tr></thead>
+              <tbody>
+                {% for row in result['assigned'] %}
+                  <tr>
+                    <td>{{ row['tutor'] }}</td>
+                    <td class="type-body-sm" style="color: var(--text-tertiary);">{{ row['identifier'] }}</td>
+                    <td class="type-body-sm">{{ row['director'] }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+        {% if result['skipped_count'] %}
+          <div class="card card-error-tint card-compact" style="display: flex; align-items: center; gap: var(--space-8); margin: var(--space-16) 0;">
+            <svg data-icon="exclamation" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.5 18.6C13.5 19.4284 12.8284 20.1 12 20.1C11.1716 20.1 10.5 19.4284 10.5 18.6C10.5 17.7716 11.1716 17.1 12 17.1C12.8284 17.1 13.5 17.7716 13.5 18.6Z" fill="currentColor"/> <path d="M13.8838 4.2002L12.7959 15.0801H11.2041L10.1162 4.2002H13.8838Z" fill="currentColor"/></svg>
+            <span class="type-body-md" style="color: var(--text-error);">{{ result['skipped_count'] }} row(s) were skipped.</span>
+          </div>
+          <ul style="margin: 0; padding-left: var(--space-20);">
+            {% for row in result['skipped'] %}<li class="type-body-sm" style="color: var(--text-secondary);">{{ row }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+        <div style="margin-top: var(--space-16);"><a class="btn btn-sm btn-primary" href="/admin/tutors">See tutors</a></div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom: var(--space-16);">
+    <div class="card-header"><div class="card-header-text"><div class="card-title">Upload a CSV</div></div></div>
+    <div class="card-content">
+      <form method="post" action="/admin/tutors/directors" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start;">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <label class="type-label-md" style="color: var(--text-primary); display: flex; flex-direction: column; gap: var(--space-8);">
+          CSV file
+          <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+        </label>
+        <button class="btn btn-primary" type="submit">Assign directors</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-header-text"><div class="card-title">File format</div></div></div>
+    <div class="card-content">
+      <p class="type-body-sm" style="color: var(--text-secondary);">Two columns: the tutor, then their Activation
+        Director. A header row is detected automatically; without one, columns are
+        read in that order. The tutor is matched on <strong>email, phone or DB ID</strong> —
+        whichever you have. The Director is matched on their work email, and must
+        already be an active team member. Rows that match nothing are skipped and
+        listed back to you, so a partial file is safe to upload.</p>
+      <pre style="background: var(--bg-secondary); border: 1px solid var(--border-tertiary); padding: var(--space-12); overflow-x: auto; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">tutor,director
+marcus.demo@example.com,{{ captains_all[0].email if captains_all else "priya@cuemath.com" }}
+9123456780,{{ captains_all[0].email if captains_all else "priya@cuemath.com" }}
+TCH-10577,{{ captains_all[0].email if captains_all else "priya@cuemath.com" }}</pre>
+      {% if captains_all %}
+        <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-12);">Directors you can assign right now:
+          {{ ", ".join([c.email or c.name for c in captains_all]) }}. Add more in
+          <a class="cm-link" href="/admin/team">Team &amp; roles</a>.</p>
+      {% else %}
+        <p class="type-body-sm" style="color: var(--text-error); margin-top: var(--space-12);">There are no active team members to assign yet —
+          add one in <a class="cm-link" href="/admin/team">Team &amp; roles</a> first.</p>
+      {% endif %}
+    </div>
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

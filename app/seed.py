@@ -562,7 +562,7 @@ def seed(verbose=True, demo=False):
     say("Stage 2 · Class & App Training seeded (3 components).")
 
     # ================================================================== #
-    # Stage 4 — Cuemath Policy
+    # Stage 3 — First Class (absorbs the old standalone Cuemath Policy stage)
     # ================================================================== #
     _rename_key("sub_items", "wh_policy", "session_service_policy")
     _rename_key("documents", "doc_wh_policy", "doc_session_service_policy")
@@ -572,22 +572,105 @@ def seed(verbose=True, demo=False):
                "AND NOT EXISTS (SELECT 1 FROM sub_items c "
                "WHERE c.parent_id = sub_items.id)")
 
-    stage4 = _stage(
-        "cuemath_policy",
-        title="Cuemath Policy",
-        subtitle="Four policies · a quick check after each · due within 2 days",
-        description="The policies every Cuemath tutor is held to. Read each one, "
-                    "then answer a short check — every answer has to be correct "
-                    "before it counts as read.",
+    # Cuemath Policy grows into First Class rather than being replaced by it:
+    # renaming the key keeps the same stage row, so every tutor's progress
+    # against it — and every policy acknowledgement hanging off its steps —
+    # carries over untouched. The stage gains two components in front of the
+    # policies it already had.
+    _rename_key("stages", "cuemath_policy", "first_class")
+
+    stage_first = _stage(
+        "first_class",
+        title="First Class",
+        subtitle="Everything you need before you teach for real",
+        description="Your first class with a real student is close. This stage "
+                    "covers what a Cuemath class looks like, what we measure "
+                    "once you're teaching, and the policies you're held to.",
         locked_hint="Finish Class & App Training first — this opens "
                     "automatically.",
         sort_order=30,
         is_mandatory=1,
         completion_rule="components",
         unlock_after_stage_id=stage2,
-        deadline_days=2,
+        deadline_days=3,
         archived_at=None,
     )
+
+    # ---- 1. Readiness ------------------------------------------------- #
+    readiness_comp = _component(
+        "first_class_readiness", stage_id=stage_first,
+        title="First class readiness",
+        description="What a Cuemath class actually looks like, and how to be "
+                    "set up before the student joins.",
+        sort_order=10, is_mandatory=1, completion_rule="sub_items",
+        region_id=None, archived_at=None)
+    READINESS_STEPS = [
+        ("fc_walkthrough", "Watch a first class, end to end",
+         "A full class from the coach's side — greeting, concept, practice, "
+         "close.",
+         "Watch the whole thing before you tick this off."),
+        ("fc_workspace", "Set up your workspace and writing tablet",
+         "A quiet room, good light, headphones, and your tablet paired and "
+         "tested.",
+         "Do a dry run: join a test call, share your tablet, write a line."),
+        ("fc_checklist", "Run the pre-class checklist",
+         "Join early, open the lesson, check your audio and your pen before "
+         "the student arrives.",
+         "Save the checklist somewhere you'll see it before every class."),
+        ("fc_parent_view", "See what the parent sees",
+         "Parents follow along in the Cuemath Parent App — know what shows up "
+         "there during and after your class.",
+         "Skim the parent-side view so nothing surprises you."),
+    ]
+    for index, (key, title, description, instructions) in enumerate(
+            READINESS_STEPS, start=1):
+        _item(key, component_id=readiness_comp, parent_id=None, title=title,
+              description=description, instructions=instructions, kind="task",
+              accept_mime="", max_upload_mb=None, sort_order=index * 10,
+              is_mandatory=1, region_id=None, archived_at=None)
+
+    fc_video = _document(
+        "doc_first_class_walkthrough", title="A first class, end to end",
+        description="Watch a full Cuemath class from the coach's side.",
+        kind="video", stage_id=None, component_id=None,
+        sub_item_id=db.scalar("SELECT id FROM sub_items WHERE key = ?",
+                              ("fc_walkthrough",)),
+        region_id=None, is_active=1, archived_at=None)
+    _attach_version(fc_video, "first-class-walkthrough-placeholder.pdf",
+                    placeholder_pdf("A first class, end to end", [
+                        PLACEHOLDER_NOTE, "",
+                        "Replace this with the class recording (or a photo, if "
+                        "the video isn't shot yet) in",
+                        "Admin -> Documents -> A first class, end to end.",
+                    ]), "application/pdf", PLACEHOLDER_NOTE)
+
+    # ---- 2. Compliance ------------------------------------------------ #
+    compliance_comp = _component(
+        "compliance_essentials", stage_id=stage_first,
+        title="Compliance essentials",
+        description="What gets tracked once you're teaching, and how it adds up.",
+        sort_order=20, is_mandatory=1, completion_rule="sub_items",
+        region_id=None, archived_at=None)
+    _item("fc_what_we_track", component_id=compliance_comp, parent_id=None,
+          title="What we track, and why",
+          description="Five things are logged against your record: a late login "
+                      "to a class, a class no-show, a late login to a trial, a "
+                      "trial no-show, and acknowledging a trial more than two "
+                      "hours late. They exist because a student is waiting on "
+                      "the other side of each one.",
+          instructions="Read through the five, then tick this off.",
+          kind="task", accept_mime="", max_upload_mb=None, sort_order=10,
+          is_mandatory=1, region_id=None, archived_at=None)
+    _item("fc_score", component_id=compliance_comp, parent_id=None,
+          title="How your compliance score works",
+          description="You start at 100. Each logged incident costs 15 points, "
+                      "counted over a rolling window, and your score puts you "
+                      "in a band your Activation Director can see. Nothing is "
+                      "logged without a reason being recorded alongside it.",
+          instructions="Ask your Activation Director if anything here is "
+                       "unclear — better now than after an incident.",
+          kind="task", accept_mime="", max_upload_mb=None, sort_order=20,
+          is_mandatory=1, region_id=None, archived_at=None)
 
     def _policy_group(component_id, policies):
         for index, (key, title, description) in enumerate(policies, start=1):
@@ -616,15 +699,17 @@ def seed(verbose=True, demo=False):
                                 "kept on record.",
                             ]), "application/pdf", PLACEHOLDER_NOTE)
 
+    # ---- 3. Policies (unchanged rows, now the third component here) ---- #
     cuemath_policy_comp = _component(
-        "cuemath_policies", stage_id=stage4,
-        title="Policies",
+        "cuemath_policies", stage_id=stage_first,
+        title="Cuemath policies",
         description="Read each one and acknowledge it. We record the date, and "
                     "the exact version you read.",
-        sort_order=10, is_mandatory=1, completion_rule="sub_items",
+        sort_order=30, is_mandatory=1, completion_rule="sub_items",
         region_id=None, archived_at=None)
     _policy_group(cuemath_policy_comp, CUEMATH_POLICIES)
-    say("Stage 4 · Cuemath Policy seeded (%d policies)." % len(CUEMATH_POLICIES))
+    say("Stage 3 · First Class seeded (readiness, compliance, %d policies)."
+        % len(CUEMATH_POLICIES))
 
     # ================================================================== #
     # Stage 3 (repurposed) — Region-Specific Training
@@ -640,7 +725,7 @@ def seed(verbose=True, demo=False):
         sort_order=40,
         is_mandatory=1,
         completion_rule="components",
-        unlock_after_stage_id=stage4,
+        unlock_after_stage_id=stage_first,
         deadline_days=1,
         archived_at=None,
     )

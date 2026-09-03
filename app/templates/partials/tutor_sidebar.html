@@ -80,10 +80,16 @@
     <a href="/profile" class="nav-link">You</a>
   </div>
 
-  <div class="ts-am-card">
-    <div class="type-label-sm type-caps" style="color: var(--text-tertiary);">Activation Manager</div>
-    <div class="type-body-md type-body-emphasis" style="color: var(--text-primary); margin-top: var(--space-4);">Palak Ghai</div>
-    <a href="mailto:palak.ghai@cuemath.com" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">palak.ghai@cuemath.com</a>
-    <a href="tel:+919988646710" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">9988646710</a>
-  </div>
+  {% if director %}
+    <div class="ts-am-card">
+      <div class="type-label-sm type-caps" style="color: var(--text-tertiary);">Activation Director</div>
+      <div class="type-body-md type-body-emphasis" style="color: var(--text-primary); margin-top: var(--space-4);">{{ director.name }}</div>
+      {% if director.email %}
+        <a href="mailto:{{ director.email }}" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">{{ director.email }}</a>
+      {% endif %}
+      {% if director.phone %}
+        <a href="tel:{{ director.phone }}" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">{{ director.phone }}</a>
+      {% endif %}
+    </div>
+  {% endif %}
 </aside>
