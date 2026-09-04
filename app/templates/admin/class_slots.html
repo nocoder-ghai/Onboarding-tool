@@ -19,6 +19,36 @@
       <a href="/admin/class-slots/import" class="cm-link" style="color: var(--text-brand);">Bulk upload via CSV</a>.</p>
   </div>
 
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-title">Share the schedule</div>
+        <div class="card-description">A read-only page of every class and the coach taking it,
+          for whoever books the sessions — no sign-in, no tool access. It refreshes itself,
+          so a tab left open stays current.</div>
+      </div>
+      {% if can_write %}
+        <form method="post" action="/admin/schedule-link/regenerate" class="inline-form">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <button class="btn btn-sm btn-secondary" type="submit">Create a new link</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="card-content">
+      <label class="type-label-sm" style="display:block; color: var(--text-secondary); margin-bottom: var(--space-4);">Link to send</label>
+      <input type="text" readonly onclick="this.select()"
+             value="{{ schedule_origin }}/schedule/{{ schedule_token }}"
+             style="width:100%; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">
+      <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-8);">
+        Anyone holding this link can read the schedule, including coach and student names —
+        so send it directly, not into a group chat. Creating a new link immediately stops the
+        old one working.
+      </p>
+      <a class="btn btn-sm btn-secondary" style="margin-top: var(--space-12);"
+         href="/schedule/{{ schedule_token }}" target="_blank" rel="noopener">Open it ↗</a>
+    </div>
+  </div>
+
   {% set open_slots = [s for s in slots if s.status == "open"] %}
   {% set booked_slots = [s for s in slots if s.status == "booked"] %}
   {% set other_slots = [s for s in slots if s.status not in ("open", "booked")] %}

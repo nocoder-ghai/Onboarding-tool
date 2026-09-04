@@ -70,6 +70,26 @@ def create_app():
         from .micro import redirect
         return redirect(auth.home_for(request.user))
 
+    @app.route("/schedule/<str:token>")
+    def shared_schedule(request, token):
+        """The class schedule, readable by whoever holds the link — for the
+        person booking sessions, who needs the schedule but not the tool.
+        Deliberately unauthenticated, so the only thing standing between this
+        page and the internet is the secret in the URL."""
+        import hmac
+        from . import progress
+        from .micro import HttpError
+        expected = progress.schedule_share_token(create=False)
+        if not expected or not hmac.compare_digest(str(token), str(expected)):
+            # Say nothing about whether a schedule exists.
+            raise HttpError(404, "We can't find that page.")
+        response = app.render(request, "schedule.html",
+                              sessions=progress.scheduled_sessions(),
+                              generated_at=db.now(), hide_topbar=True)
+        response.headers.append(("X-Robots-Tag", "noindex, nofollow"))
+        response.headers.append(("Cache-Control", "no-store"))
+        return response
+
     @app.route("/healthz")
     def healthz(request):
         from .micro import json_response

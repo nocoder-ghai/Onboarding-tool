@@ -983,7 +983,23 @@ def register(app):
             slot.grade_cohort_label = (
                 content.grade_cohort_name(slot.grade_cohort_id)
                 if slot.grade_cohort_id else "Any grade")
-        return render(request, "admin/class_slots.html", slots=slots)
+        # Behind Railway's proxy the scheme arrives in a forwarded header, so
+        # the copyable link isn't guessed as http:// on an https:// site.
+        host = (request.headers.get("Host") or request.headers.get("host") or "")
+        scheme = (request.headers.get("X-Forwarded-Proto")
+                  or request.headers.get("x-forwarded-proto") or "http")
+        return render(request, "admin/class_slots.html", slots=slots,
+                      schedule_token=progress.schedule_share_token(),
+                      schedule_origin=("%s://%s" % (scheme, host)) if host else "")
+
+    @app.route("/admin/schedule-link/regenerate", methods=["POST"])
+    @writes
+    def schedule_link_regenerate(request):
+        progress.new_schedule_share_token()
+        audit.record(request, "schedule_link.regenerate", "setting", None,
+                     "Regenerated the shared schedule link")
+        request.flash("New link created — the old one no longer opens.", "ok")
+        return redirect("/admin/class-slots")
 
     @app.route("/admin/class-slots/new", methods=["POST"])
     @writes

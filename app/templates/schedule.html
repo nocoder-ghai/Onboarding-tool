@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Reachable by link alone, so keep it out of search results. -->
+<meta name="robots" content="noindex, nofollow">
+<!-- Refreshes itself so a tab left open on a scheduling desk stays current. -->
+<meta http-equiv="refresh" content="120">
+<title>Class schedule · {{ brand }}</title>
+<link rel="stylesheet" href="/static/design-system/bundle.css">
+<style>
+  body { background: var(--bg-secondary); }
+  .sc-wrap { max-width: 1200px; margin: 0 auto; padding: var(--space-32) var(--space-24) var(--space-48); }
+  .sc-head { display: flex; align-items: flex-end; justify-content: space-between;
+             gap: var(--space-16); flex-wrap: wrap; margin-bottom: var(--space-24); }
+  .sc-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-16);
+             margin-bottom: var(--space-24); }
+  @media (max-width: 720px) { .sc-kpis { grid-template-columns: repeat(2, 1fr); } }
+  .sc-row-past { opacity: 0.55; }
+  .sc-soon td { background: var(--bg-brand-1); }
+  .sc-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .sc-note { color: var(--text-tertiary); }
+  .sc-foot { margin-top: var(--space-24); color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+<div class="sc-wrap">
+
+  <div class="sc-head">
+    <div>
+      <div class="type-label-sm type-caps" style="color: var(--text-tertiary);">{{ brand }} · live schedule</div>
+      <h1 class="type-heading-xl" style="color: var(--text-primary); margin: var(--space-4) 0 0;">Class schedule</h1>
+      <p class="type-body-md sc-note" style="margin: var(--space-4) 0 0;">
+        Every class with a student, and which coach is taking it.
+      </p>
+    </div>
+    <div class="type-body-sm sc-note">
+      Updated {{ fmt_datetime(generated_at) }} · refreshes on its own
+    </div>
+  </div>
+
+  {% set booked = [s for s in sessions if s.status == "booked"] %}
+  {% set open_slots = [s for s in sessions if s.status == "open"] %}
+  {% set upcoming = [s for s in sessions if not s.is_past and s.status == "booked"] %}
+  {% set unassigned = [s for s in sessions if not s.is_past and s.status == "open"] %}
+
+  <div class="sc-kpis">
+    <div class="kpi-card kpi-card-compact kpi-card-brand">
+      <div class="kpi-card-label">Booked, still to come</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(upcoming) }}</div></div>
+    </div>
+    <div class="kpi-card kpi-card-compact kpi-card-warning">
+      <div class="kpi-card-label">Open, nobody yet</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(unassigned) }}</div></div>
+    </div>
+    <div class="kpi-card kpi-card-compact">
+      <div class="kpi-card-label">Booked, all time</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(booked) }}</div></div>
+    </div>
+    <div class="kpi-card kpi-card-compact">
+      <div class="kpi-card-label">Slots in total</div>
+      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(sessions) }}</div></div>
+    </div>
+  </div>
+
+  {% if sessions %}
+    <div class="card">
+      <div class="table-wrap" role="region" aria-label="Class schedule" tabindex="0">
+        <table class="table table-hoverable">
+          <thead>
+            <tr>
+              <th>When</th><th>Coach</th><th>Contact</th><th>Student</th>
+              <th>Grade group</th><th>Region</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in sessions %}
+              <tr class="{% if s.is_past %}sc-row-past{% elif s.is_soon %}sc-soon{% endif %}">
+                <td class="sc-when">{{ fmt_datetime(s.starts_at) }}
+                  <span class="sc-note">({{ s.duration_minutes }}m)</span>
+                  {% if s.is_soon %}<span class="badge badge-brand badge-sm">soon</span>{% endif %}
+                </td>
+                <td>{% if s.coach_name %}<strong>{{ s.coach_name }}</strong>{% else %}<span class="sc-note">—</span>{% endif %}</td>
+                <td class="type-body-sm">
+                  {% if s.coach_email %}{{ s.coach_email }}{% endif %}
+                  {% if s.coach_phone %}<div class="sc-note">{{ s.coach_phone }}</div>{% endif %}
+                  {% if not s.coach_email and not s.coach_phone %}<span class="sc-note">—</span>{% endif %}
+                </td>
+                <td>{{ s.student_name or "—" }}
+                  {% if s.grade_subject %}<div class="type-body-sm sc-note">{{ s.grade_subject }}</div>{% endif %}
+                </td>
+                <td class="type-body-sm">{{ s.cohort_name or "Any grade" }}</td>
+                <td class="type-body-sm">{{ s.region_name or "Any region" }}</td>
+                <td>
+                  {% if s.status == "booked" %}<span class="badge badge-success">Booked</span>
+                  {% elif s.status == "open" %}<span class="badge badge-warning">Open</span>
+                  {% elif "cancel" in s.status %}<span class="badge badge-error">{{ s.status }}</span>
+                  {% else %}<span class="badge">{{ s.status }}</span>{% endif %}
+                </td>
+              </tr>
+              {% if s.notes %}
+                <tr class="{% if s.is_past %}sc-row-past{% endif %}">
+                  <td></td>
+                  <td colspan="6" class="type-body-sm sc-note">{{ s.notes }}</td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="empty-state" role="status">
+        <h2 class="empty-state-title">No classes yet</h2>
+        <p class="empty-state-description">Slots added in the tool will appear here.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <p class="type-body-sm sc-foot">
+    Read-only. Anyone with this link can see it, so please don't post it anywhere public.
+    Past classes are dimmed; the next 24 hours are highlighted.
+  </p>
+</div>
+</body>
+</html>

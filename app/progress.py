@@ -786,6 +786,47 @@ def is_bookable(slot):
     return starts is not None and bookable_from() <= starts <= bookable_until()
 
 
+SCHEDULE_TOKEN_SETTING = "schedule_share_token"
+
+
+def schedule_share_token(create=True):
+    """The secret in the shared schedule URL. Generated on first use and
+    regenerated to revoke a link that has been forwarded too far."""
+    token = db.setting(SCHEDULE_TOKEN_SETTING, "")
+    if not token and create:
+        token = new_schedule_share_token()
+    return token
+
+
+def new_schedule_share_token():
+    import secrets
+    token = secrets.token_urlsafe(32)
+    db.set_setting(SCHEDULE_TOKEN_SETTING, token,
+                   "Secret in the shared class-schedule URL")
+    return token
+
+
+def scheduled_sessions():
+    """Every class slot with its coach, for the shared schedule. Ordered so
+    the soonest classes are read first."""
+    rows = wrap_all(db.query(
+        "SELECT cs.*, u.name AS coach_name, u.email AS coach_email, "
+        "u.phone AS coach_phone, r.name AS region_name, g.name AS cohort_name "
+        "FROM class_slots cs "
+        "LEFT JOIN users u ON u.id = cs.tutor_id "
+        "LEFT JOIN regions r ON r.id = cs.region_id "
+        "LEFT JOIN grade_cohorts g ON g.id = cs.grade_cohort_id "
+        "ORDER BY cs.starts_at"))
+    now = datetime.datetime.utcnow()
+    for row in rows:
+        starts = db.parse_ts(row.starts_at)
+        row.starts = starts
+        row.is_past = bool(starts and starts < now)
+        row.is_soon = bool(starts and not row.is_past
+                           and starts <= now + datetime.timedelta(days=1))
+    return rows
+
+
 def open_class_slots(region_id, grade_cohort_id=None):
     """Slots this tutor may take. A slot tagged with a region or a grade
     cohort is only offered to tutors in it — an untagged slot suits anyone,
