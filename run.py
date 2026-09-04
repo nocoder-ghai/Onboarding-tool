@@ -48,8 +48,16 @@ def cmd_serve(args):
     if not db.scalar("SELECT COUNT(*) FROM stages", (), 0):
         print("No content found — seeding the onboarding journey...")
         seed_module.seed(demo="--demo" in args)
-    elif first_run:
-        seed_module.ensure_admin()
+    else:
+        if os.environ.get("CUEMATH_SEED_ON_BOOT") == "1":
+            # How a content change reaches a hosted database, where there's no
+            # shell to run `run.py seed` from. Set the variable, let it
+            # redeploy, then turn it off again — left on, every restart would
+            # overwrite copy that was edited in the admin screens.
+            print("CUEMATH_SEED_ON_BOOT=1 — refreshing content from seed...")
+            seed_module.seed()
+        if first_run:
+            seed_module.ensure_admin()
 
     from app.webapp import bootstrap_check, create_app
     warning = bootstrap_check()
