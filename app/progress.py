@@ -857,8 +857,12 @@ def tutors(region_id=None, grade_cohort_id=None, stage_id=None, status=None,
         sql.append("AND captain_id = ?")
         args.append(captain_id)
     if search:
-        sql.append("AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)")
-        args.extend(["%%%s%%" % search] * 3)
+        # LOWER() on both sides: SQLite's LIKE ignores case for ASCII but
+        # Postgres's does not, so without this, searching "ananya" finds
+        # "Ananya Rao" locally and nothing at all in production.
+        sql.append("AND (LOWER(name) LIKE ? OR LOWER(email) LIKE ? "
+                   "OR LOWER(phone) LIKE ?)")
+        args.extend(["%%%s%%" % search.lower()] * 3)
     sql.append("ORDER BY name")
     rows = wrap_all(db.query(" ".join(sql), args))
 

@@ -867,7 +867,7 @@ def register(app):
             "key": util.unique_key("regions", util.slugify(name, "region")),
             "name": name,
             "sort_order": content.next_sort_order("regions"),
-            "is_active": 1 if request.checked("is_active") else 1,
+            "is_active": 1 if request.checked("is_active") else 0,
         })
         audit.record(request, "region.create", "region", region_id,
                      "Created region “%s”" % name)
