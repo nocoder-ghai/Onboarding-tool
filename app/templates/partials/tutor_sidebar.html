@@ -2,7 +2,7 @@
   /* Page-level layout only: place this sidebar beside the page's main content
      column. Shared here (rather than per-page) since every page that includes
      this sidebar needs it — dashboard.html, stage.html, learnosity.html. */
-  .tutor-shell { display: flex; align-items: flex-start; }
+  .tutor-shell { display: flex; align-items: flex-start; min-height: calc(100vh - 56px); }
   /* Cap the reading column and centre it in whatever space is left beside the
      sidebar. Left to fill the viewport, body copy ran past 130 characters a
      line on a wide screen — roughly double a comfortable measure. 720px is the
@@ -28,13 +28,79 @@
   .tsnav-children li.is-current { color: var(--text-brand); font-weight: var(--type-body-emphasis); }
   .ts-sidebar-foot { margin-top: auto; padding-top: var(--space-16); border-top: 1px solid var(--border-tertiary); }
   .ts-am-card { margin: var(--space-16) var(--space-8) 0; padding: var(--space-12);
-                border-radius: var(--radius-md); background: var(--bg-secondary); }
+                border-radius: var(--radius-md); background: var(--bg-inverse-secondary); }
   .ts-am-card a { display: block; margin-top: var(--space-2); }
+
+  /* ---- dark chrome -------------------------------------------------- */
+  /* The sidebar runs dark alongside the topbar, framing the light content
+     column. Built on the design system's inverse pair rather than hardcoded
+     hexes, so it still contrasts with the page in either theme. Every colour
+     below is re-stated because the stock nav-sidebar assumes a light ground. */
+  .tutor-shell .nav-sidebar {
+    background: var(--bg-inverse);
+    border-right: none;
+    /* Pin it to the viewport: the dark column fills the screen height and
+       stays put while the content scrolls, so the stage list and the
+       Activation Director stay reachable instead of sinking to the bottom of
+       a long page. 56px is the topbar. */
+    position: sticky;
+    top: 56px;
+    height: calc(100vh - 56px);
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .tutor-shell .nav-sidebar,
+  .tutor-shell .nav-sidebar .type-body-sm,
+  .tutor-shell .nav-sidebar .type-body-md { color: var(--text-on-inverse); }
+  .tutor-shell .nav-sidebar .nav-link {
+    color: color-mix(in srgb, var(--text-on-inverse) 72%, transparent);
+  }
+  .tutor-shell .nav-sidebar .nav-link:hover {
+    color: var(--text-on-inverse);
+    background: var(--bg-inverse-secondary);
+  }
+  .tutor-shell .nav-sidebar .nav-link.is-active,
+  .tutor-shell .nav-sidebar .nav-link.is-active:hover {
+    background: var(--bg-inverse-secondary);
+    color: var(--bg-brand);
+  }
+  .tutor-shell .nav-sidebar .nav-sidebar-section-title { color: var(--bg-brand); }
+  .tutor-shell .nav-sidebar .ts-who { color: var(--text-on-inverse); }
+  .tutor-shell .nav-sidebar .ts-where { color: color-mix(in srgb, var(--text-on-inverse) 55%, transparent); }
+  .tutor-shell .nav-sidebar .ts-tick { color: var(--bg-success); }
+  .tutor-shell .ts-sidebar-foot {
+    border-top-color: color-mix(in srgb, var(--text-on-inverse) 18%, transparent);
+  }
+  /* Stage list on dark: current in brand gold, done in a green that still
+     reads on black, locked dimmed. */
+  .tutor-shell .tsnav-children li a { color: color-mix(in srgb, var(--text-on-inverse) 62%, transparent); }
+  .tutor-shell .tsnav-children li a:hover { color: var(--text-on-inverse); }
+  .tutor-shell .tsnav-children li.is-done,
+  .tutor-shell .tsnav-children li.is-done a { color: var(--bg-success); }
+  .tutor-shell .tsnav-children li.is-current,
+  .tutor-shell .tsnav-children li.is-current a { color: var(--bg-brand); }
+  .tutor-shell .tsnav-group.is-done .nav-link { color: var(--bg-success); }
+  .tutor-shell .tsnav-group.is-done .nav-link .cm-icon { color: var(--bg-success) !important; }
+  .tutor-shell .nav-sidebar .nav-link.is-disabled,
+  .tutor-shell .tsnav-group.is-locked .nav-link {
+    color: color-mix(in srgb, var(--text-on-inverse) 40%, transparent);
+  }
+  /* Badges in the sidebar sit on black, so the light-ground defaults invert. */
+  .tutor-shell .nav-sidebar .badge {
+    background: color-mix(in srgb, var(--text-on-inverse) 14%, transparent);
+    color: color-mix(in srgb, var(--text-on-inverse) 80%, transparent);
+    border-color: transparent;
+  }
+  .tutor-shell .nav-sidebar .badge-error { background: var(--bg-error); color: var(--text-on-inverse); }
+  .tutor-shell .ts-am-card .type-label-sm { color: var(--bg-brand); }
+  .tutor-shell .ts-am-card .type-body-md { color: var(--text-on-inverse); }
+  .tutor-shell .ts-am-card a { color: color-mix(in srgb, var(--text-on-inverse) 70%, transparent); }
+  .tutor-shell .ts-am-card a:hover { color: var(--text-on-inverse); }
 </style>
-<aside class="nav-sidebar" aria-label="Sidebar" style="height: 100%;">
+<aside class="nav-sidebar" aria-label="Sidebar">
   <div style="padding: 0 var(--space-16) var(--space-16);">
-    <div class="type-body-md type-body-emphasis" style="color: var(--text-primary);">{{ user.name }}</div>
-    {% if region %}<div class="type-body-sm" style="color: var(--text-tertiary);">{{ region.name }}</div>{% endif %}
+    <div class="type-body-md type-body-emphasis ts-who">{{ user.name }}</div>
+    {% if region %}<div class="type-body-sm ts-where">{{ region.name }}</div>{% endif %}
   </div>
 
   <div class="nav-sidebar-section">
@@ -58,7 +124,7 @@
         {% else %}
           <a class="nav-link tsnav-head{% if s.id == current_stage_id %} is-active{% endif %}" href="/stage/{{ s.id }}"{% if s.id == current_stage_id %} aria-current="page"{% endif %}>
             {% if s.status == "completed" %}
-              <span class="cm-icon cm-icon-16" style="color: var(--text-success);" aria-hidden="true">
+              <span class="cm-icon cm-icon-16 ts-tick" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.134 6.28251L10.0256 18.8483L8.4416 18.2829C8.4416 15.4101 6.30538 12.9428 3.32832 12.2114L3.77168 10.5256C6.77013 11.2622 9.16316 13.4453 9.95821 16.2449L19.7658 5.15166L21.134 6.28251Z" fill="currentColor"/></svg>
               </span>
             {% else %}
@@ -95,13 +161,13 @@
 
   {% if director %}
     <div class="ts-am-card">
-      <div class="type-label-sm type-caps" style="color: var(--text-tertiary);">Activation Director</div>
-      <div class="type-body-md type-body-emphasis" style="color: var(--text-primary); margin-top: var(--space-4);">{{ director.name }}</div>
+      <div class="type-label-sm type-caps">Activation Director</div>
+      <div class="type-body-md type-body-emphasis" style="margin-top: var(--space-4);">{{ director.name }}</div>
       {% if director.email %}
-        <a href="mailto:{{ director.email }}" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">{{ director.email }}</a>
+        <a href="mailto:{{ director.email }}" class="type-body-sm cm-link cm-link-sm">{{ director.email }}</a>
       {% endif %}
       {% if director.phone %}
-        <a href="tel:{{ director.phone }}" class="type-body-sm cm-link cm-link-sm" style="color: var(--text-secondary);">{{ director.phone }}</a>
+        <a href="tel:{{ director.phone }}" class="type-body-sm cm-link cm-link-sm">{{ director.phone }}</a>
       {% endif %}
     </div>
   {% endif %}

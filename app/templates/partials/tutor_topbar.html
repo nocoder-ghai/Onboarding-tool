@@ -1,16 +1,50 @@
-<nav class="nav-header" aria-label="Main navigation">
-  <a href="/" class="nav-header-brand">
-    <img src="/static/design-system/logos/cuemath-wordmark-tagline.svg" alt="{{ brand }} — Making Coaches MathFit™" height="28">
+<style>
+  /* Page-level layout only: the tutor chrome runs dark — a near-black bar and
+     sidebar framing the light content column. Colours are the design system's
+     inverse pair (--bg-inverse / --text-on-inverse), so the chrome keeps
+     contrasting with the page in either theme rather than being hardcoded. */
+  .tt-bar {
+    background: var(--bg-inverse);
+    border-bottom: none;
+  }
+  /* The wordmark is drawn with currentColor, so it simply takes the bar's
+     text colour instead of needing a second, inverted asset. */
+  .tt-bar .nav-header-brand { color: var(--text-on-inverse); }
+  .tt-bar .tt-logo { display: inline-flex; align-items: center; }
+  .tt-bar .tt-logo svg { height: 28px; width: auto; display: block; }
+  .tt-bar .nav-link { color: color-mix(in srgb, var(--text-on-inverse) 72%, transparent); }
+  .tt-bar .nav-link:hover {
+    color: var(--text-on-inverse);
+    background: var(--bg-inverse-secondary);
+  }
+  .tt-bar .nav-link.is-active { color: var(--bg-brand); }
+  .tt-bar .tt-account { color: color-mix(in srgb, var(--text-on-inverse) 60%, transparent); }
+  /* The ghost button is built for a light ground, so give it an outline that
+     reads on black. */
+  .tt-bar .tt-signout {
+    color: var(--text-on-inverse);
+    border: 1px solid color-mix(in srgb, var(--text-on-inverse) 35%, transparent);
+    background: transparent;
+  }
+  .tt-bar .tt-signout:hover {
+    background: var(--bg-inverse-secondary);
+    border-color: color-mix(in srgb, var(--text-on-inverse) 60%, transparent);
+  }
+</style>
+<nav class="nav-header tt-bar" aria-label="Main navigation">
+  <a href="/home" class="nav-header-brand" aria-label="{{ brand }} — home">
+    <span class="tt-logo" aria-hidden="true">{% include "partials/_wordmark.svg" %}</span>
   </a>
   <div class="nav-header-links">
-    <a class="nav-link{% if not path.startswith('/learnosity') %} is-active{% endif %}"{% if not path.startswith('/learnosity') %} aria-current="page"{% endif %} href="/dashboard">Onboarding Journey</a>
+    <a class="nav-link{% if path.startswith('/home') %} is-active{% endif %}"{% if path.startswith('/home') %} aria-current="page"{% endif %} href="/home">Home</a>
+    <a class="nav-link{% if path.startswith('/dashboard') or path.startswith('/stage') %} is-active{% endif %}"{% if path.startswith('/dashboard') or path.startswith('/stage') %} aria-current="page"{% endif %} href="/dashboard">Onboarding Journey</a>
     <a class="nav-link{% if path.startswith('/learnosity') %} is-active{% endif %}"{% if path.startswith('/learnosity') %} aria-current="page"{% endif %} href="/learnosity">Learnosity</a>
   </div>
   <div class="nav-header-actions">
-    <span class="type-body-sm" style="color: var(--text-secondary);">{{ user.email or user.phone }}</span>
+    <span class="type-body-sm tt-account">{{ user.email or user.phone }}</span>
     <form method="post" action="/logout" class="inline-form">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <button type="submit" class="btn btn-sm btn-ghost">Sign out</button>
+      <button type="submit" class="btn btn-sm tt-signout">Sign out</button>
     </form>
   </div>
 </nav>
