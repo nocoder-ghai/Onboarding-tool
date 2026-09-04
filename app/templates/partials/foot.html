@@ -30,10 +30,14 @@ function cmFormatSeconds(total) {
   return m + ":" + (s < 10 ? "0" : "") + s;
 }
 
-// A video only counts as "watched" once a timer equal to its own length has
-// run down while it's actually playing — scrubbing to the end can't shortcut
-// it, since the countdown ignores playback position and only ticks while
-// the video is unpaused.
+// A video unlocks its step once this much of it has actually been played.
+// Not the whole thing: the last stretch is usually sign-off, and holding the
+// button back to the final second just makes people wait.
+var CM_WATCH_FRACTION = 0.8;
+
+// The countdown ignores playback position and only ticks while the video is
+// unpaused, so scrubbing to the end can't shortcut it — a coach has to sit
+// through the material, not skip to it.
 document.querySelectorAll("video[data-cm-video-timer]").forEach(function (video) {
   var box = video.closest(".video-box");
   var bar = box.querySelector(".bar-fill");
@@ -41,12 +45,12 @@ document.querySelectorAll("video[data-cm-video-timer]").forEach(function (video)
   var documentId = video.dataset.documentId;
   var csrfToken = video.dataset.csrf;
   var remaining = null;
-  var total = null;
+  var required = null;   // seconds of playback needed, not the full duration
   var tickHandle = null;
   var done = false;
 
   function render() {
-    bar.style.width = (100 * (total - remaining) / total) + "%";
+    bar.style.width = (100 * (required - remaining) / required) + "%";
     label.textContent = remaining > 0
       ? "⏳ " + cmFormatSeconds(remaining) + " left before you can mark this done"
       : "✓ You can mark this done now.";
@@ -62,9 +66,9 @@ document.querySelectorAll("video[data-cm-video-timer]").forEach(function (video)
   }
 
   function captureDuration() {
-    if (total !== null || !isFinite(video.duration)) return;
-    total = video.duration;
-    remaining = total;
+    if (required !== null || !isFinite(video.duration) || !video.duration) return;
+    required = video.duration * CM_WATCH_FRACTION;
+    remaining = required;
     render();
   }
 
@@ -74,7 +78,7 @@ document.querySelectorAll("video[data-cm-video-timer]").forEach(function (video)
   video.addEventListener("play", function () {
     if (done || tickHandle) return;
     captureDuration();
-    if (total === null) return;
+    if (required === null) return;
     tickHandle = setInterval(function () {
       remaining -= 1;
       if (remaining <= 0) {
