@@ -19,7 +19,7 @@
         <div class="cm-media">
           <video controls preload="metadata"
                  poster="/file/document/{{ doc.current.id }}/thumbnail"
-                 data-cm-video-timer data-document-id="{{ doc.current.id }}" data-csrf="{{ csrf }}">
+                 data-cm-video-timer data-document-id="{{ doc.id }}" data-csrf="{{ csrf }}">
             <source src="/file/document/{{ doc.current.id }}" type="{{ doc.current.mime_type }}">
           </video>
           <div class="progress progress-md" style="margin-top: var(--space-16);">
