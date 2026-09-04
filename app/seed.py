@@ -399,7 +399,7 @@ def seed(verbose=True, demo=False):
         "class_and_app_training",
         title="Class & App Training",
         subtitle="Three parts, in any order · due within 2 days",
-        description="Your real-life class with a student, the Cuemath Tutor "
+        description="Your real-life class with a student, the Cuemath Coach "
                     "app, and the Cuemath Parent app — finish all three within "
                     "2 days of unlocking.",
         locked_hint="Finish the platform walkthrough first — this opens "
@@ -421,15 +421,15 @@ def seed(verbose=True, demo=False):
         sort_order=10, is_mandatory=1, completion_rule="admin_marked",
         region_id=None, archived_at=None)
 
-    # -- Cuemath Tutor App Training ----------------------------------------- #
+    # -- Cuemath Coach App Training ----------------------------------------- #
     tutor_app = _component(
         "tutor_app_training", stage_id=stage2,
-        title="Cuemath Tutor App Training",
+        title="Cuemath Coach App Training",
         description="The app you'll live in: how it works, onboarding tasks, "
                     "slots, parent communication and support.",
         sort_order=20, is_mandatory=1, completion_rule="sub_items",
         region_id=None, archived_at=None)
-    _link("tutor_app_download", label="Download the Cuemath Tutor app",
+    _link("tutor_app_download", label="Download the Cuemath Coach app",
           url="https://example.com/replace-with-tutor-app-link",
           description="Replace with the real app link in Admin → Links.",
           stage_id=None, component_id=tutor_app, sub_item_id=None,
@@ -438,14 +438,14 @@ def seed(verbose=True, demo=False):
     # C0 — App walkthrough (recordings)
     download_item = _item(
         "download_tutor_app", component_id=tutor_app, parent_id=None,
-        title="Download the Cuemath Tutor app",
+        title="Download the Cuemath Coach app",
         description="Get the app on your phone before anything else here.",
-        instructions="Search for “Cuemath Tutor” on the Play Store or App "
+        instructions="Search for “Cuemath Coach” on the Play Store or App "
                      "Store, install it, and sign in with your registered email.",
         kind="task", accept_mime="", max_upload_mb=None,
         sort_order=2, is_mandatory=1, region_id=None, archived_at=None)
     _recording("download_tutor_app_recording",
-               "How to download the Cuemath Tutor app", download_item,
+               "How to download the Cuemath Coach app", download_item,
                ["Walks through finding, installing and signing in to the app."])
 
     task_framework_item = _item(
@@ -501,7 +501,7 @@ def seed(verbose=True, demo=False):
         sort_order=40, is_mandatory=1, region_id=None, archived_at=None)
     parent_items = {}
     for index, (key, title, description) in enumerate([
-        ("parent_app_chat", "Cuemath Tutor App Chat",
+        ("parent_app_chat", "Cuemath Coach App Chat",
          "When to message, response times, and tone."),
         ("parent_class_summary", "Class Summary",
          "Write a summary a parent can act on in under a minute."),
@@ -540,7 +540,7 @@ def seed(verbose=True, demo=False):
     ticket_item = _item(
         "raising_ticket", component_id=tutor_app, parent_id=help_group,
         title="Raising a ticket",
-        description="How to log an issue on the Cuemath Tutor app and track it "
+        description="How to log an issue on the Cuemath Coach app and track it "
                     "through to resolution.",
         instructions="Open Help in the app, choose the closest category, and "
                      "describe what happened — you'll get a ticket number to "
@@ -571,7 +571,7 @@ def seed(verbose=True, demo=False):
     # ================================================================== #
     _rename_key("sub_items", "wh_policy", "session_service_policy")
     _rename_key("documents", "doc_wh_policy", "doc_session_service_policy")
-    # The old "Policies" group heading under Tutor App Training is now empty —
+    # The old "Policies" group heading under Coach App Training is now empty —
     # its children moved to this stage and Growth's Retention & Referrals.
     db.execute("DELETE FROM sub_items WHERE key = 'tutor_app_policies' "
                "AND NOT EXISTS (SELECT 1 FROM sub_items c "
