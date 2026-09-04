@@ -418,7 +418,11 @@ def seed(verbose=True, demo=False):
                     "call, no mentor watching live. The session is recorded, "
                     "scored afterward, and your mentor marks this once feedback "
                     "is in.",
-        sort_order=10, is_mandatory=1, completion_rule="admin_marked",
+        # Not mandatory — not because it's optional in practice, but because
+        # stage completion must not wait on a mentor's review. The tutor still
+        # sees it, still books it, and the admin still marks it; it just
+        # doesn't hold the rest of the journey shut while it's pending.
+        sort_order=10, is_mandatory=0, completion_rule="admin_marked",
         region_id=None, archived_at=None)
 
     # -- Cuemath Coach App Training ----------------------------------------- #

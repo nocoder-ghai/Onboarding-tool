@@ -331,14 +331,15 @@ def stage_detail(user, stage_id, states=None):
             comp.prep_tips = prep_tips()
 
     # Reveal components one at a time so a multi-part stage doesn't dump every
-    # part on the tutor at once. The class-with-a-student component "passes"
-    # as soon as a slot is picked — completion needs a mentor's review, which
-    # can take days, and shouldn't hold up the rest of the stage.
+    # part on the tutor at once. The class with a student is the exception: a
+    # slot has to be open, the class has to happen, and a mentor has to review
+    # it — days of waiting, almost none of it in the tutor's hands. It never
+    # gates what comes after it.
     previous_passed = True
     for comp in state.components:
         comp.visible = previous_passed
         if comp.key == CLASS_SLOT_COMPONENT_KEY:
-            previous_passed = bool(comp.class_slot)
+            previous_passed = True
         else:
             previous_passed = comp.complete
     return state
