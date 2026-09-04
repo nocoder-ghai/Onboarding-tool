@@ -764,7 +764,7 @@ def class_slot_for(user):
 #: Slots are offered inside a window. A tutor needs notice to prepare, so
 #: nothing sooner than this — which also drops times already in the past that
 #: were left behind by an old upload.
-BOOKING_LEAD_HOURS = 24
+BOOKING_LEAD_HOURS = 12
 #: And nothing further out than this, so the list stays a short set of real
 #: choices rather than every time anyone has ever uploaded.
 BOOKING_WINDOW_DAYS = 5
