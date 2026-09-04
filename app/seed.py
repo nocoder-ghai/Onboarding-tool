@@ -25,6 +25,11 @@ def _upsert(table, key, values, timestamps=True):
     if timestamps:
         values = dict(values, updated_at=db.now())
     if row:
+        # Whether something is archived is an admin's decision, not the seed's.
+        # Re-running this to refresh copy must not quietly put back a stage or
+        # step someone deliberately took out of the journey — use Restore in
+        # the admin screens for that.
+        values = {k: v for k, v in values.items() if k != "archived_at"}
         db.update(table, row["id"], values)
         return row["id"]
     values = dict(values, key=key)
