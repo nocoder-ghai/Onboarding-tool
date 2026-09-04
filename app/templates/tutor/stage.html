@@ -369,7 +369,13 @@
     function sync() {
       var open = item.hasAttribute('open');
       item.classList.toggle('is-open', open);
-      if (content) content.style.maxHeight = open ? content.scrollHeight + 'px' : '0';
+      // 'none', not a measured pixel height. This runs while the page is
+      // parsing, before pictures and videos have downloaded, so scrollHeight
+      // is measured as though they were empty. On a fast local connection the
+      // media happens to be there in time; over a real network it isn't, and
+      // the stale measurement clips the panel with overflow:hidden and no way
+      // to scroll to the rest of it.
+      if (content) content.style.maxHeight = open ? 'none' : '0';
     }
     item.addEventListener('toggle', sync);
     sync();
