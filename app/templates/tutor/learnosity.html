@@ -4,9 +4,8 @@
 {% include "partials/tutor_topbar.html" %}
 <style>
   /* Page-level layout only: .tutor-shell/.tutor-main come from
-     partials/tutor_sidebar.html (shared by every page using this sidebar);
-     this page just narrows the content column for readability. */
-  .tutor-main { max-width: 900px; }
+     partials/tutor_sidebar.html, including the shared reading width — this
+     page no longer sets one of its own. */
   .link-row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-24); text-decoration: none; }
   .link-row + .link-row { border-top: 1px solid var(--border-tertiary); }
   .link-row:hover { background: var(--bg-secondary); }
