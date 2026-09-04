@@ -152,8 +152,13 @@
     <div class="accordion ts-comp-list">
       {% for comp in stage.components %}
         {% if comp.visible %}
-        <details class="accordion-item{% if comp.complete %} is-done{% endif %}{% if not comp.complete %} is-open{% endif %}"
-                  {% if not comp.complete %}open{% endif %}>
+        <!-- A component is settled once the tutor has done their part. For the
+             class with a student that's booking a time — the mentor's review
+             comes days later, so leaving it expanded keeps a finished task
+             dominating the page instead of the one they should work on next. -->
+        {% set comp_settled = comp.complete or comp.class_slot %}
+        <details class="accordion-item{% if comp.complete %} is-done{% endif %}{% if not comp_settled %} is-open{% endif %}"
+                  {% if not comp_settled %}open{% endif %}>
           <summary class="accordion-trigger">
             <span class="ts-comp-row">
               <span class="ts-comp-row-title">{{ comp.title }}</span>
