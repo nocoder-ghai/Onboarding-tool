@@ -1,6 +1,17 @@
 <style>
   /* Page-level layout only: keep the admin sidebar out of printed pages. */
   @media print { .admin-nav { display: none; } }
+
+  /* The admin column stays wide because the tables need it — a tutor list or
+     the funnel rollup would be cramped otherwise. Long-form copy and
+     single-column form fields don't, so they get a readable cap instead of
+     stretching to 150+ characters a line. Shared here rather than per page
+     since every admin screen includes this sidebar. */
+  .admin-shell > main p,
+  .admin-shell .card-description { max-width: 68ch; }
+  .admin-shell .empty-state p { max-width: none; }
+  .admin-shell .form-stack > .cm-field { max-width: 560px; }
+  .admin-shell .form-stack > .cm-field textarea { min-height: 6.5em; }
 </style>
 <aside class="nav-sidebar admin-nav" aria-label="Sidebar">
   <div class="nav-sidebar-section">
