@@ -97,6 +97,7 @@
   .tutor-shell .nav-sidebar .badge-error { background: var(--bg-error); color: var(--text-on-inverse); }
   .tutor-shell .ts-am-card .type-label-sm { color: var(--bg-brand); }
   .tutor-shell .ts-am-card .type-body-md { color: var(--text-on-inverse); }
+  .tutor-shell .ts-am-card .ts-am-none { color: color-mix(in srgb, var(--text-on-inverse) 60%, transparent); }
   .tutor-shell .ts-am-card a { color: color-mix(in srgb, var(--text-on-inverse) 70%, transparent); }
   .tutor-shell .ts-am-card a:hover { color: var(--text-on-inverse); }
 </style>
@@ -162,9 +163,11 @@
     <a href="/profile" class="nav-link">You</a>
   </div>
 
-  {% if director %}
-    <div class="ts-am-card">
-      <div class="type-label-sm type-caps">Activation Director</div>
+  <!-- Always rendered. A tutor with nobody assigned still needs to know who to
+       ask, so fall back to the support address rather than showing a gap. -->
+  <div class="ts-am-card">
+    <div class="type-label-sm type-caps">Activation Director</div>
+    {% if director %}
       <div class="type-body-md type-body-emphasis" style="margin-top: var(--space-4);">{{ director.name }}</div>
       {% if director.email %}
         <a href="mailto:{{ director.email }}" class="type-body-sm cm-link cm-link-sm">{{ director.email }}</a>
@@ -172,6 +175,13 @@
       {% if director.phone %}
         <a href="tel:{{ director.phone }}" class="type-body-sm cm-link cm-link-sm">{{ director.phone }}</a>
       {% endif %}
-    </div>
-  {% endif %}
+    {% else %}
+      <div class="type-body-sm ts-am-none" style="margin-top: var(--space-4);">
+        Being assigned — we'll introduce you shortly.
+      </div>
+      {% if support_email %}
+        <a href="mailto:{{ support_email }}" class="type-body-sm cm-link cm-link-sm">{{ support_email }}</a>
+      {% endif %}
+    {% endif %}
+  </div>
 </aside>
