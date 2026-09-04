@@ -3,15 +3,18 @@
      column. Shared here (rather than per-page) since every page that includes
      this sidebar needs it — dashboard.html, stage.html, learnosity.html. */
   .tutor-shell { display: flex; align-items: flex-start; min-height: calc(100vh - 56px); }
-  /* Cap the reading column and centre it in whatever space is left beside the
-     sidebar. Left to fill the viewport, body copy ran past 130 characters a
-     line on a wide screen — roughly double a comfortable measure. 720px is the
-     width /profile and /notifications already used, so this makes every tutor
-     page agree instead of each picking its own. */
+  /* Cap the column at the design system's content width, then cap the prose
+     inside it separately. Capping the whole column instead left cards and the
+     timeline stranded in a narrow strip with dead space either side; capping
+     nothing let body copy run past 130 characters a line. Text gets a
+     comfortable measure, everything else gets the room. */
   .tutor-main {
     flex: 1; min-width: 0; padding: var(--space-24);
-    max-width: 760px; margin-inline: auto;
+    max-width: var(--container-max); margin-inline: auto;
   }
+  .tutor-main p,
+  .tutor-main .card-description,
+  .tutor-main .ts-prose { max-width: 68ch; }
 
   /* Page-level layout only: the stage list is a nav-sidebar with a per-stage
      sub-list of components (not a stock navigation.md variant), plus the

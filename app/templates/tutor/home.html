@@ -11,7 +11,8 @@
     .hm-hero { text-align: center; padding: var(--space-32) 0 var(--space-24); }
     .hm-eyebrow { color: var(--text-tertiary); letter-spacing: 0.12em; }
     .hm-greeting { color: var(--text-primary); margin: var(--space-8) 0 0; }
-    .hm-lead { color: var(--text-secondary); margin: var(--space-12) auto 0; max-width: 46ch; }
+    /* Needs the extra specificity to beat the shared `.tutor-main p` cap. */
+    .tutor-main .hm-lead { color: var(--text-secondary); margin: var(--space-12) auto 0; max-width: 46ch; }
     .hm-next { display: flex; align-items: center; justify-content: space-between;
                gap: var(--space-16); flex-wrap: wrap; }
   </style>
