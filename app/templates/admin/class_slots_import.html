@@ -105,16 +105,33 @@
     <div class="card-content" style="display: flex; flex-direction: column; gap: var(--space-16);">
       <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">A header row is detected automatically. Expected
         columns are <code>student name</code>, <code>class date</code>,
-        <code>class time</code> and <code>grade</code>. Dates can be written as
-        <code>2026-09-15</code>, <code>15/09/2026</code> or <code>15 Sep 2026</code>;
-        times as <code>14:30</code> or <code>2:30 PM</code>. You can optionally add
-        <code>duration</code> (minutes, defaults to 60), <code>region</code> and
-        <code>notes</code> columns too. Every row becomes an <strong>open</strong>
-        slot — no tutor assigned yet — for a tutor to pick from
+        <code>class time</code> and <code>grade</code>. Times can be written as
+        <code>14:30</code> or <code>2:30 PM</code>. You can optionally add
+        <code>duration</code> (minutes, defaults to 60), <code>region</code>,
+        <code>grade group</code> and <code>notes</code> columns too. Every row
+        becomes an <strong>open</strong> slot — no tutor assigned yet — for a tutor
+        to pick from
         <a href="/admin/class-slots" class="cm-link" style="color: var(--text-brand);">Class with a Student</a>.</p>
-      <pre class="format-sample"><code>student name,class date,class time,grade,duration,region,notes
-Aarav Mehta,2026-09-15,16:30,Grade 5 Math,60,India,Prefers a calm start
-Zoe Carter,2026-09-16,9:00 AM,Grade 3 Math,45,US/Canada,</code></pre>
+
+      <div class="card card-compact card-info-tint">
+        <div class="type-label-md" style="color: var(--text-primary);">Dates are read month first</div>
+        <p class="type-body-sm" style="color: var(--text-secondary); margin: var(--space-4) 0 0;">
+          <code>3/9/2026</code> is <strong>9 March</strong>, not 3 September — the
+          month/date/year order a spreadsheet exports. <code>2026-03-09</code> and
+          <code>9 Mar 2026</code> are read the same way and leave no room for doubt,
+          so prefer one of those if you are ever unsure.
+        </p>
+      </div>
+
+      <p class="type-body-sm" style="color: var(--text-secondary); margin: 0;">
+        <code>grade group</code> restricts a slot to coaches licensed for it —
+        <code>K-5</code>, <code>3-8</code> or <code>9-12</code>. Leave it out and any
+        coach can take the class. A row naming a group that doesn't exist is skipped
+        rather than imported unrestricted.</p>
+
+      <pre class="format-sample"><code>student name,class date,class time,grade,duration,region,grade group,notes
+Aarav Mehta,9/15/2026,16:30,Grade 5 Math,60,India,K-5,Prefers a calm start
+Zoe Carter,9/16/2026,9:00 AM,Grade 3 Math,45,US/Canada,K-5,</code></pre>
     </div>
   </div>
 </main>

@@ -73,7 +73,14 @@ def _require(values, field, message):
         raise HttpError(400, message)
 
 
-_CLASS_DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y",
+# Slashed dates are read MONTH FIRST — 3/9/2026 is 9 March, not 3 September.
+# Order matters and is the whole ballgame: both readings are valid for any day
+# up to the 12th, so whichever is tried first silently wins and a wrong guess
+# lands the class months away without an error. Day-first stays on as a
+# fallback, where it can only fire for a date month-first can't read at all
+# (25/12/2026), so it never overrides an ambiguous one.
+_CLASS_DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y",
+                       "%d/%m/%Y", "%d-%m-%Y",
                        "%d %b %Y", "%d %B %Y", "%b %d %Y", "%B %d %Y",
                        "%b %d, %Y", "%B %d, %Y")
 _CLASS_TIME_FORMATS = ("%H:%M", "%H:%M:%S", "%I:%M %p", "%I:%M%p", "%I %p")
