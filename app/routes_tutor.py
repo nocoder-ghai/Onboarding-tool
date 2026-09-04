@@ -8,6 +8,24 @@ from .util import wrap
 
 def register(app):
 
+    # ----------------------------------------------------------------- home #
+    @app.route("/home")
+    @tutor_required
+    def home(request):
+        """The welcome — greeting, the note from us, and the way on to the
+        journey. Kept separate from /dashboard so the journey view is just the
+        journey."""
+        user = request.user
+        states = progress.sync(user)
+        welcome_video = content.document_by_key("nancy_welcome_video")
+        if welcome_video:
+            welcome_video.current = content.current_version(welcome_video.id)
+        return app.render(
+            request, "tutor/home.html",
+            states=states, summary=progress.overall(states),
+            intro=db.setting("dashboard_intro", ""),
+            welcome_video=welcome_video)
+
     # ------------------------------------------------------------ dashboard #
     @app.route("/dashboard")
     @tutor_required

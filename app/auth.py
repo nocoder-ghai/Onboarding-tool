@@ -66,7 +66,7 @@ def home_for(user):
     if user is None:
         return "/login"
     row = db.one("SELECT can_admin FROM roles WHERE key = ?", (user["role_key"],))
-    return "/admin" if (row and row["can_admin"]) else "/dashboard"
+    return "/admin" if (row and row["can_admin"]) else "/home"
 
 
 # --------------------------------------------------------------------------- #

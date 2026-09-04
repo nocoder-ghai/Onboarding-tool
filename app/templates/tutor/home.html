@@ -1,0 +1,75 @@
+{% set page_title = "Home" %}
+{% set hide_topbar = True %}
+{% include "partials/head.html" %}
+{% include "partials/tutor_topbar.html" %}
+<div class="tutor-shell">
+{% include "partials/tutor_sidebar.html" %}
+<main class="tutor-main">
+  <style>
+    /* Page-level layout only: a centred welcome hero, then the message and
+       the way on to the journey. */
+    .hm-hero { text-align: center; padding: var(--space-32) 0 var(--space-24); }
+    .hm-eyebrow { color: var(--text-tertiary); letter-spacing: 0.12em; }
+    .hm-greeting { color: var(--text-primary); margin: var(--space-8) 0 0; }
+    .hm-lead { color: var(--text-secondary); margin: var(--space-12) auto 0; max-width: 46ch; }
+    .hm-next { display: flex; align-items: center; justify-content: space-between;
+               gap: var(--space-16); flex-wrap: wrap; }
+  </style>
+
+  <div class="hm-hero">
+    <div class="type-label-sm type-caps hm-eyebrow">Welcome aboard</div>
+    <h1 class="type-display-sm hm-greeting">Hi {{ user.name.split(' ')[0] }} 👋</h1>
+    <p class="type-body-lg hm-lead">
+      {% if region %}You're joining us from {{ region.name }}. {% endif %}Here's what your
+      journey to becoming a Cuemath Coach looks like.
+    </p>
+  </div>
+
+  {% if welcome_video %}
+    {% if welcome_video.current %}
+      {% set doc = welcome_video %}
+      {% include "partials/_doc_link.html" %}
+    {% else %}
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-text">
+            <div class="card-title">{{ welcome_video.title }}</div>
+            <div class="card-description">Coming soon — your welcome video will play here.</div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="card card-brand-tint">
+    <div class="type-body-md" style="color: var(--text-secondary);">
+      {{ simple_markdown(intro or "Work through each stage in order — the next one opens as soon as you're ready.")|safe }}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="progress-row">
+      <div class="progress{% if summary.percent == 100 %} progress-success{% endif %}" role="progressbar"
+           aria-valuenow="{{ summary.percent }}" aria-valuemin="0" aria-valuemax="100"
+           aria-label="Overall onboarding progress" style="--progress-value: {{ summary.percent }}%;">
+        <div class="progress-bar"></div>
+      </div>
+      <span class="progress-label">{{ summary.percent }}%</span>
+    </div>
+    <div class="hm-next" style="margin-top: var(--space-16);">
+      <p class="type-body-sm" style="color: var(--text-tertiary); margin: 0;">
+        {{ summary.stages_done }} of {{ summary.stages_total }} stages complete
+        {% if summary.current_stage %} · up next: <span class="type-emphasis" style="color: var(--text-primary);">{{ summary.current_stage.title }}</span>{% endif %}
+      </p>
+      {% if summary.all_complete %}
+        <a class="btn btn-md btn-primary" href="/complete">View your certificate</a>
+      {% elif summary.current_stage %}
+        <a class="btn btn-md btn-primary" href="/stage/{{ summary.current_stage.id }}">Continue your journey</a>
+      {% else %}
+        <a class="btn btn-md btn-primary" href="/dashboard">Go to your journey</a>
+      {% endif %}
+    </div>
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

@@ -319,6 +319,12 @@ def stage_detail(user, stage_id, states=None):
         comp.tree = _hydrate_tree(user, comp, region_id, grade_cohort_id)
         comp.current_item_id = _first_incomplete_leaf_id(comp.tree)
         comp.done_leaves = _done_leaves(comp.tree)
+        # Only the class-with-a-student component books a slot, but the stage
+        # page asks every component whether it has one (to choose between the
+        # Scheduled and Done badges), so the attribute has to always exist.
+        comp.class_slot = None
+        comp.open_slots = []
+        comp.prep_tips = None
         if comp.key == CLASS_SLOT_COMPONENT_KEY:
             comp.class_slot = class_slot_for(user)
             comp.open_slots = [] if comp.class_slot else open_class_slots(region_id)

@@ -37,6 +37,11 @@
     {% if region %}<div class="type-body-sm" style="color: var(--text-tertiary);">{{ region.name }}</div>{% endif %}
   </div>
 
+  <div class="nav-sidebar-section">
+    <a href="/home" class="nav-link{% if path == '/home' %} is-active{% endif %}"{% if path == '/home' %} aria-current="page"{% endif %}>Home</a>
+    <a href="/dashboard" class="nav-link{% if path == '/dashboard' %} is-active{% endif %}"{% if path == '/dashboard' %} aria-current="page"{% endif %}>Onboarding Journey</a>
+  </div>
+
   <nav class="nav-sidebar-section tsnav" aria-label="Onboarding stages">
     {% for i, s in enumerate(states, 1) %}
       {% set grp_cls = "is-done" if s.status == "completed" else ("is-locked" if s.status == "locked" else "is-current") %}
