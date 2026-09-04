@@ -751,11 +751,30 @@ def class_slot_for(user):
         (user["id"],)))
 
 
+#: A tutor needs notice to prepare, so a slot has to be at least this far off
+#: before it is offered. Anything sooner — including times already in the past
+#: that were left behind by an old upload — is not a real option.
+BOOKING_LEAD_HOURS = 24
+
+
+def bookable_from():
+    return datetime.datetime.utcnow() + datetime.timedelta(hours=BOOKING_LEAD_HOURS)
+
+
+def is_bookable(slot):
+    """starts_at is written by two different paths and comes back in two
+    formats ('...T10:21' and '... 16:00:00'), so compare parsed datetimes
+    rather than strings."""
+    starts = db.parse_ts(slot["starts_at"] if hasattr(slot, "keys") else slot.starts_at)
+    return starts is not None and starts >= bookable_from()
+
+
 def open_class_slots(region_id):
-    return wrap_all(db.query(
+    rows = wrap_all(db.query(
         "SELECT * FROM class_slots WHERE status = 'open' "
         "AND (region_id IS NULL OR region_id = ?) ORDER BY starts_at",
         (region_id,)))
+    return [r for r in rows if is_bookable(r)]
 
 
 def book_class_slot(user, slot_id):
@@ -766,6 +785,11 @@ def book_class_slot(user, slot_id):
         raise ValidationError("That slot isn't available any more — pick another.")
     if slot.region_id and slot.region_id != user["region_id"]:
         raise ValidationError("That slot isn't part of your region.")
+    # Filtering the list isn't enough — the id can be posted directly.
+    if not is_bookable(slot):
+        raise ValidationError(
+            "That time has passed or is too soon — please pick one at least "
+            "%d hours away." % BOOKING_LEAD_HOURS)
     db.execute(
         "UPDATE class_slots SET tutor_id = ?, status = 'booked', booked_at = ?, "
         "updated_at = ? WHERE id = ? AND status = 'open'",
