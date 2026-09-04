@@ -751,14 +751,21 @@ def class_slot_for(user):
         (user["id"],)))
 
 
-#: A tutor needs notice to prepare, so a slot has to be at least this far off
-#: before it is offered. Anything sooner — including times already in the past
-#: that were left behind by an old upload — is not a real option.
+#: Slots are offered inside a window. A tutor needs notice to prepare, so
+#: nothing sooner than this — which also drops times already in the past that
+#: were left behind by an old upload.
 BOOKING_LEAD_HOURS = 24
+#: And nothing further out than this, so the list stays a short set of real
+#: choices rather than every time anyone has ever uploaded.
+BOOKING_WINDOW_DAYS = 5
 
 
 def bookable_from():
     return datetime.datetime.utcnow() + datetime.timedelta(hours=BOOKING_LEAD_HOURS)
+
+
+def bookable_until():
+    return datetime.datetime.utcnow() + datetime.timedelta(days=BOOKING_WINDOW_DAYS)
 
 
 def is_bookable(slot):
@@ -766,7 +773,7 @@ def is_bookable(slot):
     formats ('...T10:21' and '... 16:00:00'), so compare parsed datetimes
     rather than strings."""
     starts = db.parse_ts(slot["starts_at"] if hasattr(slot, "keys") else slot.starts_at)
-    return starts is not None and starts >= bookable_from()
+    return starts is not None and bookable_from() <= starts <= bookable_until()
 
 
 def open_class_slots(region_id):
@@ -788,8 +795,8 @@ def book_class_slot(user, slot_id):
     # Filtering the list isn't enough — the id can be posted directly.
     if not is_bookable(slot):
         raise ValidationError(
-            "That time has passed or is too soon — please pick one at least "
-            "%d hours away." % BOOKING_LEAD_HOURS)
+            "Pick a time between %d hours and %d days from now."
+            % (BOOKING_LEAD_HOURS, BOOKING_WINDOW_DAYS))
     db.execute(
         "UPDATE class_slots SET tutor_id = ?, status = 'booked', booked_at = ?, "
         "updated_at = ? WHERE id = ? AND status = 'open'",
