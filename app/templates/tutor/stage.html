@@ -28,6 +28,9 @@
     .ts-agenda-row { display: flex; align-items: flex-start; gap: var(--space-12); }
     .ts-agenda-row + .ts-agenda-row { margin-top: var(--space-12); }
     .ts-done-roll { background: var(--bg-success-2); border-color: var(--border-success); }
+    /* The progress bar reads fine at a modest width — stretched across a wide
+       card it just becomes a long rule. */
+    .ts-stage-progress { max-width: 420px; }
     .ts-agenda-n {
       flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--radius-full);
       background: var(--bg-brand-1); color: var(--text-brand); display: flex;
@@ -68,7 +71,7 @@
 
     <div class="card">
       {% if stage.description %}<p class="type-body-lg" style="color: var(--text-secondary);">{{ stage.description }}</p>{% endif %}
-      <div class="progress-row" style="margin-top: var(--space-16);">
+      <div class="progress-row ts-stage-progress" style="margin-top: var(--space-16);">
         <div class="progress{% if stage.complete %} progress-success{% endif %}" role="progressbar" aria-valuenow="{{ stage.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Stage progress" style="--progress-value: {{ stage.percent }}%;">
           <div class="progress-bar"></div>
         </div>
