@@ -136,8 +136,10 @@ def component_state(user, comp, pmap, cache=None):
 
     row = pmap.get(("component", comp.id))
     if rule == "sub_items":
-        mandatory = [s for s in states if s.is_mandatory]
-        complete = all(s.done for s in mandatory) if mandatory else False
+        # Fall back to every step when none are marked mandatory, otherwise a
+        # component whose steps are all optional could never be completed.
+        gating = [s for s in states if s.is_mandatory] or states
+        complete = bool(states) and all(s.done for s in gating)
     else:
         complete = bool(row and row.status == DONE)
 
@@ -177,8 +179,11 @@ def stage_states(user, cache=None, pmap=None):
             complete = bool(row and row.status == DONE)
             done_units, total_units = (1 if complete else 0), 1
         else:
-            mandatory = [c for c in comp_states if c.is_mandatory]
-            complete = all(c.complete for c in mandatory) if mandatory else False
+            # Same fallback as component level: a stage built only from
+            # non-mandatory components must still be able to finish, or it
+            # would sit at 100% and never unlock the stage after it.
+            gating = [c for c in comp_states if c.is_mandatory] or comp_states
+            complete = bool(comp_states) and all(c.complete for c in gating)
             done_units = sum(c.done_units for c in comp_states)
             total_units = sum(c.total_units for c in comp_states) or 1
             if complete:
@@ -222,9 +227,13 @@ def stage_states(user, cache=None, pmap=None):
                 due = unlocked_ts + datetime.timedelta(days=state.deadline_days)
                 state.due_date = due.isoformat(sep=" ")
         state.overdue = state.due_in_days is not None and state.due_in_days < 0
+        # Only what actually stands between the tutor and finishing the stage.
+        # A non-mandatory component (the class with a student) can sit
+        # incomplete for days waiting on a mentor, and naming it as what's
+        # next sends them off to something they cannot act on.
         pending = []
         for comp in state.components:
-            if comp.complete:
+            if comp.complete or not comp.is_mandatory:
                 continue
             pending.extend([p.title for p in comp.pending_items] or [comp.title])
         state.pending_titles = pending
@@ -243,8 +252,10 @@ def overall(states):
         "stages_done": stages_done,
         "stages_total": len(states),
         "current_stage": current,
-        "all_complete": bool(states) and all(s.complete for s in states
-                                            if s.is_mandatory),
+        # all() over an empty filter is vacuously true, which would certify a
+        # tutor who has finished nothing if no stage were marked mandatory.
+        "all_complete": bool(states) and all(
+            s.complete for s in ([s for s in states if s.is_mandatory] or states)),
     })
 
 
@@ -338,9 +349,11 @@ def stage_detail(user, stage_id, states=None):
     previous_passed = True
     for comp in state.components:
         comp.visible = previous_passed
-        if comp.key == CLASS_SLOT_COMPONENT_KEY:
-            previous_passed = True
-        else:
+        # The class with a student is transparent: it neither gates what
+        # follows nor un-gates it. Forcing the flag true here would also open
+        # the next component when an earlier, incomplete one should still be
+        # holding the line — it only looks safe while this sits first.
+        if comp.key != CLASS_SLOT_COMPONENT_KEY:
             previous_passed = comp.complete
     return state
 
@@ -479,6 +492,12 @@ def assert_item_actionable(user, item):
         raise ValidationError("That step is no longer part of your journey.")
     if item.region_id and item.region_id != user["region_id"]:
         raise ValidationError("That step isn't part of your region's training.")
+    # Reads scope on region *and* grade cohort (see content._scope_sql), so the
+    # write path has to check both or a tutor could tick off content from a
+    # cohort that was never in their journey.
+    if (item.grade_cohort_id
+            and item.grade_cohort_id != user["grade_cohort_id"]):
+        raise ValidationError("That step isn't part of your training.")
     stage = stage_for_sub_item(item.id)
     if stage is None:
         raise ValidationError("That step is not attached to a stage.")
@@ -604,6 +623,13 @@ def submit_upload(user, item, upload):
 def mark_component(user, comp, done=True):
     """Tick a component that has no sub-items (e.g. 'Actual Class with Student')."""
     assert_stage_open(user, comp.stage_id)
+    # content.components() scopes reads by region and grade cohort; without the
+    # same check here a tutor could tick a component that was never part of
+    # their journey by posting its id directly.
+    if comp.region_id and comp.region_id != user["region_id"]:
+        raise ValidationError("That step isn't part of your region's training.")
+    if comp.grade_cohort_id and comp.grade_cohort_id != user["grade_cohort_id"]:
+        raise ValidationError("That step isn't part of your training.")
     pmap = progress_map(user["id"])
     state = component_state(user, comp, pmap)
     if state.effective_rule == "admin_marked":
