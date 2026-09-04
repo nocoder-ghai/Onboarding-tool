@@ -168,6 +168,8 @@ def update(table, row_id, values):
 #: idempotent — they run on every boot.
 _POSTGRES_ADDITIVE = (
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS drive_url TEXT",
+    "ALTER TABLE class_slots ADD COLUMN IF NOT EXISTS grade_cohort_id "
+    "INTEGER REFERENCES grade_cohorts(id)",
 )
 
 
@@ -229,6 +231,12 @@ def _migrate(conn):
                 conn.execute("PRAGMA table_info(documents)").fetchall()]
     if "drive_url" not in doc_cols:
         conn.execute("ALTER TABLE documents ADD COLUMN drive_url TEXT")
+
+    slot_cols = [row[1] for row in
+                 conn.execute("PRAGMA table_info(class_slots)").fetchall()]
+    if "grade_cohort_id" not in slot_cols:
+        conn.execute("ALTER TABLE class_slots ADD COLUMN grade_cohort_id "
+                     "INTEGER REFERENCES grade_cohorts(id)")
 
 
 def table_exists(name):

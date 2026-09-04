@@ -338,7 +338,8 @@ def stage_detail(user, stage_id, states=None):
         comp.prep_tips = None
         if comp.key == CLASS_SLOT_COMPONENT_KEY:
             comp.class_slot = class_slot_for(user)
-            comp.open_slots = [] if comp.class_slot else open_class_slots(region_id)
+            comp.open_slots = ([] if comp.class_slot
+                               else open_class_slots(region_id, grade_cohort_id))
             comp.prep_tips = prep_tips()
 
     # Reveal components one at a time so a multi-part stage doesn't dump every
@@ -785,11 +786,16 @@ def is_bookable(slot):
     return starts is not None and bookable_from() <= starts <= bookable_until()
 
 
-def open_class_slots(region_id):
+def open_class_slots(region_id, grade_cohort_id=None):
+    """Slots this tutor may take. A slot tagged with a region or a grade
+    cohort is only offered to tutors in it — an untagged slot suits anyone,
+    the same rule content scoping already uses."""
     rows = wrap_all(db.query(
         "SELECT * FROM class_slots WHERE status = 'open' "
-        "AND (region_id IS NULL OR region_id = ?) ORDER BY starts_at",
-        (region_id,)))
+        "AND (region_id IS NULL OR region_id = ?) "
+        "AND (grade_cohort_id IS NULL OR grade_cohort_id = ?) "
+        "ORDER BY starts_at",
+        (region_id, grade_cohort_id)))
     return [r for r in rows if is_bookable(r)]
 
 
@@ -801,6 +807,11 @@ def book_class_slot(user, slot_id):
         raise ValidationError("That slot isn't available any more — pick another.")
     if slot.region_id and slot.region_id != user["region_id"]:
         raise ValidationError("That slot isn't part of your region.")
+    # Same check as the listing — an id can be posted directly.
+    if (slot.grade_cohort_id
+            and slot.grade_cohort_id != user["grade_cohort_id"]):
+        raise ValidationError(
+            "That class is for a different grade group than you're licensed for.")
     # Filtering the list isn't enough — the id can be posted directly.
     if not is_bookable(slot):
         raise ValidationError(

@@ -50,7 +50,8 @@ SESSION_SPEC = [("title", "text"), ("zoom_link", "text"), ("starts_at", "text"),
 
 CLASS_SLOT_SPEC = [("starts_at", "text"), ("duration_minutes", "int"),
                    ("student_name", "text"), ("grade_subject", "text"),
-                   ("notes", "text"), ("region_id", "int?")]
+                   ("notes", "text"), ("region_id", "int?"),
+                   ("grade_cohort_id", "int?")]
 
 
 def collect(request, spec):
@@ -979,6 +980,9 @@ def register(app):
             "ORDER BY (cs.status = 'cancelled'), cs.starts_at"))
         for slot in slots:
             slot.region_label = content.region_name(slot.region_id)
+            slot.grade_cohort_label = (
+                content.grade_cohort_name(slot.grade_cohort_id)
+                if slot.grade_cohort_id else "Any grade")
         return render(request, "admin/class_slots.html", slots=slots)
 
     @app.route("/admin/class-slots/new", methods=["POST"])
@@ -1051,7 +1055,8 @@ def register(app):
 
         header = [c.strip().lower() for c in rows[0]]
         known = {"student", "student name", "name", "date", "class date",
-                 "time", "class time", "grade", "grade/subject", "grade_subject"}
+                 "time", "class time", "grade", "grade/subject", "grade_subject",
+                 "grade group", "cohort", "grade cohort"}
         has_header = bool(known & set(header))
         data_rows = rows[1:] if has_header else rows
 
@@ -1069,9 +1074,12 @@ def register(app):
         idx_duration = column(["duration", "duration (min)", "duration_minutes"])
         idx_region = column(["region"])
         idx_notes = column(["notes", "note"])
+        idx_cohort = column(["grade group", "grade cohort", "cohort"])
 
         region_by_name = {r.name.strip().lower(): r.id
                          for r in content.regions(active_only=False)}
+        cohort_by_name = {g.name.strip().lower(): g.id
+                          for g in content.grade_cohorts(active_only=False)}
 
         added, skipped = [], []
         for row in data_rows:
@@ -1102,11 +1110,17 @@ def register(app):
 
             region_id = (region_by_name.get(cell(idx_region).lower())
                         if idx_region is not None else None)
+            cohort_text = cell(idx_cohort) if idx_cohort is not None else ""
+            cohort_id = cohort_by_name.get(cohort_text.lower()) if cohort_text else None
+            if cohort_text and cohort_id is None:
+                skipped.append("%s — unknown grade group \u201c%s\u201d" % (label, cohort_text))
+                continue
 
             values = {
                 "starts_at": starts_at, "duration_minutes": duration,
                 "student_name": student_name, "grade_subject": grade_text,
-                "region_id": region_id, "notes": cell(idx_notes),
+                "region_id": region_id, "grade_cohort_id": cohort_id,
+                "notes": cell(idx_notes),
                 "status": "open", "tutor_id": None, "booked_at": None,
                 "created_at": db.now(), "updated_at": db.now(),
             }

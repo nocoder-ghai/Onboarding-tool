@@ -73,13 +73,14 @@
       {% if open_slots %}
         <div class="table-wrap" role="region" aria-label="Open slots" tabindex="0">
           <table class="table table-hoverable">
-            <thead><tr><th>When</th><th>Student</th><th>Region</th><th></th></tr></thead>
+            <thead><tr><th>When</th><th>Student</th><th>Region</th><th>Grade group</th><th></th></tr></thead>
             <tbody>
               {% for s in open_slots %}
                 <tr>
                   <td style="white-space: nowrap;">{{ fmt_datetime(s.starts_at) }} ({{ s.duration_minutes }}m)</td>
                   <td>{{ s.student_name or "—" }}{% if s.grade_subject %} <span class="type-body-sm" style="color: var(--text-tertiary);">· {{ s.grade_subject }}</span>{% endif %}</td>
                   <td class="type-body-sm" style="color: var(--text-secondary);">{{ s.region_label }}</td>
+                  <td class="type-body-sm" style="color: var(--text-secondary);">{{ s.grade_cohort_label }}</td>
                   <td class="cell-right">
                     {% if can_write %}
                       <form method="post" action="/admin/class-slots/{{ s.id }}/delete" class="inline-form">
@@ -175,6 +176,18 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <select name="grade_cohort_id">
+                <option value="">Any grade group</option>
+                {% for g in grade_cohorts_all %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+              </select>
+              <span class="cm-field-label">Grade group</span>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Grade group</span></legend></fieldset>
+            </div>
+            <div class="cm-field-helper">Only coaches licensed for this group are offered the
+              slot. Leave it on “Any” and every coach can take it.</div>
           </div>
           <div class="grid">
             <div class="col-6 col-sm-12">

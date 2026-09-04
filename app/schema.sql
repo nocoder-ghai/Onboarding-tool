@@ -295,6 +295,7 @@ CREATE TABLE IF NOT EXISTS class_slots (
     student_name     TEXT NOT NULL DEFAULT '',
     grade_subject    TEXT NOT NULL DEFAULT '',
     region_id        INTEGER REFERENCES regions(id),
+    grade_cohort_id  INTEGER REFERENCES grade_cohorts(id),
     notes            TEXT NOT NULL DEFAULT '',
     tutor_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
     -- 'open' -> any matching tutor may book it; 'booked' -> tutor_id owns it
