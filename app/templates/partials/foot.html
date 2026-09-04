@@ -9,12 +9,19 @@
   </p>
 </footer>
 <script>
-function cmMarkWatched(documentId, csrfToken) {
+function cmMarkWatched(documentId, csrfToken, anchorId) {
   fetch("/document/" + documentId + "/watched", {
     method: "POST",
     headers: {"Content-Type": "application/x-www-form-urlencoded"},
     body: "_csrf=" + encodeURIComponent(csrfToken)
-  }).then(function () { location.reload(); }).catch(function () {});
+  }).then(function () {
+    // Reload so the server decides whether the step is really unlocked (an
+    // item can have more than one video), but come back to the step itself.
+    // Reloading to the top of a long page leaves the button that just
+    // appeared far offscreen, which reads as nothing having happened.
+    if (anchorId) location.hash = anchorId;
+    location.reload();
+  }).catch(function () {});
 }
 
 function cmFormatSeconds(total) {
@@ -45,11 +52,13 @@ document.querySelectorAll("video[data-cm-video-timer]").forEach(function (video)
       : "✓ You can mark this done now.";
   }
 
+  var step = video.closest('[id^="item-"]');
+
   function finish() {
     if (done) return;
     done = true;
     clearInterval(tickHandle);
-    cmMarkWatched(documentId, csrfToken);
+    cmMarkWatched(documentId, csrfToken, step ? step.id : null);
   }
 
   function captureDuration() {

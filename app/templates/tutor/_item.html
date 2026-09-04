@@ -1,4 +1,4 @@
-<details class="card card-expandable ts-item{% if item.done %} is-done card-success-tint{% elif item.status == 'rejected' %} is-rejected card-error-tint{% endif %}"{% if item.id == current_item_id %} open{% endif %}>
+<details id="item-{{ item.id }}" class="card card-expandable ts-item{% if item.done %} is-done card-success-tint{% elif item.status == 'rejected' %} is-rejected card-error-tint{% endif %}"{% if item.id == current_item_id %} open{% endif %}>
   <summary>
     <div style="flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-12);">
       <span class="type-body-lg" style="flex: 1; min-width: 0; color: var(--text-primary);">{{ item.title }}</span>
