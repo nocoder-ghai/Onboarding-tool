@@ -1107,10 +1107,21 @@ def register(app):
         has_header = bool(known & set(header))
         data_rows = rows[1:] if has_header else rows
 
-        def column(names):
+        def column(names, contains=None):
+            """Find a column by its heading. Without a header row there is
+            nothing to match against — the first row is data, and matching a
+            data cell would pick a column at random. `contains` catches the
+            wording people actually use, so "Notes for the coach" still lands
+            on the notes column."""
+            if not has_header:
+                return None
             for name in names:
                 if name in header:
                     return header.index(name)
+            if contains:
+                for index, cell in enumerate(header):
+                    if contains in cell:
+                        return index
             return None
 
         idx_name = column(["student name", "student", "name"]) if has_header else 0
@@ -1118,10 +1129,14 @@ def register(app):
         idx_time = column(["class time", "time"]) if has_header else 2
         idx_grade = (column(["grade", "grade/subject", "grade & subject",
                             "grade_subject"]) if has_header else 3)
-        idx_duration = column(["duration", "duration (min)", "duration_minutes"])
-        idx_region = column(["region"])
-        idx_notes = column(["notes", "note"])
-        idx_cohort = column(["grade group", "grade cohort", "cohort"])
+        idx_duration = column(["duration", "duration (min)", "duration_minutes"],
+                              contains="duration")
+        idx_region = column(["region"], contains="region")
+        idx_notes = column(["notes", "note", "notes for coach", "coach notes",
+                            "remarks", "comments", "special instructions"],
+                           contains="note")
+        idx_cohort = column(["grade group", "grade cohort", "cohort"],
+                            contains="cohort")
 
         region_by_name = {r.name.strip().lower(): r.id
                          for r in content.regions(active_only=False)}

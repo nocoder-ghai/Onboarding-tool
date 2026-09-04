@@ -221,14 +221,11 @@
                     </dl>
                     <div style="display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12);">
                       <a class="btn btn-sm btn-primary" href="/class-slot/{{ comp.class_slot.id }}/calendar.ics">Add to calendar</a>
-                      {% if comp.class_slot.status == "booked" %}
-                        <form method="post" action="/class-slot/{{ comp.class_slot.id }}/release" style="display: inline;">
-                          <input type="hidden" name="_csrf" value="{{ csrf }}">
-                          <input type="hidden" name="back" value="/stage/{{ stage.id }}">
-                          <button class="btn btn-sm btn-secondary" type="submit">Pick a different time</button>
-                        </form>
-                      {% endif %}
                     </div>
+                    <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-12);">
+                      This time is fixed now — a student is expected. If you truly
+                      can't make it, ask your Activation Director to move it.
+                    </p>
                   </div>
                 {% elif comp.open_slots %}
                   <div class="card card-compact" style="margin-top: var(--space-12);">

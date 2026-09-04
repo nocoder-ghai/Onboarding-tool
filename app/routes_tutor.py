@@ -256,13 +256,14 @@ def register(app):
     @app.route("/class-slot/<int:slot_id>/release", methods=["POST"])
     @tutor_post
     def release_class_slot(request, slot_id):
+        # A booked class has a student expecting it, so a tutor can no longer
+        # hand it back on their own — their Activation Director reopens it from
+        # the admin screens. The route stays so an old page or a bookmarked
+        # form gets a clear answer instead of a 404.
         back = request.get("back", "/dashboard")
-        try:
-            progress.release_class_slot(request.user, slot_id)
-        except progress.ValidationError as exc:
-            request.flash(str(exc), "error")
-            return redirect(back)
-        request.flash("Slot released — pick another time whenever you're ready.", "ok")
+        request.flash(
+            "Your class time is fixed once it's booked — ask your Activation "
+            "Director if it has to move.", "error")
         return redirect(back)
 
     @app.route("/class-slot/<int:slot_id>/calendar.ics")
