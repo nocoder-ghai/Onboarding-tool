@@ -145,20 +145,6 @@
     </div>
   {% endif %}
 
-  {% if links %}
-    <div class="card">
-      <h3 class="type-heading-sm" style="color: var(--text-primary);">Handy links</h3>
-      <div class="ts-linkset">
-        {% for link in links %}
-          <a class="card card-compact card-interactive" href="{{ link.url }}" target="_blank" rel="noopener"
-             style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none;">
-            <span aria-hidden="true">↗</span>
-            <span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
-          </a>
-        {% endfor %}
-      </div>
-    </div>
-  {% endif %}
 </main>
 </div>
 {% include "partials/foot.html" %}

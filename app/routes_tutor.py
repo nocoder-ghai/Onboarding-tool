@@ -34,18 +34,14 @@ def register(app):
         states = progress.sync(user)
         summary = progress.overall(states)
         progress.touch_activity(user["id"])
-        class_stage = content.stage_by_key("class_and_app_training")
-        welcome_video = content.document_by_key("nancy_welcome_video")
-        if welcome_video:
-            welcome_video.current = content.current_version(welcome_video.id)
+        # The welcome note and its video live on /home now, and the sidebar
+        # gets its unread count from the shared context — so this page only
+        # needs the journey itself.
         return app.render(
             request, "tutor/dashboard.html",
             states=states, summary=summary,
-            class_slot=progress.class_slot_for(user), class_stage=class_stage,
-            links=content.global_links(user["region_id"], user["grade_cohort_id"]),
-            intro=db.setting("dashboard_intro", ""),
-            unread=notify.unread_count(user["id"]),
-            welcome_video=welcome_video)
+            class_slot=progress.class_slot_for(user),
+            class_stage=content.stage_by_key("class_and_app_training"))
 
     # ---------------------------------------------------------- stage detail #
     @app.route("/stage/<int:stage_id>")
