@@ -15,9 +15,21 @@
      the full width of the page. Natural aspect ratio is preserved — nothing
      is cropped to fit. */
   .cm-media { max-width: 640px; margin-left: auto; margin-right: auto; }
-  .cm-media img,
+  /* Bound the height as well as the width. Capping width alone let a portrait
+     image or video grow taller than the window — you could never see all of
+     it at once. Scaling to whichever edge runs out first keeps the whole
+     thing on screen, whatever shape it is. */
+  .cm-media img {
+    display: block; margin-inline: auto;
+    max-width: 100%; max-height: 70vh;
+    width: auto; height: auto;
+    border-radius: var(--radius-md);
+  }
   .cm-media video {
-    display: block; width: 100%; height: auto;
+    /* Videos keep a full-width box — sizing them to intrinsic width makes the
+       player jump once metadata loads — and letterbox tall footage instead. */
+    display: block; width: 100%; height: auto; max-height: 70vh;
+    object-fit: contain; background: var(--bg-secondary);
     border-radius: var(--radius-md);
   }
 </style>
