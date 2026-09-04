@@ -1051,6 +1051,30 @@ def register(app):
         request.flash("Slot removed.", "ok")
         return back_to(request, "/admin/class-slots")
 
+    @app.route("/admin/class-slots/clear", methods=["POST"])
+    @writes
+    def class_slots_clear(request):
+        """Empty the slot list before re-importing — e.g. after a batch went in
+        with the wrong dates."""
+        include_booked = request.checked("include_booked")
+        open_count = db.scalar(
+            "SELECT COUNT(*) FROM class_slots WHERE status = 'open'", (), 0)
+        booked_count = db.scalar(
+            "SELECT COUNT(*) FROM class_slots WHERE status != 'open'", (), 0)
+        if include_booked:
+            db.execute("DELETE FROM class_slots")
+            removed = open_count + booked_count
+            note = ("Removed every slot (%d open, %d already booked or finished)"
+                    % (open_count, booked_count))
+        else:
+            db.execute("DELETE FROM class_slots WHERE status = 'open'")
+            removed = open_count
+            note = ("Removed %d open slot(s); left %d booked or finished alone"
+                    % (open_count, booked_count))
+        audit.record(request, "class_slot.clear", "class_slot", None, note)
+        request.flash(note + ".", "ok" if removed else "error")
+        return redirect("/admin/class-slots")
+
     # ------------------------------------------------- bulk class-slot CSV -- #
     @app.route("/admin/class-slots/import", methods=["GET", "POST"])
     @admin_required

@@ -53,6 +53,39 @@
   {% set booked_slots = [s for s in slots if s.status == "booked"] %}
   {% set other_slots = [s for s in slots if s.status not in ("open", "booked")] %}
 
+  {% if can_write and slots %}
+    <details class="card">
+      <summary style="cursor: pointer; padding: var(--space-16) var(--space-24);">
+        <span class="type-label-md" style="color: var(--text-primary);">Clear the list before a fresh upload</span>
+        <span class="type-body-sm" style="color: var(--text-tertiary); display: block; margin-top: var(--space-4);">
+          {{ plural(len(open_slots), "open slot") }}{% if booked_slots or other_slots %},
+          {{ len(booked_slots) + len(other_slots) }} booked or finished{% endif %}.
+        </span>
+      </summary>
+      <div class="card-content" style="border-top: 1px solid var(--border-tertiary);">
+        <p class="type-body-sm" style="color: var(--text-secondary); margin: 0 0 var(--space-12);">
+          Removes slots so a corrected CSV can go in cleanly. This cannot be undone.
+          {% if booked_slots %}<strong>{{ plural(len(booked_slots), "slot") }} already booked</strong> —
+          those are kept unless you tick the box, and removing one takes the class
+          away from the coach who picked it.{% endif %}
+        </p>
+        <form method="post" action="/admin/class-slots/clear">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          {% if booked_slots or other_slots %}
+            <label class="cm-checkbox" style="margin-bottom: var(--space-12);">
+              <input type="checkbox" name="include_booked" value="1">
+              <span class="cm-checkbox-box">
+                <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
+              </span>
+              <span class="cm-checkbox-label">Also remove the {{ len(booked_slots) + len(other_slots) }} booked or finished</span>
+            </label>
+          {% endif %}
+          <button class="btn btn-sm btn-destructive" type="submit">Remove slots</button>
+        </form>
+      </div>
+    </details>
+  {% endif %}
+
   <div class="card">
     <div class="card-header">
       <div class="card-header-text">
