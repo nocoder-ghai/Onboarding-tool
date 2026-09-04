@@ -164,6 +164,13 @@ def update(table, row_id, values):
     return execute(sql, [values[c] for c in cols] + [row_id])
 
 
+#: Columns added after the first Postgres database was created. Each must be
+#: idempotent — they run on every boot.
+_POSTGRES_ADDITIVE = (
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS drive_url TEXT",
+)
+
+
 def init_db():
     """Create every table. Safe to run repeatedly."""
     config.ensure_dirs()
@@ -173,6 +180,12 @@ def init_db():
             script = fh.read()
         cur = conn.cursor()
         cur.execute(script)
+        # CREATE TABLE IF NOT EXISTS won't add a column to a table that already
+        # exists, so a database created before a column was introduced never
+        # gets it from the schema file alone. Postgres supports IF NOT EXISTS
+        # on ADD COLUMN, so these are safe to run on every start.
+        for statement in _POSTGRES_ADDITIVE:
+            cur.execute(statement)
         cur.close()
         return config.DATABASE_URL
     with open(config.SCHEMA_PATH, "r", encoding="utf-8") as fh:
@@ -211,6 +224,11 @@ def _migrate(conn):
         if "grade_cohort_id" not in table_cols:
             conn.execute("ALTER TABLE %s ADD COLUMN grade_cohort_id INTEGER "
                          "REFERENCES grade_cohorts(id)" % table)
+
+    doc_cols = [row[1] for row in
+                conn.execute("PRAGMA table_info(documents)").fetchall()]
+    if "drive_url" not in doc_cols:
+        conn.execute("ALTER TABLE documents ADD COLUMN drive_url TEXT")
 
 
 def table_exists(name):

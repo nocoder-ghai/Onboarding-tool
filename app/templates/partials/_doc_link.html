@@ -1,4 +1,44 @@
-{% if doc.current %}
+{% if doc.drive_url and drive_file_id(doc.drive_url) %}
+  <!-- Google Drive. A share link can't be used directly: for a picture Drive
+       serves an HTML page rather than the image, and video has no direct
+       stream URL at all — it only plays inside Drive's own iframe. -->
+  {% if doc.kind == "video" %}
+    <div class="card video-box">
+      <div class="card-header">
+        <div class="card-header-text"><div class="card-title">{{ doc.title }}</div></div>
+      </div>
+      <div class="card-content">
+        <div class="cm-media cm-drive-frame">
+          <iframe src="{{ drive_embed_src(doc.drive_url) }}" title="{{ doc.title }}"
+                  allow="autoplay; fullscreen" allowfullscreen loading="lazy"></iframe>
+        </div>
+        {% if item and item.video_locked %}
+          <!-- The browser can't see playback inside Drive's iframe, so the
+               timed gate can't apply here — the tutor confirms instead. -->
+          <form method="post" action="/document/{{ doc.id }}/watched"
+                style="margin-top: var(--space-16);">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="back" value="{{ path }}#item-{{ item.id }}">
+            <button class="btn btn-sm btn-secondary" type="submit">I've watched this video</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-text"><div class="card-title">{{ doc.title }}</div></div>
+      </div>
+      <div class="card-content">
+        <div class="cm-media">
+          <img src="{{ drive_image_src(doc.drive_url) }}" alt="{{ doc.title }}" loading="lazy">
+        </div>
+        <a class="type-body-sm cm-link cm-link-sm" href="{{ doc.drive_url }}"
+           target="_blank" rel="noopener">Open in Google Drive ↗</a>
+      </div>
+    </div>
+  {% endif %}
+{% elif doc.current %}
   {% if doc.current.mime_type.startswith("image/") %}
     <div class="card">
       <div class="card-header">

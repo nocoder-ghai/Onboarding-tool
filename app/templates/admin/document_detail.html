@@ -184,6 +184,23 @@
             </div>
           </div>
 
+          <div class="cm-field">
+            <div class="cm-field-wrap">
+              <input name="drive_url" type="text" placeholder=" " value="{{ doc.drive_url or '' }}">
+              <label class="cm-field-label">Google Drive link</label>
+              <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Google Drive link</span></legend></fieldset>
+            </div>
+            <div class="cm-field-helper">
+              {% if doc.drive_url and drive_file_id(doc.drive_url) %}
+                Shown from Drive (file {{ drive_file_id(doc.drive_url) }}) — the uploaded versions below are ignored while this is set.
+              {% elif doc.drive_url %}
+                ⚠ That doesn't look like a Drive link — no file id found in it, so the upload is being used instead.
+              {% else %}
+                Paste a share link set to <strong>Anyone with the link — Viewer</strong>. Leave blank to use an uploaded file.
+              {% endif %}
+            </div>
+          </div>
+
           <div class="grid">
             <div class="col-6 col-sm-12">
               <div class="cm-field">

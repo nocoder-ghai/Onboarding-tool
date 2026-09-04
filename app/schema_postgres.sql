@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS documents (
     created_at   TEXT NOT NULL,
     updated_at   TEXT NOT NULL,
     archived_at  TEXT,
+    drive_url    TEXT,          -- Google Drive link; when set, used instead of an upload
     CHECK (num_nonnulls(stage_id, component_id, sub_item_id) <= 1)
 );
 

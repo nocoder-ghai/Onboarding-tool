@@ -98,6 +98,12 @@ def register(app):
     @tutor_post
     def video_watched(request, document_id):
         progress.mark_video_watched(request.user["id"], document_id)
+        # The uploaded-video player calls this with fetch() and reloads itself,
+        # but a Drive video confirms through a real form, which needs sending
+        # back to the page it came from.
+        back = request.get("back", "")
+        if back.startswith("/"):
+            return redirect(back)
         return Response("ok")
 
     # --------------------------------------------------- policy: read & ack #

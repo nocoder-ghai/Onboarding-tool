@@ -34,6 +34,9 @@ def create_app():
             "next_stage": None,
             "icon": "📄",
             "current_item_id": None,
+            # _doc_link.html is included for stage- and component-level
+            # documents too, where there is no owning step.
+            "item": None,
         }
         if user is not None and user["role_key"] == "tutor":
             ctx["nav_unread"] = notify.unread_count(user["id"])

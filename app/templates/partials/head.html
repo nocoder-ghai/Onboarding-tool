@@ -32,6 +32,13 @@
     object-fit: contain; background: var(--bg-secondary);
     border-radius: var(--radius-md);
   }
+  /* A Drive video plays inside Google's own iframe, which has no intrinsic
+     size — give it a shape to fill. */
+  .cm-drive-frame { aspect-ratio: 16 / 9; max-height: 70vh; }
+  .cm-drive-frame iframe {
+    display: block; width: 100%; height: 100%; border: 0;
+    border-radius: var(--radius-md); background: var(--bg-secondary);
+  }
 </style>
 </head>
 <body>

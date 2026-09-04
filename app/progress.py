@@ -431,11 +431,20 @@ def mark_video_watched(user_id, document_id):
         (user_id, document_id, db.now()))
 
 
+def _is_playable_video(doc):
+    """A video the tutor can actually watch — either a real uploaded video
+    file (not a seeded stand-in PDF) or a Google Drive link."""
+    if doc.kind != "video":
+        return False
+    if doc.drive_url and util.drive_file_id(doc.drive_url):
+        return True
+    return bool(doc.current
+                and (doc.current.mime_type or "").startswith("video/"))
+
+
 def unwatched_videos(user, item_documents):
-    """Video documents with an actual playable video uploaded (not a seeded
-    stand-in PDF) that the user hasn't watched yet."""
-    return [d for d in item_documents if d.kind == "video" and d.current
-            and (d.current.mime_type or "").startswith("video/")
+    """Playable videos on this step that the user hasn't watched yet."""
+    return [d for d in item_documents if _is_playable_video(d)
             and not video_watched(user["id"], d.id)]
 
 

@@ -140,6 +140,47 @@ def simple_markdown(text):
     return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", "\n".join(out))
 
 
+def drive_file_id(url):
+    """Pull the file id out of whatever form of Google Drive link was pasted.
+
+    People paste all of these, so accept them all rather than making the admin
+    hand-craft one shape:
+      https://drive.google.com/file/d/<ID>/view?usp=sharing
+      https://drive.google.com/open?id=<ID>
+      https://drive.google.com/uc?export=download&id=<ID>
+      https://docs.google.com/document/d/<ID>/edit
+      <ID> on its own
+    """
+    import re
+    text = str(url or "").strip()
+    if not text:
+        return ""
+    match = re.search(r"/d/([A-Za-z0-9_-]{10,})", text)
+    if match:
+        return match.group(1)
+    match = re.search(r"[?&]id=([A-Za-z0-9_-]{10,})", text)
+    if match:
+        return match.group(1)
+    if re.fullmatch(r"[A-Za-z0-9_-]{10,}", text):
+        return text
+    return ""
+
+
+def drive_image_src(url):
+    """A URL that works in an <img> tag. Drive's share links render an HTML
+    page, not the image, so they can't be used directly."""
+    file_id = drive_file_id(url)
+    return ("https://drive.google.com/thumbnail?id=%s&sz=w1600" % file_id
+            if file_id else "")
+
+
+def drive_embed_src(url):
+    """Drive only plays video through its own player in an iframe — there is
+    no direct stream URL we can put in a <video> tag."""
+    file_id = drive_file_id(url)
+    return "https://drive.google.com/file/d/%s/preview" % file_id if file_id else ""
+
+
 def slugify(text, fallback="item"):
     import re
     slug = re.sub(r"[^a-z0-9]+", "_", str(text or "").lower()).strip("_")
@@ -202,4 +243,7 @@ TEMPLATE_GLOBALS = {
     "truncate": truncate,
     "nl2br": nl2br,
     "simple_markdown": simple_markdown,
+    "drive_file_id": drive_file_id,
+    "drive_image_src": drive_image_src,
+    "drive_embed_src": drive_embed_src,
 }

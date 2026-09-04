@@ -41,7 +41,7 @@ LINK_SPEC = [("label", "text"), ("url", "text"), ("description", "text"),
 
 DOC_SPEC = [("title", "text"), ("description", "text"), ("kind", "text"),
             ("region_id", "int?"), ("grade_cohort_id", "int?"),
-            ("is_active", "bool")]
+            ("drive_url", "text"), ("is_active", "bool")]
 
 SESSION_SPEC = [("title", "text"), ("zoom_link", "text"), ("starts_at", "text"),
                 ("duration_minutes", "int"), ("host_name", "text"),
