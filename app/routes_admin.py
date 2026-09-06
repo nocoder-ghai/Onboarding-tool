@@ -997,7 +997,8 @@ def register(app):
                   or request.headers.get("x-forwarded-proto") or "http")
         return render(request, "admin/class_slots.html", slots=slots,
                       schedule_token=progress.schedule_share_token(),
-                      schedule_origin=("%s://%s" % (scheme, host)) if host else "")
+                      schedule_origin=("%s://%s" % (scheme, host)) if host else "",
+                      cohort_matches=len(_slot_cohort_matches()))
 
     @app.route("/admin/schedule-link/regenerate", methods=["POST"])
     @writes
@@ -1050,6 +1051,39 @@ def register(app):
                      "Deleted an open slot")
         request.flash("Slot removed.", "ok")
         return back_to(request, "/admin/class-slots")
+
+    def _slot_cohort_matches():
+        """Slots with no grade group whose free-text grade names one — from a
+        sheet with a single 'grade' column, imported before that was read."""
+        cohorts = [(re.sub(r"[\s\-‐-―_/]+", "", g.name).lower(), g.id, g.name)
+                   for g in content.grade_cohorts(active_only=False)]
+        out = []
+        for slot in wrap_all(db.query(
+                "SELECT id, grade_subject FROM class_slots "
+                "WHERE grade_cohort_id IS NULL AND grade_subject != ''")):
+            key = re.sub(r"[\s\-‐-―_/]+", "", slot.grade_subject or "").lower()
+            for cohort_key, cohort_id, cohort_name in cohorts:
+                if key == cohort_key:
+                    out.append((slot.id, cohort_id, cohort_name))
+                    break
+        return out
+
+    @app.route("/admin/class-slots/match-grades", methods=["POST"])
+    @writes
+    def class_slots_match_grades(request):
+        matches = _slot_cohort_matches()
+        for slot_id, cohort_id, _ in matches:
+            db.execute("UPDATE class_slots SET grade_cohort_id = ?, updated_at = ? "
+                       "WHERE id = ?", (cohort_id, db.now(), slot_id))
+        audit.record(request, "class_slot.match_grades", "class_slot", None,
+                     "Set the grade group on %d slot(s) from their grade column"
+                     % len(matches))
+        request.flash(
+            "%s now restricted to the right grade group."
+            % util.plural(len(matches), "slot") if matches
+            else "Nothing to match — every slot already has a grade group.",
+            "ok" if matches else "error")
+        return redirect("/admin/class-slots")
 
     @app.route("/admin/class-slots/clear", methods=["POST"])
     @writes
@@ -1140,7 +1174,14 @@ def register(app):
 
         region_by_name = {r.name.strip().lower(): r.id
                          for r in content.regions(active_only=False)}
-        cohort_by_name = {g.name.strip().lower(): g.id
+
+        def cohort_key(text):
+            """'3 - 8', '3–8', 'K–5', 'k 5' all mean the cohort written '3-8'
+            or 'K-5' — sheets are typed by hand and dashes get spaced out or
+            turned into en-dashes by autocorrect."""
+            return re.sub(r"[\s\-‐-―_/]+", "", str(text or "")).lower()
+
+        cohort_by_name = {cohort_key(g.name): g.id
                           for g in content.grade_cohorts(active_only=False)}
 
         added, skipped = [], []
@@ -1172,10 +1213,17 @@ def register(app):
 
             region_id = (region_by_name.get(cell(idx_region).lower())
                         if idx_region is not None else None)
-            cohort_text = cell(idx_cohort) if idx_cohort is not None else ""
-            cohort_id = cohort_by_name.get(cohort_text.lower()) if cohort_text else None
-            if cohort_text and cohort_id is None:
-                skipped.append("%s — unknown grade group \u201c%s\u201d" % (label, cohort_text))
+            # Prefer an explicit grade-group column, but most sheets carry a
+            # single "grade" column holding K-5 / 3-8 / 9-12. Read the cohort
+            # from that when it names one, otherwise every class imports open
+            # to any coach and the licence restriction never applies.
+            explicit_cohort = cell(idx_cohort) if idx_cohort is not None else ""
+            cohort_text = explicit_cohort or grade_text
+            cohort_id = (cohort_by_name.get(cohort_key(cohort_text))
+                         if cohort_text else None)
+            if explicit_cohort and cohort_id is None:
+                skipped.append("%s — unknown grade group “%s”"
+                               % (label, explicit_cohort))
                 continue
 
             values = {

@@ -53,6 +53,24 @@
   {% set booked_slots = [s for s in slots if s.status == "booked"] %}
   {% set other_slots = [s for s in slots if s.status not in ("open", "booked")] %}
 
+  {% if can_write and cohort_matches %}
+    <div class="card card-warning-tint">
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-title">{{ plural(cohort_matches, "slot") }} open to every coach</div>
+          <div class="card-description">Their grade column names a group — K-5, 3-8 or 9-12 —
+            but it was never applied, so coaches licensed for other groups are being
+            offered these classes. Set it from what's already there; nothing else changes
+            and no booking is touched.</div>
+        </div>
+        <form method="post" action="/admin/class-slots/match-grades" class="inline-form">
+          <input type="hidden" name="_csrf" value="{{ csrf }}">
+          <button class="btn btn-sm btn-primary" type="submit">Set grade groups</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
   {% if can_write and slots %}
     <details class="card">
       <summary style="cursor: pointer; padding: var(--space-16) var(--space-24);">
