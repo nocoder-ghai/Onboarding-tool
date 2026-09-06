@@ -998,7 +998,15 @@ def register(app):
         return render(request, "admin/class_slots.html", slots=slots,
                       schedule_token=progress.schedule_share_token(),
                       schedule_origin=("%s://%s" % (scheme, host)) if host else "",
-                      cohort_matches=len(_slot_cohort_matches()))
+                      cohort_matches=len(_slot_cohort_matches()),
+                      # Restricting slots by grade only works if coaches carry
+                      # a licence too — otherwise it hides everything.
+                      tutors_total=db.scalar(
+                          "SELECT COUNT(*) FROM users WHERE role_key = 'tutor'",
+                          (), 0),
+                      tutors_unlicensed=db.scalar(
+                          "SELECT COUNT(*) FROM users WHERE role_key = 'tutor' "
+                          "AND grade_cohort_id IS NULL", (), 0))
 
     @app.route("/admin/schedule-link/regenerate", methods=["POST"])
     @writes
