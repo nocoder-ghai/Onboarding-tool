@@ -14,9 +14,16 @@
   .sc-wrap { max-width: 1200px; margin: 0 auto; padding: var(--space-32) var(--space-24) var(--space-48); }
   .sc-head { display: flex; align-items: flex-end; justify-content: space-between;
              gap: var(--space-16); flex-wrap: wrap; margin-bottom: var(--space-24); }
-  .sc-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-16);
-             margin-bottom: var(--space-24); }
-  @media (max-width: 720px) { .sc-kpis { grid-template-columns: repeat(2, 1fr); } }
+  .sc-filters { display: flex; align-items: center; justify-content: space-between;
+                gap: var(--space-16); flex-wrap: wrap; margin-bottom: var(--space-12); }
+  .sc-filters .filter-chip { text-decoration: none; }
+  .sc-count { opacity: 0.65; font-variant-numeric: tabular-nums; }
+  .sc-search { display: flex; align-items: center; gap: var(--space-8); }
+  .sc-search input[type="search"] {
+    min-width: 220px; padding: var(--space-8) var(--space-12);
+    border: 1px solid var(--border-tertiary); border-radius: var(--radius-md);
+    background: var(--bg-primary); color: var(--text-primary);
+  }
   .sc-row-past { opacity: 0.55; }
   .sc-soon td { background: var(--bg-brand-1); }
   .sc-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -40,29 +47,25 @@
     </div>
   </div>
 
-  {% set booked = [s for s in sessions if s.status == "booked"] %}
-  {% set open_slots = [s for s in sessions if s.status == "open"] %}
-  {% set upcoming = [s for s in sessions if not s.is_past and s.status == "booked"] %}
-  {% set unassigned = [s for s in sessions if not s.is_past and s.status == "open"] %}
-
-  <div class="sc-kpis">
-    <div class="kpi-card kpi-card-compact kpi-card-brand">
-      <div class="kpi-card-label">Booked, still to come</div>
-      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(upcoming) }}</div></div>
+  <div class="sc-filters">
+    <div class="filter-chip-group" role="group" aria-label="Filter by status">
+      {% for f in filters %}
+        <a class="filter-chip{% if f.active %} is-active{% endif %}" href="{{ f.url }}"
+           {% if f.active %}aria-current="true"{% endif %}>{{ f.label }} <span class="sc-count">{{ f.count }}</span></a>
+      {% endfor %}
     </div>
-    <div class="kpi-card kpi-card-compact kpi-card-warning">
-      <div class="kpi-card-label">Open, nobody yet</div>
-      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(unassigned) }}</div></div>
-    </div>
-    <div class="kpi-card kpi-card-compact">
-      <div class="kpi-card-label">Booked, all time</div>
-      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(booked) }}</div></div>
-    </div>
-    <div class="kpi-card kpi-card-compact">
-      <div class="kpi-card-label">Slots in total</div>
-      <div class="kpi-card-row"><div class="kpi-card-value">{{ len(sessions) }}</div></div>
-    </div>
+    <form method="get" action="{{ share_path }}" class="sc-search">
+      {% for f in filters %}{% if f.active and f.key != "all" %}<input type="hidden" name="status" value="{{ f.key }}">{% endif %}{% endfor %}
+      <input type="search" name="q" value="{{ search }}" placeholder="Find a coach or student…"
+             aria-label="Find a coach or student">
+      <button class="btn btn-sm btn-secondary" type="submit">Search</button>
+      {% if search %}<a class="btn btn-sm btn-ghost" href="{{ share_path }}">Clear</a>{% endif %}
+    </form>
   </div>
+
+  <p class="type-body-sm sc-note" style="margin: 0 0 var(--space-16);">
+    Showing {{ plural(len(sessions), "class", "classes") }}{% if search %} matching “{{ search }}”{% endif %}{% if len(sessions) != total %} of {{ total }}{% endif %}.
+  </p>
 
   {% if sessions %}
     <div class="card">
