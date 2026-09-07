@@ -133,7 +133,19 @@
                 <tr>
                   <td style="white-space: nowrap;">{{ fmt_datetime(s.starts_at) }} ({{ s.duration_minutes }}m)</td>
                   <td>{{ s.student_name or "—" }}{% if s.grade_subject %} <span class="type-body-sm" style="color: var(--text-tertiary);">· {{ s.grade_subject }}</span>{% endif %}</td>
-                  <td>{{ s.tutor_name }}</td>
+                  <td>
+                    {{ s.tutor_name }}
+                    <div class="type-body-sm" style="margin-top: var(--space-2);">
+                      {% if s.tutor_cohort %}
+                        <span style="color: {% if s.group_match == False %}var(--text-error){% else %}var(--text-tertiary){% endif %};">{{ s.tutor_cohort }}</span>
+                        {% if s.group_match == False %}
+                          <span class="badge badge-error badge-sm">outside their group</span>
+                        {% endif %}
+                      {% else %}
+                        <span style="color: var(--text-tertiary);">no grade group set</span>
+                      {% endif %}
+                    </div>
+                  </td>
                   <td class="type-body-sm" style="color: var(--text-secondary);">{{ s.region_label }}</td>
                   <td><span class="badge badge-info">Booked</span></td>
                   <td class="cell-right">

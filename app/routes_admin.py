@@ -982,14 +982,28 @@ def register(app):
     @admin_required
     def class_slots_page(request):
         slots = wrap_all(db.query(
-            "SELECT cs.*, u.name AS tutor_name FROM class_slots cs "
+            "SELECT cs.*, u.name AS tutor_name, tg.name AS tutor_cohort "
+            "FROM class_slots cs "
             "LEFT JOIN users u ON u.id = cs.tutor_id "
+            "LEFT JOIN grade_cohorts tg ON tg.id = u.grade_cohort_id "
             "ORDER BY (cs.status = 'cancelled'), cs.starts_at"))
+        norm = lambda text: re.sub(r"[\s\-‐-―_/]+", "", str(text or "")).lower()
         for slot in slots:
             slot.region_label = content.region_name(slot.region_id)
             slot.grade_cohort_label = (
                 content.grade_cohort_name(slot.grade_cohort_id)
                 if slot.grade_cohort_id else "Any grade")
+            # Which group the class is really for: the assigned cohort if it
+            # has one, otherwise whatever the grade column says — on slots
+            # imported before the grade column was read, that text is the only
+            # place the group exists.
+            slot.class_group = (
+                content.grade_cohort_name(slot.grade_cohort_id)
+                if slot.grade_cohort_id else (slot.grade_subject or ""))
+            # None = can't tell (no coach, or one of the two groups unknown).
+            slot.group_match = None
+            if slot.tutor_id and slot.tutor_cohort and slot.class_group:
+                slot.group_match = norm(slot.tutor_cohort) == norm(slot.class_group)
         # Behind Railway's proxy the scheme arrives in a forwarded header, so
         # the copyable link isn't guessed as http:// on an https:// site.
         host = (request.headers.get("Host") or request.headers.get("host") or "")
