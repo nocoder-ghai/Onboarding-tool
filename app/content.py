@@ -197,6 +197,11 @@ def links_for(target_type, target_id, region_id=None, grade_cohort_id=None):
         (target_id, region_id, grade_cohort_id)))
 
 
+def link(link_id):
+    return wrap(db.one("SELECT * FROM links WHERE id = ? AND is_active = 1",
+                       (link_id,)))
+
+
 def link_by_key(key):
     return wrap(db.one("SELECT * FROM links WHERE key = ? AND is_active = 1", (key,)))
 

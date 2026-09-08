@@ -89,6 +89,33 @@ def register(app):
                       else "Reopened “%s”." % item.title, "ok")
         return redirect(back)
 
+    # --------------------------------------------- link: open and tick off #
+    @app.route("/link/<int:link_id>/open")
+    @tutor_required
+    def open_link(request, link_id):
+        """Send the tutor on to the link and, when it's the whole point of a
+        step, tick that step off. Following a link is the doing of it — asking
+        someone to come back and confirm they clicked is a second job."""
+        link = content.link(link_id)
+        if link is None:
+            raise HttpError(404, "That link isn't available.")
+        target = str(link.url or "")
+        if not target.lower().startswith(("http://", "https://")):
+            target = "https://" + target.lstrip("/")
+
+        if link.sub_item_id:
+            item = content.sub_item(link.sub_item_id)
+            # Only a "link" step counts itself done this way — a link sitting
+            # beside a task or an upload is reference material, not the task.
+            if item is not None and item.kind == "link" and not item.archived_at:
+                try:
+                    progress.toggle_sub_item(request.user, item, True)
+                except (progress.ValidationError, progress.LockedError):
+                    # Locked or out of scope: still let them read the link,
+                    # just don't record anything.
+                    pass
+        return redirect(target)
+
     # ---------------------------------------------------- video: mark watched #
     @app.route("/document/<int:document_id>/watched", methods=["POST"])
     @tutor_post

@@ -24,11 +24,16 @@
       </div>
     {% endif %}
 
+    <!-- Routed through /link/<id>/open so following it can tick the step off,
+         rather than making the tutor come back and confirm they clicked. -->
     {% for link in item.links %}
-      <a class="card card-compact card-interactive" href="{{ link.url }}" target="_blank" rel="noopener"
+      <a class="card card-compact card-interactive" href="/link/{{ link.id }}/open" target="_blank" rel="noopener"
          style="display: flex; align-items: center; gap: var(--space-12); text-decoration: none; margin-top: var(--space-12);">
         <span aria-hidden="true">↗</span>
         <span class="type-body-md" style="color: var(--text-primary); flex: 1;">{{ link.label }}</span>
+        {% if item.kind == "link" and not item.done %}
+          <span class="type-body-sm" style="color: var(--text-tertiary);">opens &amp; ticks off</span>
+        {% endif %}
       </a>
     {% endfor %}
 
