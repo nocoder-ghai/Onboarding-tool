@@ -14,6 +14,7 @@ Derived completions are written back to tutor_progress so that reporting
 """
 
 import datetime
+import os
 
 from . import audit, content, db, notify, storage, util
 from .util import AttrDict, wrap, wrap_all
@@ -769,13 +770,28 @@ BOOKING_LEAD_HOURS = 5
 #: choices rather than every time anyone has ever uploaded.
 BOOKING_WINDOW_DAYS = 5
 
+#: Class times arrive in the CSV as wall-clock times with no zone, and are
+#: stored and displayed exactly as typed. Every other *_at column is UTC, so
+#: comparing a slot against utcnow() silently made each slot look this many
+#: hours further away than it is — a 3pm slot read as 7.8 hours out at 12:40.
+#: Minutes, not hours, because the offset this exists for is +5:30.
+#: Override with CUEMATH_SLOT_UTC_OFFSET_MINUTES if the uploads ever move zone.
+SLOT_UTC_OFFSET_MINUTES = int(
+    os.environ.get("CUEMATH_SLOT_UTC_OFFSET_MINUTES", 330))
+
+
+def slot_now():
+    """Now, on the same wall clock the slot times are written in."""
+    return (datetime.datetime.utcnow()
+            + datetime.timedelta(minutes=SLOT_UTC_OFFSET_MINUTES))
+
 
 def bookable_from():
-    return datetime.datetime.utcnow() + datetime.timedelta(hours=BOOKING_LEAD_HOURS)
+    return slot_now() + datetime.timedelta(hours=BOOKING_LEAD_HOURS)
 
 
 def bookable_until():
-    return datetime.datetime.utcnow() + datetime.timedelta(days=BOOKING_WINDOW_DAYS)
+    return slot_now() + datetime.timedelta(days=BOOKING_WINDOW_DAYS)
 
 
 def is_bookable(slot):
