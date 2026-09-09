@@ -994,9 +994,15 @@ def tutors(region_id=None, grade_cohort_id=None, stage_id=None, status=None,
             tutor.last_activity_at or tutor.created_at)
         if stage_id and tutor.current_stage_id != stage_id:
             continue
+        # The three named statuses partition the list: nothing done yet,
+        # started but not finished, finished. "In progress" therefore excludes
+        # the not-started, who would otherwise show up under both.
         if status == "complete" and not summary.all_complete:
             continue
-        if status == "in_progress" and summary.all_complete:
+        if status == "in_progress" and (summary.all_complete
+                                        or not summary.done_units):
+            continue
+        if status == "not_started" and summary.done_units:
             continue
         if stalled_days is not None and (tutor.stalled_days is None
                                          or tutor.stalled_days < stalled_days

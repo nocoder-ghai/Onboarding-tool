@@ -105,6 +105,7 @@
         <span class="type-label-sm" style="color: var(--text-tertiary);">Status</span>
         <div class="filter-chip-group" role="group" aria-label="Status">
           <button type="submit" name="status" value="" class="filter-chip{% if not status %} is-active{% endif %}" aria-pressed="{{ 'true' if not status else 'false' }}">Any</button>
+          <button type="submit" name="status" value="not_started" class="filter-chip{% if status == 'not_started' %} is-active{% endif %}" aria-pressed="{{ 'true' if status == 'not_started' else 'false' }}">Not started</button>
           <button type="submit" name="status" value="in_progress" class="filter-chip{% if status == 'in_progress' %} is-active{% endif %}" aria-pressed="{{ 'true' if status == 'in_progress' else 'false' }}">In progress</button>
           <button type="submit" name="status" value="complete" class="filter-chip{% if status == 'complete' %} is-active{% endif %}" aria-pressed="{{ 'true' if status == 'complete' else 'false' }}">Fully onboarded</button>
         </div>

@@ -1314,7 +1314,7 @@ def register(app):
                                stalled_days=request.get_int("stalled"),
                                captain_id=captain_scope(request))
         stages = content.stages()
-        header = ["Name", "Email", "Phone", "Region", "Grade cohort",
+        header = ["DB ID", "Name", "Email", "Phone", "Region", "Grade cohort",
                   "Current stage", "Completion %", "Stages complete", "Signed up",
                   "Last activity", "Journey completed"] + \
                  ["%s status" % s.title for s in stages]
@@ -1322,7 +1322,7 @@ def register(app):
         for row in rows:
             by_id = {s.id: s for s in row.states}
             out.append([
-                row.name, row.email or "", row.phone or "",
+                row.db_id or "", row.name, row.email or "", row.phone or "",
                 content.region_name(row.region_id),
                 content.grade_cohort_name(row.grade_cohort_id),
                 row.current_stage_title, row.summary.percent,
