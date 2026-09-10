@@ -173,6 +173,26 @@ _POSTGRES_ADDITIVE = (
 )
 
 
+#: Data repairs that run on every boot on both backends. Each must be
+#: idempotent and cheap. Spreadsheet error text was imported verbatim before
+#: the CSV readers learned to drop it, so rows already stored still carry it —
+#: this clears them without anyone re-uploading a sheet.
+_SHEET_ERROR_SQL = (
+    "'#REF!', '#N/A', '#VALUE!', '#DIV/0!', '#NAME?', '#NULL!', '#NUM!', "
+    "'#ERROR!', '#GETTING_DATA', '#SPILL!', '#CALC!'")
+
+_DATA_FIXUPS = (
+    "UPDATE class_slots SET notes = '' "
+    "WHERE notes IS NOT NULL AND UPPER(TRIM(notes)) IN (%s)" % _SHEET_ERROR_SQL,
+    "UPDATE class_slots SET student_name = '' "
+    "WHERE student_name IS NOT NULL AND UPPER(TRIM(student_name)) IN (%s)"
+    % _SHEET_ERROR_SQL,
+    "UPDATE class_slots SET grade_subject = '' "
+    "WHERE grade_subject IS NOT NULL AND UPPER(TRIM(grade_subject)) IN (%s)"
+    % _SHEET_ERROR_SQL,
+)
+
+
 def init_db():
     """Create every table. Safe to run repeatedly."""
     config.ensure_dirs()
@@ -188,6 +208,8 @@ def init_db():
         # on ADD COLUMN, so these are safe to run on every start.
         for statement in _POSTGRES_ADDITIVE:
             cur.execute(statement)
+        for statement in _DATA_FIXUPS:
+            cur.execute(statement)
         cur.close()
         return config.DATABASE_URL
     with open(config.SCHEMA_PATH, "r", encoding="utf-8") as fh:
@@ -195,6 +217,8 @@ def init_db():
     with conn:
         conn.executescript(script)
         _migrate(conn)
+        for statement in _DATA_FIXUPS:
+            conn.execute(statement)
     return config.DB_PATH
 
 

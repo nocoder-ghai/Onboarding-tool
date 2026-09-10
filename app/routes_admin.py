@@ -79,6 +79,19 @@ def _require(values, field, message):
 # lands the class months away without an error. Day-first stays on as a
 # fallback, where it can only fire for a date month-first can't read at all
 # (25/12/2026), so it never overrides an ambiguous one.
+#: A broken formula in a source sheet exports as literal text — '#REF!' when a
+#: referenced row was deleted, '#N/A' from a failed lookup, and so on. Stored
+#: verbatim these surface to coaches as an error string where a real value
+#: should be, so every CSV importer reads them as the empty cell they mean.
+_SHEET_ERRORS = ("#REF!", "#N/A", "#VALUE!", "#DIV/0!", "#NAME?", "#NULL!",
+                 "#NUM!", "#ERROR!", "#GETTING_DATA", "#SPILL!", "#CALC!")
+
+
+def _clean_cell(value):
+    text = (value or "").strip()
+    return "" if text.upper() in _SHEET_ERRORS else text
+
+
 _CLASS_DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y",
                        "%d/%m/%Y", "%d-%m-%Y",
                        "%d %b %Y", "%d %B %Y", "%b %d %Y", "%B %d %Y",
@@ -1211,7 +1224,7 @@ def register(app):
             def cell(index):
                 if index is None or index >= len(row):
                     return ""
-                return (row[index] or "").strip()
+                return _clean_cell(row[index])
 
             student_name = cell(idx_name)
             date_text = cell(idx_date)
@@ -1392,7 +1405,7 @@ def register(app):
             def cell(index):
                 if index is None or index >= len(row):
                     return ""
-                return (row[index] or "").strip()
+                return _clean_cell(row[index])
 
             name = cell(idx_name)
             email = security.normalise_email(cell(idx_email))
@@ -1500,7 +1513,7 @@ def register(app):
             def cell(index):
                 if index is None or index >= len(row):
                     return ""
-                return (row[index] or "").strip()
+                return _clean_cell(row[index])
 
             tutor_ref = cell(idx_tutor)
             director_ref = cell(idx_director)
@@ -1775,7 +1788,7 @@ def register(app):
             def cell(index):
                 if index is None or index >= len(row):
                     return ""
-                return (row[index] or "").strip()
+                return _clean_cell(row[index])
 
             identifier = cell(idx_email) or cell(idx_phone)
             tutor = None
