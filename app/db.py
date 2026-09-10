@@ -170,6 +170,8 @@ _POSTGRES_ADDITIVE = (
     "ALTER TABLE documents ADD COLUMN IF NOT EXISTS drive_url TEXT",
     "ALTER TABLE class_slots ADD COLUMN IF NOT EXISTS grade_cohort_id "
     "INTEGER REFERENCES grade_cohorts(id)",
+    "ALTER TABLE class_slots ADD COLUMN IF NOT EXISTS student_phone "
+    "TEXT NOT NULL DEFAULT ''",
 )
 
 
@@ -261,6 +263,9 @@ def _migrate(conn):
     if "grade_cohort_id" not in slot_cols:
         conn.execute("ALTER TABLE class_slots ADD COLUMN grade_cohort_id "
                      "INTEGER REFERENCES grade_cohorts(id)")
+    if "student_phone" not in slot_cols:
+        conn.execute("ALTER TABLE class_slots ADD COLUMN student_phone "
+                     "TEXT NOT NULL DEFAULT ''")
 
 
 def table_exists(name):

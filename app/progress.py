@@ -833,7 +833,10 @@ def scheduled_sessions():
         "LEFT JOIN regions r ON r.id = cs.region_id "
         "LEFT JOIN grade_cohorts g ON g.id = cs.grade_cohort_id "
         "ORDER BY cs.starts_at"))
-    now = datetime.datetime.utcnow()
+    # Same clock the slot times are written on, so "soon" and the past-row
+    # shading agree with the booking window rather than trailing it by the
+    # UTC offset.
+    now = slot_now()
     for row in rows:
         starts = db.parse_ts(row.starts_at)
         row.starts = starts

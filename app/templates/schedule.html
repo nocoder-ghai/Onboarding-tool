@@ -28,6 +28,8 @@
   .sc-soon td { background: var(--bg-brand-1); }
   .sc-when { white-space: nowrap; font-variant-numeric: tabular-nums; }
   .sc-note { color: var(--text-tertiary); }
+  .sc-tel { color: var(--text-brand); text-decoration: none; }
+  .sc-tel:hover, .sc-tel:focus-visible { text-decoration: underline; }
   .sc-foot { margin-top: var(--space-24); color: var(--text-tertiary); }
 </style>
 </head>
@@ -92,6 +94,9 @@
                 </td>
                 <td>{{ s.student_name or "—" }}
                   {% if s.grade_subject %}<div class="type-body-sm sc-note">{{ s.grade_subject }}</div>{% endif %}
+                  <!-- Whoever schedules the session calls this number, so make
+                       it tappable rather than something to copy out by hand. -->
+                  {% if s.student_phone %}<div class="type-body-sm"><a class="sc-tel" href="tel:{{ s.student_phone }}">{{ s.student_phone }}</a></div>{% endif %}
                 </td>
                 <td class="type-body-sm">{{ s.cohort_name or "Any grade" }}</td>
                 <td class="type-body-sm">{{ s.region_name or "Any region" }}</td>

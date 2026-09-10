@@ -99,6 +99,21 @@ _CLASS_DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y",
 _CLASS_TIME_FORMATS = ("%H:%M", "%H:%M:%S", "%I:%M %p", "%I:%M%p", "%I %p")
 
 
+#: Header fragments that mark a slot answer on a Google Form response sheet,
+#: where the date and time share one cell.
+_FORM_SLOT_HINTS = ("when can they take", "more slots", "future date",
+                    "preferred slot", "slot 1", "slot 2", "slot 3")
+
+
+def _parse_combined_datetime(text):
+    """A single cell holding both parts, e.g. '8/27/2026 17:00:00'."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    date_text, _, time_text = text.partition(" ")
+    return _parse_class_datetime(date_text, time_text.strip())
+
+
 def _parse_class_datetime(date_text, time_text):
     """Combine loose CSV 'date' and 'time' cells into a starts_at string."""
     date_text = (date_text or "").strip()
@@ -1173,7 +1188,12 @@ def register(app):
         known = {"student", "student name", "name", "date", "class date",
                  "time", "class time", "grade", "grade/subject", "grade_subject",
                  "grade group", "cohort", "grade cohort"}
-        has_header = bool(known & set(header))
+        # A Google Form response sheet heads its columns with the questions
+        # themselves ("When can they take the class?"), so none of the short
+        # names above match and the sheet would be read as headerless data.
+        has_header = bool(known & set(header)) or any(
+            hint in cell for cell in header
+            for hint in _FORM_SLOT_HINTS + ("timestamp", "name of your child"))
         data_rows = rows[1:] if has_header else rows
 
         def column(names, contains=None):
@@ -1187,13 +1207,16 @@ def register(app):
             for name in names:
                 if name in header:
                     return header.index(name)
-            if contains:
+            for fragment in ((contains,) if isinstance(contains, str)
+                             else (contains or ())):
                 for index, cell in enumerate(header):
-                    if contains in cell:
+                    if fragment in cell:
                         return index
             return None
 
-        idx_name = column(["student name", "student", "name"]) if has_header else 0
+        idx_name = column(["student name", "student", "name"],
+                          contains=("name of your child", "child's name",
+                                    "child name")) if has_header else 0
         idx_date = column(["class date", "date"]) if has_header else 1
         idx_time = column(["class time", "time"]) if has_header else 2
         idx_grade = (column(["grade", "grade/subject", "grade & subject",
@@ -1206,6 +1229,25 @@ def register(app):
                            contains="note")
         idx_cohort = column(["grade group", "grade cohort", "cohort"],
                             contains="cohort")
+        # A form asks about the child in several questions; the note a coach
+        # reads is those answers joined, matching the wording already in use.
+        idx_hobbies = column([], contains=("hobbies", "interest"))
+        idx_improve = column([], contains=("areas that the child needs",
+                                           "areas of improvement"))
+        idx_topic = column([], contains=("specific topic", "want to learn"))
+        idx_phone = column(["student number", "student phone", "student's number",
+                            "parent number", "parent phone", "parent's number",
+                            "contact number", "tutor's number", "number",
+                            "phone", "mobile", "contact"], contains="number")
+        # A Google Form response sheet writes the whole datetime into one cell
+        # and offers several slot questions per response, so one row can
+        # describe two or three classes for the same child. Collect every such
+        # column; the row then expands into one slot per filled-in answer.
+        idx_when = []
+        if has_header and idx_date is None:
+            for index, name in enumerate(header):
+                if any(hint in name for hint in _FORM_SLOT_HINTS):
+                    idx_when.append(index)
 
         region_by_name = {r.name.strip().lower(): r.id
                          for r in content.regions(active_only=False)}
@@ -1219,7 +1261,8 @@ def register(app):
         cohort_by_name = {cohort_key(g.name): g.id
                           for g in content.grade_cohorts(active_only=False)}
 
-        added, skipped = [], []
+        added, skipped, updated, narrowed = [], [], [], []
+        update_only = request.checked("update_only")
         for row in data_rows:
             def cell(index):
                 if index is None or index >= len(row):
@@ -1229,14 +1272,35 @@ def register(app):
             student_name = cell(idx_name)
             date_text = cell(idx_date)
             time_text = cell(idx_time)
-            grade_text = cell(idx_grade)
+            explicit_cohort = cell(idx_cohort) if idx_cohort is not None else ""
+            # A form sheet carries no separate grade column; the band the
+            # parent picked is what a coach should see beside the child.
+            grade_text = cell(idx_grade) or explicit_cohort
             label = student_name or " ".join(row).strip()[:40] or "row"
 
-            starts_at = _parse_class_datetime(date_text, time_text)
-            if starts_at is None:
-                skipped.append("%s — couldn't read the date/time (%r / %r)"
-                              % (label, date_text, time_text))
-                continue
+            note_text = cell(idx_notes)
+            if not note_text and (idx_hobbies or idx_improve or idx_topic):
+                parts = [("Hobbies & Interests- ", cell(idx_hobbies)),
+                         ("Areas of Improvement-", cell(idx_improve)),
+                         ("Suggested topic in the class-", cell(idx_topic))]
+                filled = ["%s%s" % (label_, value) for label_, value in parts if value]
+                note_text = "; ".join(filled)
+
+            if idx_when:
+                starts_list = [t for t in
+                               (_parse_combined_datetime(cell(i)) for i in idx_when)
+                               if t]
+                if not starts_list:
+                    skipped.append("%s — no readable date/time in this response"
+                                   % label)
+                    continue
+            else:
+                starts_at = _parse_class_datetime(date_text, time_text)
+                if starts_at is None:
+                    skipped.append("%s — couldn't read the date/time (%r / %r)"
+                                  % (label, date_text, time_text))
+                    continue
+                starts_list = [starts_at]
 
             duration = None
             if idx_duration is not None:
@@ -1252,36 +1316,74 @@ def register(app):
             # single "grade" column holding K-5 / 3-8 / 9-12. Read the cohort
             # from that when it names one, otherwise every class imports open
             # to any coach and the licence restriction never applies.
-            explicit_cohort = cell(idx_cohort) if idx_cohort is not None else ""
             cohort_text = explicit_cohort or grade_text
-            cohort_id = (cohort_by_name.get(cohort_key(cohort_text))
-                         if cohort_text else None)
+            # A form lets a parent tick more than one band ("K-5, 3-8"). The
+            # slot can only carry one, so take the first that names a real
+            # cohort and say so in the summary rather than silently narrowing.
+            cohort_id, cohort_used = None, ""
+            for part in re.split(r"[,;/]| and ", cohort_text or ""):
+                found = cohort_by_name.get(cohort_key(part))
+                if found:
+                    cohort_id, cohort_used = found, part.strip()
+                    break
             if explicit_cohort and cohort_id is None:
                 skipped.append("%s — unknown grade group “%s”"
                                % (label, explicit_cohort))
                 continue
+            if cohort_used and cohort_key(cohort_used) != cohort_key(cohort_text):
+                narrowed.append("%s — “%s” read as %s"
+                                % (label, cohort_text, cohort_used))
 
-            values = {
-                "starts_at": starts_at, "duration_minutes": duration,
-                "student_name": student_name, "grade_subject": grade_text,
-                "region_id": region_id, "grade_cohort_id": cohort_id,
-                "notes": cell(idx_notes),
-                "status": "open", "tutor_id": None, "booked_at": None,
-                "created_at": db.now(), "updated_at": db.now(),
-            }
-            db.insert("class_slots", values)
-            added.append("%s — %s" % (label, starts_at))
+            for starts_at in starts_list:
+                values = {
+                    "duration_minutes": duration,
+                    "student_name": student_name, "grade_subject": grade_text,
+                    "student_phone": cell(idx_phone),
+                    "region_id": region_id, "grade_cohort_id": cohort_id,
+                    "notes": note_text, "updated_at": db.now(),
+                }
+                # Re-uploading the same sheet is routine — it is how a new
+                # column like the contact number reaches slots that already
+                # exist. Match on the time and child so those are filled in
+                # rather than duplicated, and never disturb a booking.
+                existing = db.one(
+                    "SELECT id, status FROM class_slots "
+                    "WHERE starts_at = ? AND LOWER(TRIM(student_name)) = ?",
+                    (starts_at, student_name.strip().lower()))
+                if existing:
+                    # An empty cell in a re-uploaded sheet means "nothing new
+                    # to say", not "erase what is there" — so blanks never
+                    # overwrite a value the slot already carries.
+                    db.update("class_slots", existing["id"],
+                              {k: v for k, v in values.items()
+                               if v not in ("", None)})
+                    updated.append("%s — %s" % (label, starts_at))
+                    continue
+                if update_only:
+                    skipped.append("%s — %s isn't an existing slot, so it was "
+                                   "left out" % (label, starts_at))
+                    continue
+                values.update({"starts_at": starts_at, "status": "open",
+                               "tutor_id": None, "booked_at": None,
+                               "created_at": db.now()})
+                db.insert("class_slots", values)
+                added.append("%s — %s" % (label, starts_at))
 
         audit.record(request, "class_slot.import", "class_slot", None,
-                     "CSV import: %d added, %d skipped" % (len(added), len(skipped)))
+                     "CSV import: %d added, %d updated, %d skipped"
+                     % (len(added), len(updated), len(skipped)))
         request.flash(
-            "%s added.%s" % (
+            "%s added, %s updated.%s" % (
                 util.plural(len(added), "slot"),
+                util.plural(len(updated), "existing slot"),
                 " %d skipped — see details below." % len(skipped) if skipped else ""),
-            "ok" if added else "error")
+            "ok" if (added or updated) else "error")
         return render(request, "admin/class_slots_import.html",
                       result={"added": added[:50], "skipped": skipped[:50],
+                              "updated": updated[:50], "narrowed": narrowed[:50],
                               "added_count": len(added),
+                              "updated_count": len(updated),
+                              "narrowed_count": len(narrowed),
                               "skipped_count": len(skipped)})
 
     # ==================================================================== #

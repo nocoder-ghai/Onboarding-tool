@@ -289,6 +289,7 @@ CREATE TABLE IF NOT EXISTS class_slots (
     starts_at        TEXT NOT NULL,
     duration_minutes INTEGER NOT NULL DEFAULT 60,
     student_name     TEXT NOT NULL DEFAULT '',
+    student_phone    TEXT NOT NULL DEFAULT '',
     grade_subject    TEXT NOT NULL DEFAULT '',
     region_id        INTEGER REFERENCES regions(id),
     grade_cohort_id  INTEGER REFERENCES grade_cohorts(id),
