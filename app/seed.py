@@ -568,7 +568,31 @@ def seed(verbose=True, demo=False):
           stage_id=None, component_id=cueparent, sub_item_id=None,
           region_id=None, sort_order=10, is_active=1)
 
-    say("Stage 2 · Class & App Training seeded (3 components).")
+    # -- Teach with Cuemath -------------------------------------------------- #
+    # Two separate link steps rather than one combined one, so following only
+    # LinkedIn reads as half done instead of nothing. Each carries its own
+    # "I've done this" button for a coach who already follows the page.
+    twc = _component(
+        "teach_with_cuemath", stage_id=stage2,
+        title="Teach with Cuemath",
+        description="Join the coach community on social.",
+        sort_order=5, is_mandatory=1, completion_rule="sub_items",
+        region_id=None, archived_at=None)
+    for key, title, url, order in (
+            ("twc_linkedin", "LinkedIn — Teach with Cuemath",
+             "https://www.linkedin.com/company/cuemath/", 10),
+            ("twc_instagram", "Instagram — Teach with Cuemath",
+             "https://www.instagram.com/cuemath/", 20)):
+        item_id = _item(
+            key, component_id=twc, parent_id=None, title=title,
+            description="Follow the page to see what other coaches are doing.",
+            kind="link", sort_order=order, is_mandatory=1,
+            region_id=None, archived_at=None)
+        _link("%s_link" % key, label=title, url=url, description="",
+              stage_id=None, component_id=None, sub_item_id=item_id,
+              region_id=None, sort_order=10, is_active=1)
+
+    say("Stage 2 · Class & App Training seeded (4 components).")
 
     # ================================================================== #
     # Stage 3 — First Class (absorbs the old standalone Cuemath Policy stage)
