@@ -56,6 +56,11 @@ def cmd_serve(args):
             # overwrite copy that was edited in the admin screens.
             print("CUEMATH_SEED_ON_BOOT=1 — refreshing content from seed...")
             seed_module.seed()
+        else:
+            # Additive only: creates content added since this database was
+            # populated, without rewriting copy edited in the admin screens.
+            for item in seed_module.ensure_new_content():
+                print("  + added missing content: %s" % item)
         if first_run:
             seed_module.ensure_admin()
 
