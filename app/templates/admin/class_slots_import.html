@@ -141,8 +141,9 @@
         columns are <code>student name</code>, <code>class date</code>,
         <code>class time</code> and <code>grade</code>. Times can be written as
         <code>14:30</code> or <code>2:30 PM</code>. You can optionally add
-        <code>duration</code> (minutes, defaults to 60), <code>region</code>,
-        <code>grade group</code> and <code>notes</code> columns too. Every row
+        <code>student's number</code>, <code>duration</code> (minutes, defaults
+        to 60), <code>region</code>, <code>grade group</code> and
+        <code>notes</code> columns too. Every row
         becomes an <strong>open</strong> slot — no tutor assigned yet — for a tutor
         to pick from
         <a href="/admin/class-slots" class="cm-link" style="color: var(--text-brand);">Class with a Student</a>.</p>
@@ -154,6 +155,21 @@
           month/date/year order a spreadsheet exports. <code>2026-03-09</code> and
           <code>9 Mar 2026</code> are read the same way and leave no room for doubt,
           so prefer one of those if you are ever unsure.
+        </p>
+      </div>
+
+      <div class="card card-compact card-info-tint">
+        <div class="type-label-md" style="color: var(--text-primary);">The student&rsquo;s number comes in on the same sheet</div>
+        <p class="type-body-sm" style="color: var(--text-secondary); margin: var(--space-4) 0 0;">
+          Whoever takes the class calls this number, so it shows under the child on
+          the schedule and on Class with a Student. The column can be headed
+          <code>student's number</code>, <code>parent's number</code>,
+          <code>tutor's number</code>, <code>contact number</code> or just
+          <code>phone</code> — a form response sheet keeps whichever wording it
+          already uses. Each row still needs its date and time: that is how a
+          number finds the class it belongs to. To put numbers on classes that are
+          already here, upload the same sheet with
+          <strong>only update slots that already exist</strong> ticked.
         </p>
       </div>
 
