@@ -24,7 +24,8 @@ def register(app):
             request, "tutor/home.html",
             states=states, summary=progress.overall(states),
             intro=db.setting("dashboard_intro", ""),
-            welcome_video=welcome_video)
+            welcome_video=welcome_video,
+            c2c=progress.c2c_offer(user))
 
     # ------------------------------------------------------------ dashboard #
     @app.route("/dashboard")
@@ -41,7 +42,8 @@ def register(app):
             request, "tutor/dashboard.html",
             states=states, summary=summary,
             class_slot=progress.class_slot_for(user),
-            class_stage=content.stage_by_key("class_and_app_training"))
+            class_stage=content.stage_by_key("class_and_app_training"),
+            c2c=progress.c2c_offer(user))
 
     # ---------------------------------------------------------- stage detail #
     @app.route("/stage/<int:stage_id>")

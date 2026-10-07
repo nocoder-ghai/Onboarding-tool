@@ -15,6 +15,7 @@ Derived completions are written back to tutor_progress so that reporting
 
 import datetime
 import os
+import urllib.parse
 
 from . import audit, content, db, notify, storage, util
 from .util import AttrDict, wrap, wrap_all
@@ -300,8 +301,13 @@ def sync(user, cache=None, notifications=True):
     states = stage_states(user, ContentCache())
     summary = overall(states)
     if summary.all_complete and not user["completed_at"]:
-        db.execute("UPDATE users SET completed_at = ? WHERE id = ?",
-                   (db.now(), user["id"]))
+        # The C2C referral window opens on the first graduation only — a stage
+        # added later can reopen the journey, and finishing it again mustn't
+        # hand the coach a fresh window.
+        stamp = db.now()
+        db.execute("UPDATE users SET completed_at = ?, "
+                   "c2c_started_at = COALESCE(c2c_started_at, ?) WHERE id = ?",
+                   (stamp, stamp, user["id"]))
         if notifications:
             notify.notify(user, "journey_complete", url="/complete",
                           kind="approval")
@@ -760,6 +766,54 @@ def class_slot_for(user):
         "SELECT * FROM class_slots WHERE tutor_id = ? "
         "AND status IN ('booked', 'completed') ORDER BY starts_at LIMIT 1",
         (user["id"],)))
+
+
+def c2c_offer(user):
+    """The coach-to-coach referral card: their code, the apply link for
+    friends, and where they are in the window to earn the reward.
+
+    status is 'pending' before graduating (the clock hasn't started),
+    'active' while the window is open, 'expired' after. A coach whose
+    window was never stamped but who has graduated (finished before this
+    existed) is timed from completed_at instead."""
+    fresh = db.one("SELECT c2c_code, c2c_started_at, completed_at FROM users "
+                   "WHERE id = ?", (user["id"],))
+    code = ((fresh["c2c_code"] if fresh else "") or "").strip()
+    base = db.setting("c2c_apply_url", "").strip()
+    link = ""
+    if code and base:
+        if not base.lower().startswith(("http://", "https://")):
+            base = "https://" + base.lstrip("/")
+        link = "%s%sref=%s" % (base, "&" if "?" in base else "?",
+                               urllib.parse.quote(code))
+    share_url = ("https://wa.me/?text=" + urllib.parse.quote(
+        "I coach with Cuemath and think you'd love it too. Apply with my "
+        "referral code %s: %s" % (code, link))) if link else ""
+    window_days = db.setting_int("c2c_window_days", 30)
+    started = db.parse_ts((fresh["c2c_started_at"] or fresh["completed_at"])
+                          if fresh else None)
+    offer = AttrDict(code=code, link=link, share_url=share_url,
+                     window_days=window_days,
+                     amount=db.setting("c2c_reward_amount", "") or "₹10,000",
+                     status="pending", ends_at=None, ends_at_iso="",
+                     days_left=None)
+    if started is None:
+        return offer
+    ends = started + datetime.timedelta(days=window_days)
+    remaining = ends - datetime.datetime.utcnow()
+    offer.ends_at = ends.isoformat(sep=" ")
+    # Stored timestamps are UTC; the trailing Z lets the browser count down
+    # in the coach's own clock.
+    offer.ends_at_iso = ends.isoformat() + "Z"
+    if remaining.total_seconds() <= 0:
+        offer.status = "expired"
+        offer.days_left = 0
+    else:
+        offer.status = "active"
+        # Whole days, so the heading agrees with the countdown's day tile;
+        # 0 reads as "last day".
+        offer.days_left = remaining.days
+    return offer
 
 
 #: Slots are offered inside a window. A tutor needs notice to prepare, so

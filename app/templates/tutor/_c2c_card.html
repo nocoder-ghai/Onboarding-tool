@@ -1,0 +1,112 @@
+<style>
+  /* Page-level layout only: the coach-to-coach referral card — countdown
+     tiles, then the code and the friends' apply link, each copyable. */
+  .c2c-head { display: flex; align-items: flex-start; justify-content: space-between;
+              gap: var(--space-16); flex-wrap: wrap; }
+  .c2c-eyebrow { color: var(--text-brand); letter-spacing: 0.12em; }
+  .c2c-title { color: var(--text-primary); margin-top: var(--space-4); }
+  .c2c-sub { color: var(--text-secondary); margin-top: var(--space-4); }
+  .c2c-clock { display: flex; gap: var(--space-8); margin-top: var(--space-16); }
+  .c2c-tile { min-width: 64px; padding: var(--space-8) var(--space-12); text-align: center;
+              border-radius: var(--radius-md); background: var(--bg-primary);
+              border: 1px solid var(--border-tertiary); }
+  .c2c-tile-n { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .c2c-tile-l { color: var(--text-tertiary); }
+  .c2c-clock.is-urgent .c2c-tile-n { color: var(--text-error); }
+  .c2c-rows { display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-20); }
+  .c2c-row { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
+  .c2c-row dt { color: var(--text-tertiary); min-width: 96px; flex-shrink: 0; }
+  .c2c-row dd { margin: 0; display: flex; align-items: center; gap: var(--space-8);
+                flex-wrap: wrap; min-width: 0; flex: 1; }
+  .c2c-value { padding: var(--space-4) var(--space-12); border-radius: var(--radius-md);
+               background: var(--bg-primary); border: 1px dashed var(--border-brand);
+               color: var(--text-primary); overflow-wrap: anywhere; }
+  .c2c-code { letter-spacing: 0.08em; }
+</style>
+
+<div class="card card-brand-tint" id="c2c">
+  <div class="c2c-head">
+    <div>
+      <div class="type-label-sm type-caps c2c-eyebrow">Coach-to-coach referral</div>
+      {% if c2c.status == "expired" %}
+        <h2 class="type-heading-md c2c-title">Your {{ c2c.amount }} referral window has closed</h2>
+        <p class="type-body-sm c2c-sub">It ran for {{ c2c.window_days }} days after you graduated and ended {{ fmt_date(c2c.ends_at) }}.
+          You can still share your code — ask your Activation Director what referrals earn now.</p>
+      {% elif c2c.status == "active" %}
+        <h2 class="type-heading-md c2c-title">
+          {% if c2c.days_left < 1 %}Last day{% elif c2c.days_left == 1 %}1 day left{% else %}{{ c2c.days_left }} days left{% endif %} to earn {{ c2c.amount }}
+        </h2>
+        <p class="type-body-sm c2c-sub">Refer a friend to coach with Cuemath. Share your code and link —
+          your window ends {{ fmt_date(c2c.ends_at) }}.</p>
+      {% else %}
+        <h2 class="type-heading-md c2c-title">Earn {{ c2c.amount }} by referring a coach</h2>
+        <p class="type-body-sm c2c-sub">Your {{ c2c.window_days }}-day window to earn it starts the day you graduate —
+          get your friends lined up now.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if c2c.status == "active" %}
+    <div class="c2c-clock{% if c2c.days_left <= 3 %} is-urgent{% endif %}" data-c2c-ends="{{ c2c.ends_at_iso }}" role="timer" aria-label="Time left to earn {{ c2c.amount }}">
+      <div class="c2c-tile"><div class="type-heading-md c2c-tile-n" data-unit="d">{{ c2c.days_left }}</div><div class="type-label-sm c2c-tile-l">days</div></div>
+      <div class="c2c-tile"><div class="type-heading-md c2c-tile-n" data-unit="h">–</div><div class="type-label-sm c2c-tile-l">hours</div></div>
+      <div class="c2c-tile"><div class="type-heading-md c2c-tile-n" data-unit="m">–</div><div class="type-label-sm c2c-tile-l">mins</div></div>
+      <div class="c2c-tile"><div class="type-heading-md c2c-tile-n" data-unit="s">–</div><div class="type-label-sm c2c-tile-l">secs</div></div>
+    </div>
+  {% endif %}
+
+  <dl class="c2c-rows">
+    <div class="c2c-row">
+      <dt class="type-body-sm">Your C2C code</dt>
+      <dd>
+        {% if c2c.code %}
+          <span class="type-label-md c2c-value c2c-code">{{ c2c.code }}</span>
+          <button type="button" class="btn btn-sm btn-secondary" data-c2c-copy="{{ c2c.code }}">Copy code</button>
+        {% else %}
+          <span class="type-body-sm" style="color: var(--text-tertiary);">Being set up — your Activation Director will share it shortly.</span>
+        {% endif %}
+      </dd>
+    </div>
+    {% if c2c.link %}
+      <div class="c2c-row">
+        <dt class="type-body-sm">Apply link</dt>
+        <dd>
+          <a class="type-body-sm cm-link c2c-value" href="{{ c2c.link }}" target="_blank" rel="noopener">{{ c2c.link }}</a>
+          <button type="button" class="btn btn-sm btn-primary" data-c2c-copy="{{ c2c.link }}">Copy link</button>
+          <a class="btn btn-sm btn-secondary" target="_blank" rel="noopener"
+             href="{{ c2c.share_url }}">Share on WhatsApp</a>
+        </dd>
+      </div>
+    {% endif %}
+  </dl>
+</div>
+
+<script>
+(function () {
+  var clock = document.querySelector("[data-c2c-ends]");
+  if (clock) {
+    var ends = Date.parse(clock.getAttribute("data-c2c-ends"));
+    var cell = function (u) { return clock.querySelector('[data-unit="' + u + '"]'); };
+    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    var tick = function () {
+      var left = Math.max(0, Math.floor((ends - Date.now()) / 1000));
+      cell("d").textContent = Math.floor(left / 86400);
+      cell("h").textContent = pad(Math.floor(left % 86400 / 3600));
+      cell("m").textContent = pad(Math.floor(left % 3600 / 60));
+      cell("s").textContent = pad(left % 60);
+      if (left === 0) clearInterval(timer);
+    };
+    var timer = setInterval(tick, 1000);
+    tick();
+  }
+  document.querySelectorAll("[data-c2c-copy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var label = btn.textContent;
+      navigator.clipboard.writeText(btn.getAttribute("data-c2c-copy")).then(function () {
+        btn.textContent = "Copied ✓";
+        setTimeout(function () { btn.textContent = label; }, 1600);
+      });
+    });
+  });
+})();
+</script>

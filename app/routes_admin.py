@@ -1431,7 +1431,7 @@ def register(app):
         stages = content.stages()
         header = ["DB ID", "Name", "Email", "Phone", "Region", "Grade cohort",
                   "Current stage", "Completion %", "Stages complete", "Signed up",
-                  "Last activity", "Journey completed"] + \
+                  "Last activity", "Journey completed", "C2C code"] + \
                  ["%s status" % s.title for s in stages]
         out = []
         for row in rows:
@@ -1443,6 +1443,7 @@ def register(app):
                 row.current_stage_title, row.summary.percent,
                 "%d/%d" % (row.summary.stages_done, row.summary.stages_total),
                 row.created_at, row.last_activity_at or "", row.completed_at or "",
+                row.c2c_code or "",
             ] + [(by_id[s.id].status if s.id in by_id else "") for s in stages])
         audit.record(request, "report.export_csv", "report", None,
                      "Exported %d tutor row(s)" % len(out))
@@ -1697,7 +1698,8 @@ def register(app):
                       next_class=progress.next_pending_class(user_id),
                       compliance=progress.compliance_state(user_id),
                       compliance_event_labels=progress.COMPLIANCE_EVENT_LABELS,
-                      can_review=can_write_tutor(request, tutor.captain_id))
+                      can_review=can_write_tutor(request, tutor.captain_id),
+                      c2c=progress.c2c_offer(tutor))
 
     @app.route("/admin/tutors/<int:user_id>/classes", methods=["POST"])
     @captain_write_required
@@ -1839,6 +1841,121 @@ def register(app):
                      after={"captain_id": captain_id})
         request.flash("Activation Director updated.", "ok")
         return back_to(request, "/admin/tutors/%d" % user_id)
+
+    @app.route("/admin/tutors/<int:user_id>/c2c-code", methods=["POST"])
+    @writes
+    def tutor_c2c_code(request, user_id):
+        tutor = wrap(db.one("SELECT * FROM users WHERE id = ? AND role_key = 'tutor'",
+                            (user_id,)))
+        if tutor is None:
+            raise HttpError(404, "Unknown tutor.")
+        code = _clean_cell(request.get("c2c_code", "")) or None
+        clash = _c2c_code_owner(code, user_id)
+        if clash:
+            request.flash("%s is already %s's code." % (code, clash.name), "error")
+            return back_to(request, "/admin/tutors/%d" % user_id)
+        db.update("users", user_id, {"c2c_code": code})
+        audit.record(request, "tutor.c2c_code", "user", user_id,
+                     "C2C code set to %s" % (code or "none"),
+                     before={"c2c_code": tutor.c2c_code},
+                     after={"c2c_code": code})
+        request.flash("C2C referral code saved." if code
+                      else "C2C referral code cleared.", "ok")
+        return back_to(request, "/admin/tutors/%d" % user_id)
+
+    def _c2c_code_owner(code, user_id):
+        """Another tutor already holding this code, if any. Matched without
+        case so C2C-AB12 and c2c-ab12 can't end up on two coaches."""
+        if not code:
+            return None
+        return wrap(db.one("SELECT id, name FROM users WHERE UPPER(c2c_code) = "
+                           "UPPER(?) AND id != ?", (code, user_id)))
+
+    # ------------------------------------------------ bulk C2C codes CSV -- #
+    @app.route("/admin/tutors/c2c-codes", methods=["GET", "POST"])
+    @admin_required
+    def tutors_c2c_codes(request):
+        """A sheet of tutor -> coach-to-coach referral code, matched on
+        whatever identifier the sheet carries."""
+        if request.method == "GET":
+            return render(request, "admin/tutors_c2c_codes.html", result=None,
+                          apply_url=db.setting("c2c_apply_url", ""))
+
+        request.verify_csrf()
+        from .auth import can_write
+        if not can_write(request):
+            raise HttpError(403, "Your account has read-only access.")
+        upload = request.file("file")
+        if not upload:
+            request.flash("Choose a CSV file to upload.", "error")
+            return redirect("/admin/tutors/c2c-codes")
+        try:
+            text = upload.data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = upload.data.decode("latin-1")
+        reader = csv.reader(io.StringIO(text))
+        rows = [r for r in reader if any((c or "").strip() for c in r)]
+        if not rows:
+            request.flash("That file looks empty.", "error")
+            return redirect("/admin/tutors/c2c-codes")
+
+        header = [c.strip().lower() for c in rows[0]]
+        known = {"tutor", "coach", "email", "phone", "db id", "db_id", "dbid",
+                 "code", "c2c code", "c2c_code", "referral code"}
+        has_header = bool(known & set(header))
+        data_rows = rows[1:] if has_header else rows
+
+        def column(names):
+            for name in names:
+                if name in header:
+                    return header.index(name)
+            return None
+
+        idx_tutor = (column(["tutor", "coach", "email", "phone", "db id",
+                             "db_id", "dbid"]) if has_header else 0)
+        idx_code = (column(["c2c code", "c2c_code", "referral code", "code"])
+                    if has_header else 1)
+
+        assigned, skipped, seen = [], [], {}
+        for row in data_rows:
+            def cell(index):
+                if index is None or index >= len(row):
+                    return ""
+                return _clean_cell(row[index])
+
+            tutor_ref, code = cell(idx_tutor), cell(idx_code)
+            if not tutor_ref or not code:
+                skipped.append("%s — needs both a tutor and a code"
+                               % (" ".join(row)[:40] or "blank row"))
+                continue
+            tutor = _find_tutor(tutor_ref)
+            if tutor is None:
+                skipped.append("%s — no tutor matches that email, phone or DB ID"
+                               % tutor_ref)
+                continue
+            if code.upper() in seen and seen[code.upper()] != tutor.id:
+                skipped.append("%s — %s appears twice in this file"
+                               % (tutor_ref, code))
+                continue
+            clash = _c2c_code_owner(code, tutor.id)
+            if clash:
+                skipped.append("%s — %s already belongs to %s"
+                               % (tutor_ref, code, clash.name))
+                continue
+            seen[code.upper()] = tutor.id
+            db.update("users", tutor.id, {"c2c_code": code})
+            assigned.append({"tutor": tutor.name,
+                             "identifier": tutor.email or tutor.phone,
+                             "code": code, "previous": tutor.c2c_code or ""})
+
+        audit.record(request, "tutor.c2c_codes", "report", None,
+                     "Loaded C2C codes for %d tutor(s), %d skipped"
+                     % (len(assigned), len(skipped)))
+        return render(request, "admin/tutors_c2c_codes.html",
+                      apply_url=db.setting("c2c_apply_url", ""),
+                      result={"assigned": assigned, "skipped": skipped[:50],
+                              "skipped_count": len(skipped)})
+
 
     # ------------------------------------------------- bulk attendance CSV -- #
     @app.route("/admin/attendance/import", methods=["GET", "POST"])
@@ -2064,6 +2181,12 @@ def register(app):
          "Stage key that Orientation attendance completes", "text"),
         ("class_prep_tips",
          "Prep tips for Class with a Student (one per line)", "textarea"),
+        ("c2c_reward_amount", "C2C referral reward (e.g. ₹10,000)", "text"),
+        ("c2c_window_days",
+         "Days after graduating to earn the C2C referral reward", "number"),
+        ("c2c_apply_url",
+         "C2C apply link for friends (the coach's code is added as ?ref=)",
+         "text"),
     ]
 
     @app.route("/admin/settings", methods=["GET", "POST"])

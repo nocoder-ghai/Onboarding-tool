@@ -96,6 +96,12 @@ def ensure_new_content():
     rows only when they are absent, and leave every existing row alone. Safe
     to run on every boot. Returns a list of what it created, for the log."""
     created = []
+    # Settings introduced later (e.g. the C2C referral ones) — only those
+    # missing, so wording an admin has edited is left alone.
+    for key, value, description in SETTINGS:
+        if db.one("SELECT 1 FROM settings WHERE key = ?", (key,)) is None:
+            db.set_setting(key, value, description)
+            created.append("setting %s" % key)
     stage2 = db.scalar("SELECT id FROM stages WHERE key = ?",
                        ("class_and_app_training",), None)
     known = db.one("SELECT id FROM components WHERE key = 'teach_with_cuemath'")
@@ -330,6 +336,12 @@ SETTINGS = [
      "The session is recorded — your mentor scores it afterward and shares "
      "feedback with you.",
      "Prep tips for Class with a Student (one per line)"),
+    ("c2c_reward_amount", "₹10,000",
+     "Coach-to-coach referral reward shown on the countdown"),
+    ("c2c_window_days", "30",
+     "Days after graduating that a coach has to earn the C2C referral reward"),
+    ("c2c_apply_url", "https://tutorhiring.cuemath.com/",
+     "Apply link for referred friends — the coach's C2C code is added as ?ref="),
 ]
 
 CUEMATH_POLICIES = [

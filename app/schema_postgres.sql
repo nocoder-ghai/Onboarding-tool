@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS users (
     last_login_at    TEXT,
     last_activity_at TEXT,
     completed_at     TEXT,                  -- journey fully finished
+    -- Coach-to-coach referral code, loaded by an admin. The window to earn
+    -- the referral reward opens at c2c_started_at — stamped the first time
+    -- the journey completes and never cleared, so reopening a stage can't
+    -- restart the clock.
+    c2c_code         TEXT UNIQUE,
+    c2c_started_at   TEXT,
     CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 
