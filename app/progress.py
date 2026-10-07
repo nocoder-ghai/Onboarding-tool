@@ -301,13 +301,8 @@ def sync(user, cache=None, notifications=True):
     states = stage_states(user, ContentCache())
     summary = overall(states)
     if summary.all_complete and not user["completed_at"]:
-        # The C2C referral window opens on the first graduation only — a stage
-        # added later can reopen the journey, and finishing it again mustn't
-        # hand the coach a fresh window.
-        stamp = db.now()
-        db.execute("UPDATE users SET completed_at = ?, "
-                   "c2c_started_at = COALESCE(c2c_started_at, ?) WHERE id = ?",
-                   (stamp, stamp, user["id"]))
+        db.execute("UPDATE users SET completed_at = ? WHERE id = ?",
+                   (db.now(), user["id"]))
         if notifications:
             notify.notify(user, "journey_complete", url="/complete",
                           kind="approval")
@@ -772,11 +767,13 @@ def c2c_offer(user):
     """The coach-to-coach referral card: their code, the apply link for
     friends, and where they are in the window to earn the reward.
 
-    status is 'pending' before graduating (the clock hasn't started),
-    'active' while the window is open, 'expired' after. A coach whose
-    window was never stamped but who has graduated (finished before this
-    existed) is timed from completed_at instead."""
-    fresh = db.one("SELECT c2c_code, c2c_started_at, completed_at FROM users "
+    Every coach on the tool has already graduated from hiring training —
+    that's how they get an account — so the window runs from when the
+    account was created, not from finishing this onboarding journey.
+    c2c_started_at overrides that when it's set. status is 'active' while
+    the window is open, 'expired' after, and 'pending' only for a row with
+    no start date at all."""
+    fresh = db.one("SELECT c2c_code, c2c_started_at, created_at FROM users "
                    "WHERE id = ?", (user["id"],))
     code = ((fresh["c2c_code"] if fresh else "") or "").strip()
     base = db.setting("c2c_apply_url", "").strip()
@@ -790,7 +787,7 @@ def c2c_offer(user):
         "I coach with Cuemath and think you'd love it too. Apply with my "
         "referral code %s: %s" % (code, link))) if link else ""
     window_days = db.setting_int("c2c_window_days", 30)
-    started = db.parse_ts((fresh["c2c_started_at"] or fresh["completed_at"])
+    started = db.parse_ts((fresh["c2c_started_at"] or fresh["created_at"])
                           if fresh else None)
     offer = AttrDict(code=code, link=link, share_url=share_url,
                      window_days=window_days,

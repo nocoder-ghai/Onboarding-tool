@@ -59,9 +59,8 @@ CREATE TABLE IF NOT EXISTS users (
     last_activity_at TEXT,
     completed_at     TEXT,                  -- journey fully finished
     -- Coach-to-coach referral code, loaded by an admin. The window to earn
-    -- the referral reward opens at c2c_started_at — stamped the first time
-    -- the journey completes and never cleared, so reopening a stage can't
-    -- restart the clock.
+    -- the referral reward runs from created_at (coaches arrive already
+    -- graduated); c2c_started_at overrides that start when set.
     c2c_code         TEXT UNIQUE,
     c2c_started_at   TEXT,
     CHECK (email IS NOT NULL OR phone IS NOT NULL)
