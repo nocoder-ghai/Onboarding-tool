@@ -34,7 +34,7 @@
           </div>
           <div class="table-wrap" role="region" aria-label="Created accounts" tabindex="0">
             <table class="table table-hoverable">
-              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>DB ID</th><th>Grade cohort</th><th>Password</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>DB ID</th><th>Grade cohort</th><th>Graduated</th><th>Password</th></tr></thead>
               <tbody>
                 {% for row in result['created'] %}
                   <tr>
@@ -43,6 +43,7 @@
                     <td class="type-body-sm">{{ row['phone'] }}</td>
                     <td class="type-body-sm">{{ row['db_id'] or '—' }}</td>
                     <td class="type-body-sm">{{ row['grade_cohort'] }}</td>
+                    <td class="type-body-sm">{{ fmt_date(row['graduated_on']) }}</td>
                     <td><code>{{ row['password'] }}</code></td>
                   </tr>
                 {% endfor %}
@@ -95,15 +96,18 @@
       <p class="type-body-sm" style="color: var(--text-secondary);">A header row is detected automatically —
         <code>name</code>, <code>email</code>, <code>phone</code>, an optional
         <code>region</code>, an optional <code>grade</code> (matched by name
-        — e.g. {{ ", ".join([g.name for g in grade_cohorts_all]) }}) and an
-        optional <code>db id</code>. Without a header, columns are read in that
-        order. A phone number is required for every row since it's used to
-        generate the password; rows missing one, with an invalid email/phone or
-        grade cohort, or matching an existing account (by email, phone, or a DB
-        ID already assigned to someone else) are skipped.</p>
-      <pre style="background: var(--bg-secondary); border: 1px solid var(--border-tertiary); padding: var(--space-12); overflow-x: auto; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">name,email,phone,region,grade,db id
-Ananya Rao,ananya@example.com,9876543210,North,K-5,TCH-10234
-Marcus Bell,marcus@example.com,9123456780,South,9-12,TCH-10577</pre>
+        — e.g. {{ ", ".join([g.name for g in grade_cohorts_all]) }}), an
+        optional <code>db id</code> and a <code>graduation date</code>. Without a
+        header, columns are read in that order. A phone number is required for
+        every row since it's used to generate the password, and so is the
+        graduation date — the coach's {{ c2c_window_days }}-day C2C referral
+        countdown runs from it. Write dates as <code>2026-10-07</code> or month
+        first (<code>10/7/2026</code> is 7 October). Rows missing either, with an
+        invalid email/phone or grade cohort, or matching an existing account (by
+        email, phone, or a DB ID already assigned to someone else) are skipped.</p>
+      <pre style="background: var(--bg-secondary); border: 1px solid var(--border-tertiary); padding: var(--space-12); overflow-x: auto; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">name,email,phone,region,grade,db id,graduation date
+Ananya Rao,ananya@example.com,9876543210,North,K-5,TCH-10234,2026-10-03
+Marcus Bell,marcus@example.com,9123456780,South,9-12,TCH-10577,2026-10-03</pre>
     </div>
   </div>
 </main>

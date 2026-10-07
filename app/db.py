@@ -173,7 +173,7 @@ _POSTGRES_ADDITIVE = (
     "ALTER TABLE class_slots ADD COLUMN IF NOT EXISTS student_phone "
     "TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS c2c_code TEXT",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS c2c_started_at TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS graduated_on TEXT",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_c2c_code ON users(c2c_code) "
     "WHERE c2c_code IS NOT NULL AND c2c_code != ''",
 )
@@ -253,8 +253,8 @@ def _migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN c2c_code TEXT")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_c2c_code "
                  "ON users(c2c_code) WHERE c2c_code IS NOT NULL AND c2c_code != ''")
-    if "c2c_started_at" not in cols:
-        conn.execute("ALTER TABLE users ADD COLUMN c2c_started_at TEXT")
+    if "graduated_on" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN graduated_on TEXT")
 
     for table in ("components", "sub_items", "links", "documents"):
         table_cols = [row[1] for row in

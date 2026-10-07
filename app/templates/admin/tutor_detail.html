@@ -32,6 +32,7 @@
     {{ tutor.email or "no email" }}{% if tutor.phone %} &middot; {{ tutor.phone }}{% endif %}
     {% if tutor.db_id %} &middot; DB ID: {{ tutor.db_id }}{% endif %}
     {% if tutor.c2c_code %} &middot; C2C: {{ tutor.c2c_code }}{% endif %}
+    {% if tutor.graduated_on %} &middot; graduated {{ fmt_date(tutor.graduated_on) }}{% endif %}
     &middot; {{ region_label }} &middot; {{ grade_cohort_label }} &middot; Activation Director: {{ captain_label }} &middot; joined {{ fmt_date(tutor.created_at) }}
     &middot; last active {{ ago(tutor.last_activity_at or tutor.created_at) }}
   </p>
@@ -146,7 +147,7 @@
 
       <div class="col-4 col-md-12">
         <div class="card">
-          <div class="card-header"><div class="card-header-text"><div class="card-title">C2C referral code</div></div></div>
+          <div class="card-header"><div class="card-header-text"><div class="card-title">C2C referral</div></div></div>
           <div class="card-content">
             <form method="post" action="/admin/tutors/{{ tutor.id }}/c2c-code" style="display: flex; flex-direction: column; gap: var(--space-12);">
               <input type="hidden" name="_csrf" value="{{ csrf }}">
@@ -159,14 +160,22 @@
                 </div>
                 <div class="cm-field-helper"></div>
               </div>
-              <button class="btn btn-sm btn-primary" type="submit">Save code</button>
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input id="graduated_on" name="graduated_on" type="date" placeholder=" " value="{{ tutor.graduated_on or '' }}">
+                  <label for="graduated_on" class="cm-field-label">Graduation date</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Graduation date</span></legend></fieldset>
+                </div>
+                <div class="cm-field-helper"></div>
+              </div>
+              <button class="btn btn-sm btn-primary" type="submit">Save</button>
             </form>
           </div>
           <div class="card-footer card-footer-borderless">
             <span class="type-body-sm" style="color: var(--text-tertiary);">
               {% if c2c.status == "active" %}{{ c2c.amount }} window: {{ "under a day" if c2c.days_left < 1 else plural(c2c.days_left, "day") }} left, ends {{ fmt_date(c2c.ends_at) }}.
               {% elif c2c.status == "expired" %}{{ c2c.amount }} window closed {{ fmt_date(c2c.ends_at) }}.
-              {% else %}The {{ c2c.window_days }}-day {{ c2c.amount }} window opens when they graduate.{% endif %}
+              {% else %}Add their graduation date to start the {{ c2c.window_days }}-day {{ c2c.amount }} countdown.{% endif %}
               Load many at once from <a class="cm-link" href="/admin/tutors/c2c-codes">C2C codes</a>.
             </span>
           </div>

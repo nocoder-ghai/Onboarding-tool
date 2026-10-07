@@ -1431,7 +1431,8 @@ def register(app):
         stages = content.stages()
         header = ["DB ID", "Name", "Email", "Phone", "Region", "Grade cohort",
                   "Current stage", "Completion %", "Stages complete", "Signed up",
-                  "Last activity", "Journey completed", "C2C code"] + \
+                  "Last activity", "Journey completed", "C2C code",
+                  "Graduation date"] + \
                  ["%s status" % s.title for s in stages]
         out = []
         for row in rows:
@@ -1443,7 +1444,7 @@ def register(app):
                 row.current_stage_title, row.summary.percent,
                 "%d/%d" % (row.summary.stages_done, row.summary.stages_total),
                 row.created_at, row.last_activity_at or "", row.completed_at or "",
-                row.c2c_code or "",
+                row.c2c_code or "", row.graduated_on or "",
             ] + [(by_id[s.id].status if s.id in by_id else "") for s in stages])
         audit.record(request, "report.export_csv", "report", None,
                      "Exported %d tutor row(s)" % len(out))
@@ -1457,7 +1458,8 @@ def register(app):
     @admin_required
     def tutors_bulk_create(request):
         if request.method == "GET":
-            return render(request, "admin/tutors_bulk_create.html", result=None)
+            return render(request, "admin/tutors_bulk_create.html", result=None,
+                          c2c_window_days=db.setting_int("c2c_window_days", 30))
 
         request.verify_csrf()
         from .auth import can_write
@@ -1479,7 +1481,8 @@ def register(app):
 
         header = [c.strip().lower() for c in rows[0]]
         known = {"email", "phone", "mobile", "name", "region", "grade",
-                 "grade cohort", "cohort", "db id", "db_id", "dbid"}
+                 "grade cohort", "cohort", "db id", "db_id", "dbid",
+                 "graduation date", "graduated on", "grad date"}
         has_header = bool(known & set(header))
         data_rows = rows[1:] if has_header else rows
 
@@ -1497,6 +1500,9 @@ def register(app):
                     if has_header else None)
         idx_db_id = (column(["db id", "db_id", "dbid", "teacher db id"])
                     if has_header else None)
+        # The C2C reward window counts from this, so every login needs one.
+        idx_grad = (column(["graduation date", "graduated on", "grad date",
+                            "graduation"]) if has_header else 6)
 
         region_by_name = {r.name.strip().lower(): r.id
                           for r in content.regions(active_only=False)}
@@ -1516,6 +1522,9 @@ def register(app):
             region_name = cell(idx_region)
             grade_name = cell(idx_grade)
             db_id = cell(idx_db_id)
+            grad_text = cell(idx_grad)
+            graduated_on = (_parse_class_datetime(grad_text, "")
+                            if grad_text else None)
             label = email or phone or name or " ".join(row)[:40]
 
             if not name:
@@ -1536,6 +1545,11 @@ def register(app):
             elif db_id and db.one("SELECT 1 FROM users WHERE db_id = ?", (db_id,)):
                 skipped.append("%s — DB ID “%s” is already assigned to another "
                                "account" % (label, db_id))
+            elif not grad_text:
+                skipped.append("%s — missing graduation date" % label)
+            elif graduated_on is None:
+                skipped.append("%s — can't read graduation date “%s”"
+                               % (label, grad_text))
             else:
                 region_id = (region_by_name.get(region_name.lower())
                             if region_name else None)
@@ -1547,6 +1561,7 @@ def register(app):
                     "password_hash": security.hash_password(password),
                     "role_key": "tutor", "region_id": region_id,
                     "grade_cohort_id": grade_cohort_id, "db_id": db_id or None,
+                    "graduated_on": graduated_on,
                     "created_at": db.now(), "last_activity_at": db.now(),
                 })
                 user = wrap(db.one("SELECT * FROM users WHERE id = ?", (user_id,)))
@@ -1556,6 +1571,7 @@ def register(app):
                 progress.sync(user, notifications=False)
                 created.append({"name": name, "email": email, "phone": phone,
                                 "password": password, "db_id": db_id,
+                                "graduated_on": graduated_on,
                                 "grade_cohort": content.grade_cohort_name(
                                     grade_cohort_id)})
 
@@ -1563,6 +1579,7 @@ def register(app):
                      "Bulk-created %d tutor account(s), %d skipped"
                      % (len(created), len(skipped)))
         return render(request, "admin/tutors_bulk_create.html",
+                      c2c_window_days=db.setting_int("c2c_window_days", 30),
                       result={"created": created, "skipped": skipped[:50],
                               "skipped_count": len(skipped)})
 
@@ -1854,13 +1871,20 @@ def register(app):
         if clash:
             request.flash("%s is already %s's code." % (code, clash.name), "error")
             return back_to(request, "/admin/tutors/%d" % user_id)
-        db.update("users", user_id, {"c2c_code": code})
+        grad_text = request.get("graduated_on", "").strip()
+        graduated_on = _parse_class_datetime(grad_text, "") if grad_text else None
+        if grad_text and graduated_on is None:
+            request.flash("Can't read “%s” as a date." % grad_text, "error")
+            return back_to(request, "/admin/tutors/%d" % user_id)
+        values = {"c2c_code": code, "graduated_on": graduated_on}
+        db.update("users", user_id, values)
         audit.record(request, "tutor.c2c_code", "user", user_id,
-                     "C2C code set to %s" % (code or "none"),
-                     before={"c2c_code": tutor.c2c_code},
-                     after={"c2c_code": code})
-        request.flash("C2C referral code saved." if code
-                      else "C2C referral code cleared.", "ok")
+                     "C2C code %s, graduated %s" % (code or "none",
+                                                    graduated_on or "not set"),
+                     before={"c2c_code": tutor.c2c_code,
+                             "graduated_on": tutor.graduated_on},
+                     after=values)
+        request.flash("C2C referral details saved.", "ok")
         return back_to(request, "/admin/tutors/%d" % user_id)
 
     def _c2c_code_owner(code, user_id):

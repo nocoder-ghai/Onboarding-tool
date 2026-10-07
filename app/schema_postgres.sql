@@ -58,11 +58,11 @@ CREATE TABLE IF NOT EXISTS users (
     last_login_at    TEXT,
     last_activity_at TEXT,
     completed_at     TEXT,                  -- journey fully finished
-    -- Coach-to-coach referral code, loaded by an admin. The window to earn
-    -- the referral reward runs from created_at (coaches arrive already
-    -- graduated); c2c_started_at overrides that start when set.
+    -- Coach-to-coach referral code, loaded by an admin.
     c2c_code         TEXT UNIQUE,
-    c2c_started_at   TEXT,
+    -- Hiring-training graduation date (YYYY-MM-DD), entered by an admin when
+    -- the login is created. The C2C reward window counts from it.
+    graduated_on     TEXT,
     CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 

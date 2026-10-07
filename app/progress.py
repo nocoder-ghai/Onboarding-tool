@@ -767,14 +767,12 @@ def c2c_offer(user):
     """The coach-to-coach referral card: their code, the apply link for
     friends, and where they are in the window to earn the reward.
 
-    Every coach on the tool has already graduated from hiring training —
-    that's how they get an account — so the window runs from when the
-    account was created, not from finishing this onboarding journey.
-    c2c_started_at overrides that when it's set. status is 'active' while
-    the window is open, 'expired' after, and 'pending' only for a row with
-    no start date at all."""
-    fresh = db.one("SELECT c2c_code, c2c_started_at, created_at FROM users "
-                   "WHERE id = ?", (user["id"],))
+    The window counts from the coach's hiring-training graduation date,
+    which an admin enters when creating the login. status is 'active' while
+    the window is open, 'expired' after, and 'pending' while no graduation
+    date has been entered yet (no clock to show)."""
+    fresh = db.one("SELECT c2c_code, graduated_on FROM users WHERE id = ?",
+                   (user["id"],))
     code = ((fresh["c2c_code"] if fresh else "") or "").strip()
     base = db.setting("c2c_apply_url", "").strip()
     link = ""
@@ -787,8 +785,7 @@ def c2c_offer(user):
         "I coach with Cuemath and think you'd love it too. Apply with my "
         "referral code %s: %s" % (code, link))) if link else ""
     window_days = db.setting_int("c2c_window_days", 30)
-    started = db.parse_ts((fresh["c2c_started_at"] or fresh["created_at"])
-                          if fresh else None)
+    started = db.parse_ts(fresh["graduated_on"] if fresh else None)
     offer = AttrDict(code=code, link=link, share_url=share_url,
                      window_days=window_days,
                      amount=db.setting("c2c_reward_amount", "") or "₹10,000",
