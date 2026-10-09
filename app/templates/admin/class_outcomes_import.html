@@ -1,0 +1,92 @@
+{% set page_title = "Mark classes from a sheet" %}
+{% include "partials/head.html" %}
+<style>
+  /* Page-level layout only: sidebar + content shell. */
+  .admin-shell { display: flex; align-items: flex-start; }
+  .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); }
+  @media (max-width: 768px) {
+    .admin-shell > main { padding: var(--space-16); }
+  }
+</style>
+<div class="admin-shell">
+{% include "partials/admin_nav.html" %}
+<main>
+  <div style="margin-bottom: var(--space-24);">
+    <a href="/admin/class-slots" class="cm-link cm-link-sm" style="color: var(--text-secondary);">← Class with a Student</a>
+    <h1 class="type-heading-xl" style="color: var(--text-primary); margin: var(--space-8) 0 var(--space-8);">Mark classes from a sheet</h1>
+    <p class="type-body-md" style="color: var(--text-secondary); margin: 0;">Upload a sheet of coaches whose class
+      with a student is over. Each coach's booked class is marked, and the step on their journey
+      moves with it — the same as clicking Done on the Class with a Student page.</p>
+  </div>
+
+  {% if result %}
+    <div class="card" style="margin-bottom: var(--space-16);">
+      <div class="card-header"><div class="card-header-text"><div class="card-title">Result</div></div></div>
+      <div class="card-content">
+        {% if result['marked'] %}
+          <div class="card card-success-tint card-compact" style="margin-bottom: var(--space-16);">
+            <span class="type-body-md" style="color: var(--text-success);">✓ {{ plural(len(result['marked']), "class", "classes") }} marked.</span>
+          </div>
+          <div class="table-wrap" role="region" aria-label="Classes marked" tabindex="0">
+            <table class="table table-hoverable">
+              <thead><tr><th>Coach</th><th>DB ID</th><th>Class</th><th>Marked</th></tr></thead>
+              <tbody>
+                {% for row in result['marked'] %}
+                  <tr>
+                    <td>{{ row['tutor'] }}</td>
+                    <td class="type-body-sm" style="color: var(--text-tertiary);">{{ row['db_id'] }}</td>
+                    <td class="type-body-sm">{{ row['when'] }}</td>
+                    <td>{% if row['outcome'] == "done" %}<span class="badge badge-success">Done</span>{% else %}<span class="badge">Didn&rsquo;t happen</span>{% endif %}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+        {% if result['skipped_count'] %}
+          <div class="card card-error-tint card-compact" style="margin: var(--space-16) 0;">
+            <span class="type-body-md" style="color: var(--text-error);">{{ result['skipped_count'] }} row(s) were skipped.</span>
+          </div>
+          <ul style="margin: 0; padding-left: var(--space-20);">
+            {% for row in result['skipped'] %}<li class="type-body-sm" style="color: var(--text-secondary);">{{ row }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+        <div style="margin-top: var(--space-16);"><a class="btn btn-sm btn-primary" href="/admin/class-slots">Back to Class with a Student</a></div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom: var(--space-16);">
+    <div class="card-header"><div class="card-header-text"><div class="card-title">Upload a CSV</div></div></div>
+    <div class="card-content">
+      <form method="post" action="/admin/class-slots/outcomes-import" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start;">
+        <input type="hidden" name="_csrf" value="{{ csrf }}">
+        <label class="type-label-md" style="color: var(--text-primary); display: flex; flex-direction: column; gap: var(--space-8);">
+          CSV file
+          <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+        </label>
+        <button class="btn btn-primary" type="submit">Mark classes</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-header-text"><div class="card-title">File format</div></div></div>
+    <div class="card-content">
+      <p class="type-body-sm" style="color: var(--text-secondary);">The first row must hold the headers. Each coach
+        is matched on their <strong>Teacher DBID</strong>; Teacher Name is for your reference only.
+        <strong>Class Done</strong> is optional — leave it out and every row is marked done. Write
+        <em>Yes</em> or <em>Done</em> for a class that happened, <em>No</em> or <em>Didn't happen</em>
+        for one that didn't (that coach can then book another).</p>
+      <pre style="background: var(--bg-secondary); border: 1px solid var(--border-tertiary); padding: var(--space-12); overflow-x: auto; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">Teacher DBID,Teacher Name,Class Done
+3f2a9c1e-5b7d-4e8a-9c21-7d4b6e0f1a23,Marcus Bell,Yes
+8b1e4d7a-2c9f-4a63-b5e0-1f7c3d9a6e42,Ananya Rao,No</pre>
+      <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-12);">A coach with a booked class
+        has that class marked. A coach marked Yes with no booked class — one arranged outside the
+        tool — still gets the step marked done. Rows that match nobody, or are already done, are
+        listed back to you, so a partial sheet is safe to upload.</p>
+    </div>
+  </div>
+</main>
+</div>
+{% include "partials/foot.html" %}

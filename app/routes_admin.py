@@ -1160,21 +1160,10 @@ def register(app):
     slot_outcomes = {"done": "completed", "not_done": "cancelled",
                      "pending": "booked"}
 
-    @app.route("/admin/class-slots/<int:slot_id>/outcome", methods=["POST"])
-    @writes
-    def class_slot_outcome(request, slot_id):
-        """The mentor's answer to "did this class happen?". The tutor's journey
-        carries the same fact, so both move together — marking it here is the
-        same act as marking it on the tutor's own page."""
-        slot = wrap(db.one("SELECT * FROM class_slots WHERE id = ?", (slot_id,)))
-        if slot is None:
-            raise HttpError(404, "Unknown slot.")
-        outcome = request.get("outcome", "")
-        if outcome not in slot_outcomes:
-            raise HttpError(400, "Unknown outcome.")
-        if not slot.tutor_id:
-            request.flash("Only a class a tutor has booked can be marked.", "error")
-            return back_to(request, "/admin/class-slots")
+    def _mark_slot(request, slot, outcome):
+        """Record whether a booked class happened. The tutor's journey carries
+        the same fact, so both move together — marking it here is the same act
+        as marking it on the tutor's own page. Returns the tutor."""
         status = slot_outcomes[outcome]
         tutor = wrap(db.one("SELECT * FROM users WHERE id = ?", (slot.tutor_id,)))
         comp = wrap(db.one("SELECT * FROM components WHERE key = ?",
@@ -1189,15 +1178,165 @@ def register(app):
         # 'booked', and a reset leaves it alone, so neither can land on
         # 'cancelled' by itself.
         db.execute("UPDATE class_slots SET status = ?, updated_at = ? "
-                   "WHERE id = ?", (status, db.now(), slot_id))
-        audit.record(request, "class_slot.outcome", "class_slot", slot_id,
+                   "WHERE id = ?", (status, db.now(), slot.id))
+        audit.record(request, "class_slot.outcome", "class_slot", slot.id,
                      "Marked the class %s for %s"
                      % (status, tutor.name if tutor else "a tutor"))
+        return tutor
+
+    @app.route("/admin/class-slots/<int:slot_id>/outcome", methods=["POST"])
+    @writes
+    def class_slot_outcome(request, slot_id):
+        slot = wrap(db.one("SELECT * FROM class_slots WHERE id = ?", (slot_id,)))
+        if slot is None:
+            raise HttpError(404, "Unknown slot.")
+        outcome = request.get("outcome", "")
+        if outcome not in slot_outcomes:
+            raise HttpError(400, "Unknown outcome.")
+        if not slot.tutor_id:
+            request.flash("Only a class a tutor has booked can be marked.", "error")
+            return back_to(request, "/admin/class-slots")
+        _mark_slot(request, slot, outcome)
         request.flash({"done": "Marked done — the tutor's journey is updated too.",
                        "not_done": "Marked as not done. The tutor can book "
                                    "another class.",
                        "pending": "Back to waiting on the class."}[outcome], "ok")
         return back_to(request, "/admin/class-slots")
+
+    @app.route("/admin/class-slots/bulk-outcome", methods=["POST"])
+    @writes
+    def class_slots_bulk_outcome(request):
+        """The same answer for every booked class ticked on the list."""
+        outcome = request.get("outcome", "")
+        if outcome not in ("done", "not_done"):
+            raise HttpError(400, "Unknown outcome.")
+        ids = [int(i) for i in request.get_all("slot_id") if str(i).isdigit()]
+        if not ids:
+            request.flash("Tick at least one class first.", "error")
+            return back_to(request, "/admin/class-slots")
+        marked = 0
+        for slot_id in ids:
+            slot = wrap(db.one("SELECT * FROM class_slots WHERE id = ? "
+                               "AND status = 'booked' AND tutor_id IS NOT NULL",
+                               (slot_id,)))
+            if slot:
+                _mark_slot(request, slot, outcome)
+                marked += 1
+        request.flash("%s %s." % (
+            util.plural(marked, "class", "classes"),
+            "marked done — each coach's journey is updated too"
+            if outcome == "done" else
+            "marked as didn't happen — those coaches can book again"), "ok")
+        return back_to(request, "/admin/class-slots")
+
+    @app.route("/admin/class-slots/outcomes-import", methods=["GET", "POST"])
+    @admin_required
+    def class_slots_outcomes_import(request):
+        """A sheet of coaches whose class with a student is over, matched on
+        DB ID. A coach with no booked slot — a class arranged outside the tool —
+        still has the step marked done."""
+        if request.method == "GET":
+            return render(request, "admin/class_outcomes_import.html", result=None)
+        request.verify_csrf()
+        from .auth import can_write
+        if not can_write(request):
+            raise HttpError(403, "Your account has read-only access.")
+        upload = request.file("file")
+        if not upload:
+            request.flash("Choose a CSV file to upload.", "error")
+            return redirect("/admin/class-slots/outcomes-import")
+        try:
+            text = upload.data.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = upload.data.decode("latin-1")
+        rows = [r for r in csv.reader(io.StringIO(text))
+                if any((c or "").strip() for c in r)]
+        if not rows:
+            request.flash("That file looks empty.", "error")
+            return redirect("/admin/class-slots/outcomes-import")
+
+        def norm(cell):
+            return re.sub(r"[^a-z0-9]", "", (cell or "").lower())
+
+        header = [norm(c) for c in rows[0]]
+
+        def column(names):
+            for name in names:
+                if name in header:
+                    return header.index(name)
+            return None
+
+        idx_dbid = column(["teacherdbid", "tutordbid", "coachdbid", "dbid"])
+        idx_name = column(["teachername", "tutorname", "coachname", "name"])
+        idx_status = column(["classdone", "status", "outcome", "done"])
+        if idx_dbid is None:
+            request.flash("The file needs a Teacher DBID column in its first row.",
+                          "error")
+            return redirect("/admin/class-slots/outcomes-import")
+        comp = wrap(db.one("SELECT * FROM components WHERE key = ?",
+                           (progress.CLASS_SLOT_COMPONENT_KEY,)))
+        no_words = {"no", "n", "notdone", "didnthappen", "didnothappen",
+                    "cancelled", "canceled", "noshow", "absent", "false", "0"}
+        yes_words = {"", "yes", "y", "done", "completed", "complete", "happened",
+                     "attended", "present", "true", "1"}
+
+        marked, skipped = [], []
+        for row in rows[1:]:
+            def cell(index):
+                if index is None or index >= len(row):
+                    return ""
+                return _clean_cell(row[index])
+
+            db_id = cell(idx_dbid)
+            label = ("%s (%s)" % (cell(idx_name), db_id) if cell(idx_name) and db_id
+                     else db_id or cell(idx_name) or "blank row")
+            flag = norm(cell(idx_status))
+            if flag in no_words:
+                outcome = "not_done"
+            elif flag in yes_words:
+                outcome = "done"
+            else:
+                skipped.append("%s — “%s” isn't yes/done or no/didn't happen"
+                               % (label, cell(idx_status)))
+                continue
+            if not db_id:
+                skipped.append("%s — needs a DB ID" % label)
+                continue
+            tutor = wrap(db.one("SELECT * FROM users WHERE LOWER(db_id) = LOWER(?) "
+                                "AND role_key = 'tutor'", (db_id,)))
+            if tutor is None:
+                skipped.append("%s — no coach has that DB ID" % label)
+                continue
+            slot = wrap(db.one(
+                "SELECT * FROM class_slots WHERE tutor_id = ? AND status = 'booked' "
+                "ORDER BY starts_at DESC LIMIT 1", (tutor.id,)))
+            if slot:
+                _mark_slot(request, slot, outcome)
+                marked.append({"tutor": tutor.name, "db_id": tutor.db_id,
+                               "outcome": outcome,
+                               "when": util.fmt_datetime(slot.starts_at)})
+                continue
+            already = comp and db.one(
+                "SELECT 1 FROM tutor_progress WHERE user_id = ? AND target_type = "
+                "'component' AND target_id = ? AND status = ?",
+                (tutor.id, comp.id, progress.DONE))
+            if outcome == "done" and comp and not already:
+                progress.admin_set_status(request.user, tutor, "component",
+                                          comp.id, progress.DONE)
+                marked.append({"tutor": tutor.name, "db_id": tutor.db_id,
+                               "outcome": "done", "when": "no booked slot"})
+            elif already:
+                skipped.append("%s — already marked done" % label)
+            else:
+                skipped.append("%s — no booked class to mark as didn't happen"
+                               % label)
+
+        audit.record(request, "class_slot.outcomes_import", "report", None,
+                     "Marked %d class(es) from a sheet, %d skipped"
+                     % (len(marked), len(skipped)))
+        return render(request, "admin/class_outcomes_import.html",
+                      result={"marked": marked, "skipped": skipped[:50],
+                              "skipped_count": len(skipped)})
 
     def _slot_cohort_matches():
         """Slots with no grade group whose free-text grade names one — from a

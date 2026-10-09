@@ -11,6 +11,8 @@
   .slot-filters .cm-field { width: 190px; }
   .slot-filters-range { display: flex; flex-direction: column; gap: var(--space-8); }
   a.filter-chip { text-decoration: none; }
+  .bulk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); margin-bottom: var(--space-12); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .outcome-actions { display: flex; gap: var(--space-8); flex-wrap: wrap; align-items: center; }
   @media (max-width: 768px) { .slot-filters .cm-field { width: 100%; } }
 </style>
@@ -179,18 +181,35 @@
         {% if can_write %}
           <div class="card-description">Once the class is over, say whether it happened.
             <strong>Done</strong> completes the step on the coach&rsquo;s journey;
-            <strong>Didn&rsquo;t happen</strong> frees them to book another class.</div>
+            <strong>Didn&rsquo;t happen</strong> frees them to book another class.
+            Tick several to mark them together, or
+            <a class="cm-link" href="/admin/class-slots/outcomes-import">upload a sheet by DB ID</a>.</div>
         {% endif %}
       </div>
     </div>
     <div class="card-content">
       {% if booked_slots %}
+        {% if can_write %}
+          <!-- Row checkboxes join this form through form="bulk-outcome", since
+               each row already holds its own Done / Didn't happen form. -->
+          <form id="bulk-outcome" method="post" action="/admin/class-slots/bulk-outcome" class="bulk-bar">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="back" value="{{ back_url }}">
+            <label class="type-body-sm" style="display: inline-flex; align-items: center; gap: var(--space-8); color: var(--text-secondary);">
+              <input type="checkbox" data-select-all> Select all
+            </label>
+            <span class="type-body-sm" style="color: var(--text-tertiary);" data-selected-count>0 selected</span>
+            <button class="btn btn-sm btn-primary" type="submit" name="outcome" value="done" data-bulk-btn disabled>Mark selected done</button>
+            <button class="btn btn-sm btn-secondary" type="submit" name="outcome" value="not_done" data-bulk-btn disabled>Mark selected didn&rsquo;t happen</button>
+          </form>
+        {% endif %}
         <div class="table-wrap" role="region" aria-label="Booked slots" tabindex="0">
           <table class="table table-hoverable">
-            <thead><tr><th>When</th><th>Student</th><th>Number</th><th>Tutor</th><th>Region</th><th>Class done?</th><th></th></tr></thead>
+            <thead><tr>{% if can_write %}<th style="width: 1%;"><span class="sr-only">Select</span></th>{% endif %}<th>When</th><th>Student</th><th>Number</th><th>Tutor</th><th>Region</th><th>Class done?</th><th></th></tr></thead>
             <tbody>
               {% for s in booked_slots %}
                 <tr>
+                  {% if can_write %}<td><input type="checkbox" name="slot_id" value="{{ s.id }}" form="bulk-outcome" aria-label="Select {{ s.tutor_name }}'s class" data-slot-check></td>{% endif %}
                   <td style="white-space: nowrap;">{{ fmt_datetime(s.starts_at) }} ({{ s.duration_minutes }}m)</td>
                   <td>{{ s.student_name or "—" }}{% if s.grade_subject %} <span class="type-body-sm" style="color: var(--text-tertiary);">· {{ s.grade_subject }}</span>{% endif %}</td>
                   <td style="white-space: nowrap;">
@@ -450,4 +469,28 @@
   {% endif %}
 </main>
 </div>
+<script>
+  // Bulk marking: keep the count and buttons in step with the ticked rows.
+  (function () {
+    var form = document.getElementById("bulk-outcome");
+    if (!form) return;
+    var checks = Array.prototype.slice.call(document.querySelectorAll("[data-slot-check]"));
+    var all = form.querySelector("[data-select-all]");
+    var count = form.querySelector("[data-selected-count]");
+    var buttons = form.querySelectorAll("[data-bulk-btn]");
+    function update() {
+      var n = checks.filter(function (c) { return c.checked; }).length;
+      count.textContent = n + " selected";
+      for (var i = 0; i < buttons.length; i++) buttons[i].disabled = n === 0;
+      all.checked = n > 0 && n === checks.length;
+      all.indeterminate = n > 0 && n < checks.length;
+    }
+    all.addEventListener("change", function () {
+      checks.forEach(function (c) { c.checked = all.checked; });
+      update();
+    });
+    checks.forEach(function (c) { c.addEventListener("change", update); });
+    update();
+  })();
+</script>
 {% include "partials/foot.html" %}
