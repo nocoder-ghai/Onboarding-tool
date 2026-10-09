@@ -30,7 +30,7 @@
           </div>
           <div class="table-wrap" role="region" aria-label="Tutors given a code" tabindex="0">
             <table class="table table-hoverable">
-              <thead><tr><th>Tutor</th><th>Matched on</th><th>C2C code</th><th>Replaced</th></tr></thead>
+              <thead><tr><th>Tutor</th><th>DB ID</th><th>C2C code</th><th>Replaced</th></tr></thead>
               <tbody>
                 {% for row in result['assigned'] %}
                   <tr>
@@ -75,16 +75,14 @@
   <div class="card">
     <div class="card-header"><div class="card-header-text"><div class="card-title">File format</div></div></div>
     <div class="card-content">
-      <p class="type-body-sm" style="color: var(--text-secondary);">Two columns: the tutor, then their C2C code. A
-        header row is detected automatically; without one, columns are read in that order.
-        The tutor is matched on <strong>email, phone or DB ID</strong> — whichever you have.
-        A code already held by another coach is skipped, and so is anything that matches
-        nobody — both are listed back to you, so a partial file is safe to upload.
-        Uploading a new code for a coach replaces their old one.</p>
-      <pre style="background: var(--bg-secondary); border: 1px solid var(--border-tertiary); padding: var(--space-12); overflow-x: auto; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">tutor,c2c code
-marcus.demo@example.com,C2C-MARCUS01
-9123456780,C2C-ANANYA22
-TCH-10577,C2C-RAVI7K</pre>
+      <p class="type-body-sm" style="color: var(--text-secondary);">The first row must be the
+        headers below. Each coach is matched on their <strong>Teacher DBID</strong>; Teacher Name
+        and Teacher Contact are for your reference only. A code already held by another coach is
+        skipped, and so is a DB ID that matches nobody — both are listed back to you, so a
+        partial file is safe to upload. Uploading a new code for a coach replaces their old one.</p>
+      <pre style="background: var(--bg-secondary); border: 1px solid var(--border-tertiary); padding: var(--space-12); overflow-x: auto; font-family: var(--font-mono, monospace); font-size: var(--type-body-sm-size);">Teacher DBID,Teacher Name,Teacher Contact,Referral Code
+3f2a9c1e-5b7d-4e8a-9c21-7d4b6e0f1a23,Marcus Bell,9123456780,C2C-MARCUS01
+8b1e4d7a-2c9f-4a63-b5e0-1f7c3d9a6e42,Ananya Rao,9876543210,C2C-ANANYA22</pre>
       {% if apply_url %}
         <p class="type-body-sm" style="color: var(--text-tertiary); margin-top: var(--space-12);">Friends apply at
           <code>{{ apply_url }}?ref=&lt;code&gt;</code>. Change the link or the reward in

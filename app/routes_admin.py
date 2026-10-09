@@ -2020,8 +2020,8 @@ def register(app):
     @app.route("/admin/tutors/c2c-codes", methods=["GET", "POST"])
     @admin_required
     def tutors_c2c_codes(request):
-        """A sheet of tutor -> coach-to-coach referral code, matched on
-        whatever identifier the sheet carries."""
+        """A sheet of coach -> coach-to-coach referral code, matched on the
+        coach's DB ID."""
         if request.method == "GET":
             return render(request, "admin/tutors_c2c_codes.html", result=None,
                           apply_url=db.setting("c2c_apply_url", ""))
@@ -2044,11 +2044,12 @@ def register(app):
             request.flash("That file looks empty.", "error")
             return redirect("/admin/tutors/c2c-codes")
 
-        header = [c.strip().lower() for c in rows[0]]
-        known = {"tutor", "coach", "email", "phone", "db id", "db_id", "dbid",
-                 "code", "c2c code", "c2c_code", "referral code"}
-        has_header = bool(known & set(header))
-        data_rows = rows[1:] if has_header else rows
+        # Headers are compared with case, spaces and punctuation stripped, so
+        # "Teacher DBID", "teacher_db_id" and "DB ID" all land on the same column.
+        def norm(cell):
+            return re.sub(r"[^a-z0-9]", "", (cell or "").lower())
+
+        header = [norm(c) for c in rows[0]]
 
         def column(names):
             for name in names:
@@ -2056,10 +2057,15 @@ def register(app):
                     return header.index(name)
             return None
 
-        idx_tutor = (column(["tutor", "coach", "email", "phone", "db id",
-                             "db_id", "dbid"]) if has_header else 0)
-        idx_code = (column(["c2c code", "c2c_code", "referral code", "code"])
-                    if has_header else 1)
+        idx_dbid = column(["teacherdbid", "tutordbid", "coachdbid", "dbid"])
+        idx_name = column(["teachername", "tutorname", "coachname", "name"])
+        idx_code = column(["referralcode", "teacherreferralcode", "c2ccode",
+                           "c2creferralcode", "code"])
+        if idx_dbid is None or idx_code is None:
+            request.flash("The file needs a Teacher DBID column and a Referral "
+                          "Code column in its first row.", "error")
+            return redirect("/admin/tutors/c2c-codes")
+        data_rows = rows[1:]
 
         assigned, skipped, seen = [], [], {}
         for row in data_rows:
@@ -2068,29 +2074,32 @@ def register(app):
                     return ""
                 return _clean_cell(row[index])
 
-            tutor_ref, code = cell(idx_tutor), cell(idx_code)
-            if not tutor_ref or not code:
-                skipped.append("%s — needs both a tutor and a code"
-                               % (" ".join(row)[:40] or "blank row"))
+            db_id, code = cell(idx_dbid), cell(idx_code)
+            label = db_id or cell(idx_name) or "blank row"
+            if cell(idx_name) and db_id:
+                label = "%s (%s)" % (cell(idx_name), db_id)
+            if not db_id or not code:
+                skipped.append("%s — needs both a DB ID and a referral code"
+                               % label)
                 continue
-            tutor = _find_tutor(tutor_ref)
+            tutor = wrap(db.one(
+                "SELECT * FROM users WHERE LOWER(db_id) = LOWER(?) "
+                "AND role_key = 'tutor'", (db_id,)))
             if tutor is None:
-                skipped.append("%s — no tutor matches that email, phone or DB ID"
-                               % tutor_ref)
+                skipped.append("%s — no coach has that DB ID" % label)
                 continue
             if code.upper() in seen and seen[code.upper()] != tutor.id:
                 skipped.append("%s — %s appears twice in this file"
-                               % (tutor_ref, code))
+                               % (label, code))
                 continue
             clash = _c2c_code_owner(code, tutor.id)
             if clash:
                 skipped.append("%s — %s already belongs to %s"
-                               % (tutor_ref, code, clash.name))
+                               % (label, code, clash.name))
                 continue
             seen[code.upper()] = tutor.id
             db.update("users", tutor.id, {"c2c_code": code})
-            assigned.append({"tutor": tutor.name,
-                             "identifier": tutor.email or tutor.phone,
+            assigned.append({"tutor": tutor.name, "identifier": tutor.db_id,
                              "code": code, "previous": tutor.c2c_code or ""})
 
         audit.record(request, "tutor.c2c_codes", "report", None,
@@ -2100,7 +2109,6 @@ def register(app):
                       apply_url=db.setting("c2c_apply_url", ""),
                       result={"assigned": assigned, "skipped": skipped[:50],
                               "skipped_count": len(skipped)})
-
 
     # ------------------------------------------------- bulk attendance CSV -- #
     @app.route("/admin/attendance/import", methods=["GET", "POST"])
