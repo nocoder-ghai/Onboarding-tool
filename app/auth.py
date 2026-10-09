@@ -27,7 +27,50 @@ def load_user(request):
     request.user = wrap(row)
     request.role = wrap(db.one("SELECT * FROM roles WHERE key = ?",
                                (row["role_key"],)))
+    request.preview_admin = None
+    _apply_preview(request)
     return None
+
+
+#: Paths that stay the admin's own while a preview is running — the admin
+#: panel itself, and signing out.
+_PREVIEW_EXEMPT = ("/admin", "/logout")
+
+
+def _apply_preview(request):
+    """An admin viewing as a candidate sees the candidate's pages as that
+    candidate. The admin stays signed in as themself: only non-admin pages
+    swap `request.user`, and `preview_admin` keeps who is really looking so
+    tutor actions can refuse to save anything (see `tutor_post`)."""
+    tutor_id = request.session.get("view_as")
+    if not tutor_id:
+        return
+    if not is_admin(request):
+        request.session_pop("view_as")
+        return
+    if request.path.startswith(_PREVIEW_EXEMPT):
+        return
+    tutor = db.one("SELECT * FROM users WHERE id = ? AND role_key = 'tutor'",
+                   (tutor_id,))
+    if tutor is None:
+        request.session_pop("view_as")
+        return
+    request.preview_admin = request.user
+    request.user = wrap(tutor)
+    request.role = wrap(db.one("SELECT * FROM roles WHERE key = ?",
+                               (tutor["role_key"],)))
+
+
+def is_previewing(request):
+    return bool(getattr(request, "preview_admin", None))
+
+
+def start_preview(request, tutor_id):
+    request.session_set("view_as", tutor_id)
+
+
+def stop_preview(request):
+    return request.session_pop("view_as")
 
 
 def sign_in(request, user):
@@ -144,5 +187,14 @@ def tutor_post(fn):
         if request.user["role_key"] != "tutor":
             raise HttpError(403, "Tutor accounts only.")
         request.verify_csrf()
+        if is_previewing(request):
+            # A preview is look-only: ticking, uploading or booking here would
+            # change the real candidate's record.
+            request.flash("You're viewing as this candidate — nothing was "
+                          "saved.", "error")
+            back = request.get("back", "") or "/dashboard"
+            if not back.startswith("/") or back.startswith("//"):
+                back = "/dashboard"
+            return redirect(back)
         return fn(request, **kwargs)
     return inner

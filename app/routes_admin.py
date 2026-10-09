@@ -10,9 +10,11 @@ import csv
 import datetime
 import io
 import re
+import urllib.parse
 
 from . import audit, content, db, notify, progress, security, storage, util
-from .auth import admin_required, admin_write_required, can_write_tutor, captain_write_required
+from .auth import (admin_required, admin_write_required, can_write_tutor,
+                   captain_write_required, start_preview, stop_preview)
 from .micro import HttpError, Response, file_response, redirect
 from .util import wrap, wrap_all
 
@@ -49,7 +51,8 @@ SESSION_SPEC = [("title", "text"), ("zoom_link", "text"), ("starts_at", "text"),
                 ("deck_document_id", "int?"), ("is_active", "bool")]
 
 CLASS_SLOT_SPEC = [("starts_at", "text"), ("duration_minutes", "int"),
-                   ("student_name", "text"), ("grade_subject", "text"),
+                   ("student_name", "text"), ("student_phone", "text"),
+                   ("grade_subject", "text"),
                    ("notes", "text"), ("region_id", "int?"),
                    ("grade_cohort_id", "int?")]
 
@@ -1006,9 +1009,42 @@ def register(app):
     # Class-with-a-student slots
     # ==================================================================== #
 
+    #: Quick ranges for the date filter, as day offsets from today; None
+    #: leaves that side open-ended.
+    slot_ranges = {"today": (0, 0), "tomorrow": (1, 1),
+                   "week": (0, 6), "past": (None, -1)}
+
+    def _as_day(text):
+        """A date box's value as YYYY-MM-DD, or "" when it isn't a date."""
+        stamp = db.parse_ts((text or "").strip())
+        return stamp.date().isoformat() if stamp else ""
+
+    def _slot_window(request):
+        """Read the date filter. A quick range wins over the two date boxes, so
+        clicking "Today" doesn't mean emptying them first."""
+        preset = request.get("range", "").strip()
+        if preset in slot_ranges:
+            low, high = slot_ranges[preset]
+            day = lambda n: (datetime.date.today()
+                             + datetime.timedelta(days=n)).isoformat()
+            return (preset, "" if low is None else day(low),
+                    "" if high is None else day(high))
+        return "", _as_day(request.get("from", "")), _as_day(request.get("to", ""))
+
+    def _slot_in_window(slot, date_from, date_to):
+        """starts_at arrives in more than one format, so compare parsed days
+        rather than the stored strings."""
+        stamp = db.parse_ts(slot.starts_at)
+        if stamp is None:
+            return False
+        day = stamp.date().isoformat()
+        return ((not date_from or day >= date_from)
+                and (not date_to or day <= date_to))
+
     @app.route("/admin/class-slots")
     @admin_required
     def class_slots_page(request):
+        date_preset, date_from, date_to = _slot_window(request)
         slots = wrap_all(db.query(
             "SELECT cs.*, u.name AS tutor_name, tg.name AS tutor_cohort "
             "FROM class_slots cs "
@@ -1032,12 +1068,28 @@ def register(app):
             slot.group_match = None
             if slot.tutor_id and slot.tutor_cohort and slot.class_group:
                 slot.group_match = norm(slot.tutor_cohort) == norm(slot.class_group)
+        # Counted before the date filter: the clear-the-list button below
+        # ignores the filter and removes every open slot, so its summary has to
+        # speak for the whole list.
+        total_open = len([s for s in slots if s.status == "open"])
+        total_other = len(slots) - total_open
+        if date_from or date_to:
+            slots = [s for s in slots if _slot_in_window(s, date_from, date_to)]
         # Behind Railway's proxy the scheme arrives in a forwarded header, so
         # the copyable link isn't guessed as http:// on an https:// site.
         host = (request.headers.get("Host") or request.headers.get("host") or "")
         scheme = (request.headers.get("X-Forwarded-Proto")
                   or request.headers.get("x-forwarded-proto") or "http")
+        # Every action on this page comes back here, filter intact.
+        query = urllib.parse.urlencode([(k, v) for k, v in
+                                        (("range", date_preset),
+                                         ("from", date_from), ("to", date_to))
+                                        if v])
         return render(request, "admin/class_slots.html", slots=slots,
+                      date_from=date_from, date_to=date_to,
+                      date_preset=date_preset,
+                      back_url="/admin/class-slots" + (("?" + query) if query else ""),
+                      total_open=total_open, total_other=total_other,
                       schedule_token=progress.schedule_share_token(),
                       schedule_origin=("%s://%s" % (scheme, host)) if host else "",
                       cohort_matches=len(_slot_cohort_matches()),
@@ -1100,6 +1152,51 @@ def register(app):
         audit.record(request, "class_slot.delete", "class_slot", slot_id,
                      "Deleted an open slot")
         request.flash("Slot removed.", "ok")
+        return back_to(request, "/admin/class-slots")
+
+    #: What a mentor can record against a booked class, and the slot status
+    #: each answer leaves behind. "pending" is the undo: back to booked, class
+    #: still to happen.
+    slot_outcomes = {"done": "completed", "not_done": "cancelled",
+                     "pending": "booked"}
+
+    @app.route("/admin/class-slots/<int:slot_id>/outcome", methods=["POST"])
+    @writes
+    def class_slot_outcome(request, slot_id):
+        """The mentor's answer to "did this class happen?". The tutor's journey
+        carries the same fact, so both move together — marking it here is the
+        same act as marking it on the tutor's own page."""
+        slot = wrap(db.one("SELECT * FROM class_slots WHERE id = ?", (slot_id,)))
+        if slot is None:
+            raise HttpError(404, "Unknown slot.")
+        outcome = request.get("outcome", "")
+        if outcome not in slot_outcomes:
+            raise HttpError(400, "Unknown outcome.")
+        if not slot.tutor_id:
+            request.flash("Only a class a tutor has booked can be marked.", "error")
+            return back_to(request, "/admin/class-slots")
+        status = slot_outcomes[outcome]
+        tutor = wrap(db.one("SELECT * FROM users WHERE id = ?", (slot.tutor_id,)))
+        comp = wrap(db.one("SELECT * FROM components WHERE key = ?",
+                           (progress.CLASS_SLOT_COMPONENT_KEY,)))
+        if tutor and comp:
+            if status == "completed":
+                progress.admin_set_status(request.user, tutor, "component",
+                                          comp.id, progress.DONE)
+            else:
+                progress.admin_reset(request.user, tutor, "component", comp.id)
+        # Last word on the status: approving the component reopens the slot as
+        # 'booked', and a reset leaves it alone, so neither can land on
+        # 'cancelled' by itself.
+        db.execute("UPDATE class_slots SET status = ?, updated_at = ? "
+                   "WHERE id = ?", (status, db.now(), slot_id))
+        audit.record(request, "class_slot.outcome", "class_slot", slot_id,
+                     "Marked the class %s for %s"
+                     % (status, tutor.name if tutor else "a tutor"))
+        request.flash({"done": "Marked done — the tutor's journey is updated too.",
+                       "not_done": "Marked as not done. The tutor can book "
+                                   "another class.",
+                       "pending": "Back to waiting on the class."}[outcome], "ok")
         return back_to(request, "/admin/class-slots")
 
     def _slot_cohort_matches():
@@ -1682,6 +1779,29 @@ def register(app):
             if row:
                 return wrap(row)
         return None
+
+    @app.route("/admin/tutors/<int:user_id>/view-as", methods=["POST"])
+    @admin_required
+    def tutor_view_as(request, user_id):
+        """See the candidate's journey exactly as they do. Look-only, so a
+        read-only admin may use it too."""
+        request.verify_csrf()
+        tutor = db.one("SELECT id, name FROM users WHERE id = ? "
+                       "AND role_key = 'tutor'", (user_id,))
+        if tutor is None:
+            raise HttpError(404, "Unknown tutor.")
+        start_preview(request, tutor["id"])
+        audit.record(request, "tutor.view_as", "user", tutor["id"],
+                     "Viewed as candidate %s" % tutor["name"])
+        return redirect(request.get("next", "") if request.get("next", "")
+                        .startswith("/stage/") else "/dashboard")
+
+    @app.route("/admin/view-as/exit", methods=["POST"])
+    @admin_required
+    def tutor_view_as_exit(request):
+        request.verify_csrf()
+        tutor_id = stop_preview(request)
+        return redirect("/admin/tutors/%d" % tutor_id if tutor_id else "/admin")
 
     @app.route("/admin/tutors/<int:user_id>")
     @admin_required

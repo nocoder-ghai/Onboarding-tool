@@ -318,7 +318,7 @@
                   <input type="hidden" name="done" value="1">
                   <button class="btn btn-sm btn-success" type="submit">Mark “{{ comp.title }}” complete</button>
                 </form>
-              {% elif comp.effective_rule == "self_marked" and comp.complete %}
+              {% elif comp.effective_rule == "self_marked" and comp.complete and not comp.complete_by_steps %}
                 <form method="post" action="/component/{{ comp.id }}/complete" style="margin-top: var(--space-16);">
                   <input type="hidden" name="_csrf" value="{{ csrf }}">
                   <input type="hidden" name="back" value="/stage/{{ stage.id }}">

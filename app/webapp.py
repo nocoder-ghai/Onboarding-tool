@@ -37,6 +37,8 @@ def create_app():
             # _doc_link.html is included for stage- and component-level
             # documents too, where there is no owning step.
             "item": None,
+            # Set while an admin is viewing as a candidate (see auth).
+            "preview_admin": getattr(request, "preview_admin", None),
         }
         if user is not None and user["role_key"] == "tutor":
             ctx["nav_unread"] = notify.unread_count(user["id"])

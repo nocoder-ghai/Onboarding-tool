@@ -123,7 +123,8 @@ CREATE TABLE IF NOT EXISTS components (
     sort_order      INTEGER NOT NULL DEFAULT 0,
     is_mandatory    INTEGER NOT NULL DEFAULT 1,
     -- 'sub_items'    -> all mandatory sub-items complete
-    -- 'self_marked'  -> tutor ticks the component itself (no sub-items)
+    -- 'self_marked'  -> tutor ticks the component itself; if it does carry
+    --                   sub-items, finishing them all completes it too
     -- 'admin_marked' -> only an admin can complete it
     completion_rule TEXT NOT NULL DEFAULT 'sub_items',
     -- NULL region_id => shown to every region. Set => region-specific content.

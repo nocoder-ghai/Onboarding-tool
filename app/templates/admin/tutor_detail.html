@@ -36,6 +36,10 @@
     &middot; {{ region_label }} &middot; {{ grade_cohort_label }} &middot; Activation Director: {{ captain_label }} &middot; joined {{ fmt_date(tutor.created_at) }}
     &middot; last active {{ ago(tutor.last_activity_at or tutor.created_at) }}
   </p>
+  <form method="post" action="/admin/tutors/{{ tutor.id }}/view-as" style="margin-top: var(--space-12);">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <button type="submit" class="btn btn-sm btn-secondary">View as candidate</button>
+  </form>
 
   <div class="tutor-stat-grid">
     <div class="kpi-card kpi-card-compact kpi-card-brand">

@@ -1,9 +1,24 @@
 """Tutor-facing screens: dashboard, stage detail, policies, uploads, certificate."""
 
 from . import audit, content, db, notify, progress, storage, util
-from .auth import tutor_post, tutor_required
+from .auth import is_previewing, tutor_post, tutor_required
 from .micro import HttpError, Response, file_response, redirect
 from .util import wrap
+
+
+def _states(request, notifications=True):
+    """The candidate's journey. A real visit syncs it — recording unlocks,
+    queueing emails. An admin's preview only reads it, so looking can't start
+    a deadline clock or send anything."""
+    if is_previewing(request):
+        return progress.stage_states(request.user, progress.ContentCache())
+    return progress.sync(request.user, notifications=notifications)
+
+
+def _touch(request):
+    """Mark the candidate active — unless it's an admin looking on."""
+    if not is_previewing(request):
+        progress.touch_activity(request.user["id"])
 
 
 def register(app):
@@ -16,7 +31,7 @@ def register(app):
         journey. Kept separate from /dashboard so the journey view is just the
         journey."""
         user = request.user
-        states = progress.sync(user)
+        states = _states(request)
         welcome_video = content.document_by_key("nancy_welcome_video")
         if welcome_video:
             welcome_video.current = content.current_version(welcome_video.id)
@@ -32,9 +47,9 @@ def register(app):
     @tutor_required
     def dashboard(request):
         user = request.user
-        states = progress.sync(user)
+        states = _states(request)
         summary = progress.overall(states)
-        progress.touch_activity(user["id"])
+        _touch(request)
         # The welcome note and its video live on /home now, and the sidebar
         # gets its unread count from the shared context — so this page only
         # needs the journey itself.
@@ -50,11 +65,11 @@ def register(app):
     @tutor_required
     def stage_detail(request, stage_id):
         user = request.user
-        states = progress.sync(user)
+        states = _states(request)
         state = progress.stage_detail(user, stage_id, states)
         if state is None:
             raise HttpError(404, "That stage isn't part of your journey.")
-        progress.touch_activity(user["id"])
+        _touch(request)
         idx = next((i for i, s in enumerate(states) if s.id == stage_id), None)
         next_stage = (states[idx + 1] if idx is not None and idx + 1 < len(states)
                       else None)
@@ -66,7 +81,7 @@ def register(app):
     @tutor_required
     def learnosity(request):
         user = request.user
-        states = progress.sync(user, notifications=False)
+        states = _states(request, notifications=False)
         comp = wrap(db.one("SELECT * FROM components WHERE key = 'learnosity'"))
         links = content.links_for("component", comp.id, user["region_id"],
                                   user["grade_cohort_id"]) if comp else []
@@ -109,7 +124,8 @@ def register(app):
             item = content.sub_item(link.sub_item_id)
             # Only a "link" step counts itself done this way — a link sitting
             # beside a task or an upload is reference material, not the task.
-            if item is not None and item.kind == "link" and not item.archived_at:
+            if (item is not None and item.kind == "link" and not item.archived_at
+                    and not is_previewing(request)):
                 try:
                     progress.toggle_sub_item(request.user, item, True)
                 except (progress.ValidationError, progress.LockedError):
@@ -243,7 +259,8 @@ def register(app):
     @tutor_required
     def notifications(request):
         items = notify.for_user(request.user["id"])
-        notify.mark_all_read(request.user["id"])
+        if not is_previewing(request):
+            notify.mark_all_read(request.user["id"])
         return app.render(request, "tutor/notifications.html", items=items)
 
     # ----------------------------------------------------------- completion #
@@ -251,7 +268,7 @@ def register(app):
     @tutor_required
     def completion(request):
         user = request.user
-        states = progress.sync(user)
+        states = _states(request)
         summary = progress.overall(states)
         if not summary.all_complete:
             request.flash("Almost there — finish every stage to unlock your "
@@ -332,6 +349,10 @@ def register(app):
                              "Updated own profile")
                 request.flash("Saved.", "ok")
             return redirect("/profile")
+            if is_previewing(request):
+                request.flash("You're viewing as this candidate — nothing was "
+                              "saved.", "error")
+                return redirect("/profile")
         return app.render(request, "tutor/profile.html",
                           region=content.region(user["region_id"]),
                           grade_cohort=content.grade_cohort(user["grade_cohort_id"]),

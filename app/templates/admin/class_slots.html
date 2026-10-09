@@ -7,6 +7,12 @@
   .admin-shell > main { flex: 1; min-width: 0; padding: var(--space-32); display: flex; flex-direction: column; gap: var(--space-24); }
   .page-head { display: flex; flex-direction: column; gap: var(--space-4); }
   .inline-form { display: inline-block; }
+  .slot-filters { display: flex; flex-wrap: wrap; gap: var(--space-16); align-items: flex-end; }
+  .slot-filters .cm-field { width: 190px; }
+  .slot-filters-range { display: flex; flex-direction: column; gap: var(--space-8); }
+  a.filter-chip { text-decoration: none; }
+  .outcome-actions { display: flex; gap: var(--space-8); flex-wrap: wrap; align-items: center; }
+  @media (max-width: 768px) { .slot-filters .cm-field { width: 100%; } }
 </style>
 <div class="admin-shell">
 {% include "partials/admin_nav.html" %}
@@ -49,6 +55,55 @@
     </div>
   </div>
 
+  <div class="card card-compact">
+    <form method="get" action="/admin/class-slots" class="slot-filters">
+      <div class="slot-filters-range">
+        <span class="type-label-sm" style="color: var(--text-tertiary);">Dates</span>
+        <div class="filter-chip-group" role="group" aria-label="Date range">
+          <a class="filter-chip{% if not date_from and not date_to %} is-active{% endif %}" href="/admin/class-slots">All</a>
+          <button type="submit" name="range" value="today" class="filter-chip{% if date_preset == 'today' %} is-active{% endif %}" aria-pressed="{{ 'true' if date_preset == 'today' else 'false' }}">Today</button>
+          <button type="submit" name="range" value="tomorrow" class="filter-chip{% if date_preset == 'tomorrow' %} is-active{% endif %}" aria-pressed="{{ 'true' if date_preset == 'tomorrow' else 'false' }}">Tomorrow</button>
+          <button type="submit" name="range" value="week" class="filter-chip{% if date_preset == 'week' %} is-active{% endif %}" aria-pressed="{{ 'true' if date_preset == 'week' else 'false' }}">Next 7 days</button>
+          <button type="submit" name="range" value="past" class="filter-chip{% if date_preset == 'past' %} is-active{% endif %}" aria-pressed="{{ 'true' if date_preset == 'past' else 'false' }}">Already passed</button>
+        </div>
+      </div>
+
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <input id="from" name="from" type="date" placeholder=" " value="{{ date_from }}">
+          <label class="cm-field-label">From</label>
+          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>From</span></legend></fieldset>
+        </div>
+        <div class="cm-field-helper">Class date, not the booking date</div>
+      </div>
+
+      <div class="cm-field">
+        <div class="cm-field-wrap">
+          <input id="to" name="to" type="date" placeholder=" " value="{{ date_to }}">
+          <label class="cm-field-label">To</label>
+          <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>To</span></legend></fieldset>
+        </div>
+        <div class="cm-field-helper">Leave either side empty for open-ended</div>
+      </div>
+
+      <div style="display: flex; gap: var(--space-8); padding-bottom: var(--space-20);">
+        <button class="btn btn-sm btn-primary" type="submit">Apply dates</button>
+        <a class="btn btn-sm btn-secondary" href="/admin/class-slots">Clear</a>
+      </div>
+    </form>
+    {% if date_from or date_to %}
+      <div class="card-content" style="border-top: 1px solid var(--border-tertiary); padding-top: var(--space-12);">
+        <p class="type-body-sm" style="color: var(--text-secondary); margin: 0;">
+          {% if date_from and date_to and date_from == date_to %}Showing {{ plural(len(slots), "class", "classes") }} on {{ fmt_date(date_from) }}.{% endif %}
+          {% if date_from and date_to and date_from != date_to %}Showing {{ plural(len(slots), "class", "classes") }} between {{ fmt_date(date_from) }} and {{ fmt_date(date_to) }}.{% endif %}
+          {% if date_from and not date_to %}Showing {{ plural(len(slots), "class", "classes") }} from {{ fmt_date(date_from) }} onwards.{% endif %}
+          {% if date_to and not date_from %}Showing {{ plural(len(slots), "class", "classes") }} up to {{ fmt_date(date_to) }}.{% endif %}
+          Across every date there are {{ total_open + total_other }}.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
   {% set open_slots = [s for s in slots if s.status == "open"] %}
   {% set booked_slots = [s for s in slots if s.status == "booked"] %}
   {% set other_slots = [s for s in slots if s.status not in ("open", "booked")] %}
@@ -84,31 +139,31 @@
     </div>
   {% endif %}
 
-  {% if can_write and slots %}
+  {% if can_write and (total_open + total_other) %}
     <details class="card">
       <summary style="cursor: pointer; padding: var(--space-16) var(--space-24);">
         <span class="type-label-md" style="color: var(--text-primary);">Clear the list before a fresh upload</span>
         <span class="type-body-sm" style="color: var(--text-tertiary); display: block; margin-top: var(--space-4);">
-          {{ plural(len(open_slots), "open slot") }}{% if booked_slots or other_slots %},
-          {{ len(booked_slots) + len(other_slots) }} booked or finished{% endif %}.
+          {{ plural(total_open, "open slot") }}{% if total_other %},
+          {{ total_other }} booked or finished{% endif %} — the whole list, whatever the date filter shows.
         </span>
       </summary>
       <div class="card-content" style="border-top: 1px solid var(--border-tertiary);">
         <p class="type-body-sm" style="color: var(--text-secondary); margin: 0 0 var(--space-12);">
           Removes slots so a corrected CSV can go in cleanly. This cannot be undone.
-          {% if booked_slots %}<strong>{{ plural(len(booked_slots), "slot") }} already booked</strong> —
+          {% if total_other %}<strong>{{ plural(total_other, "slot") }} already booked or finished</strong> —
           those are kept unless you tick the box, and removing one takes the class
           away from the coach who picked it.{% endif %}
         </p>
         <form method="post" action="/admin/class-slots/clear">
           <input type="hidden" name="_csrf" value="{{ csrf }}">
-          {% if booked_slots or other_slots %}
+          {% if total_other %}
             <label class="cm-checkbox" style="margin-bottom: var(--space-12);">
               <input type="checkbox" name="include_booked" value="1">
               <span class="cm-checkbox-box">
                 <svg data-icon="submit-thick" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21.4162 6.53906L10.3078 19.5391L7.49141 18.5C7.49141 15.8794 5.60364 13.5833 2.90547 12.8975L3.69453 9.7959C6.50181 10.5095 8.83259 12.4511 9.96016 15.0195L18.9836 4.46094L21.4162 6.53906Z" fill="currentColor"/></svg>
               </span>
-              <span class="cm-checkbox-label">Also remove the {{ len(booked_slots) + len(other_slots) }} booked or finished</span>
+              <span class="cm-checkbox-label">Also remove the {{ total_other }} booked or finished</span>
             </label>
           {% endif %}
           <button class="btn btn-sm btn-destructive" type="submit">Remove slots</button>
@@ -121,18 +176,30 @@
     <div class="card-header">
       <div class="card-header-text">
         <div class="card-title">Booked ({{ len(booked_slots) }})</div>
+        {% if can_write %}
+          <div class="card-description">Once the class is over, say whether it happened.
+            <strong>Done</strong> completes the step on the coach&rsquo;s journey;
+            <strong>Didn&rsquo;t happen</strong> frees them to book another class.</div>
+        {% endif %}
       </div>
     </div>
     <div class="card-content">
       {% if booked_slots %}
         <div class="table-wrap" role="region" aria-label="Booked slots" tabindex="0">
           <table class="table table-hoverable">
-            <thead><tr><th>When</th><th>Student</th><th>Tutor</th><th>Region</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>When</th><th>Student</th><th>Number</th><th>Tutor</th><th>Region</th><th>Class done?</th><th></th></tr></thead>
             <tbody>
               {% for s in booked_slots %}
                 <tr>
                   <td style="white-space: nowrap;">{{ fmt_datetime(s.starts_at) }} ({{ s.duration_minutes }}m)</td>
                   <td>{{ s.student_name or "—" }}{% if s.grade_subject %} <span class="type-body-sm" style="color: var(--text-tertiary);">· {{ s.grade_subject }}</span>{% endif %}</td>
+                  <td style="white-space: nowrap;">
+                    {% if s.student_phone %}
+                      <a class="cm-link" style="color: var(--text-brand);" href="tel:{{ s.student_phone }}">{{ s.student_phone }}</a>
+                    {% else %}
+                      <span style="color: var(--text-tertiary);">—</span>
+                    {% endif %}
+                  </td>
                   <td>
                     {{ s.tutor_name }}
                     <div class="type-body-sm" style="margin-top: var(--space-2);">
@@ -147,11 +214,23 @@
                     </div>
                   </td>
                   <td class="type-body-sm" style="color: var(--text-secondary);">{{ s.region_label }}</td>
-                  <td><span class="badge badge-info">Booked</span></td>
+                  <td>
+                    {% if can_write %}
+                      <form method="post" action="/admin/class-slots/{{ s.id }}/outcome" class="outcome-actions">
+                        <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        <input type="hidden" name="back" value="{{ back_url }}">
+                        <button class="btn btn-sm btn-primary" type="submit" name="outcome" value="done">Done</button>
+                        <button class="btn btn-sm btn-secondary" type="submit" name="outcome" value="not_done">Didn&rsquo;t happen</button>
+                      </form>
+                    {% else %}
+                      <span class="badge badge-info">Booked</span>
+                    {% endif %}
+                  </td>
                   <td class="cell-right">
                     {% if can_write %}
                       <form method="post" action="/admin/class-slots/{{ s.id }}/release" class="inline-form">
                         <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        <input type="hidden" name="back" value="{{ back_url }}">
                         <button class="btn btn-sm btn-secondary" type="submit">Reopen</button>
                       </form>
                     {% endif %}
@@ -179,18 +258,26 @@
       {% if open_slots %}
         <div class="table-wrap" role="region" aria-label="Open slots" tabindex="0">
           <table class="table table-hoverable">
-            <thead><tr><th>When</th><th>Student</th><th>Region</th><th>Grade group</th><th></th></tr></thead>
+            <thead><tr><th>When</th><th>Student</th><th>Number</th><th>Region</th><th>Grade group</th><th></th></tr></thead>
             <tbody>
               {% for s in open_slots %}
                 <tr>
                   <td style="white-space: nowrap;">{{ fmt_datetime(s.starts_at) }} ({{ s.duration_minutes }}m)</td>
                   <td>{{ s.student_name or "—" }}{% if s.grade_subject %} <span class="type-body-sm" style="color: var(--text-tertiary);">· {{ s.grade_subject }}</span>{% endif %}</td>
+                  <td style="white-space: nowrap;">
+                    {% if s.student_phone %}
+                      <a class="cm-link" style="color: var(--text-brand);" href="tel:{{ s.student_phone }}">{{ s.student_phone }}</a>
+                    {% else %}
+                      <span style="color: var(--text-tertiary);">—</span>
+                    {% endif %}
+                  </td>
                   <td class="type-body-sm" style="color: var(--text-secondary);">{{ s.region_label }}</td>
                   <td class="type-body-sm" style="color: var(--text-secondary);">{{ s.grade_cohort_label }}</td>
                   <td class="cell-right">
                     {% if can_write %}
                       <form method="post" action="/admin/class-slots/{{ s.id }}/delete" class="inline-form">
                         <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        <input type="hidden" name="back" value="{{ back_url }}">
                         <button class="btn btn-sm btn-destructive" type="submit">Delete</button>
                       </form>
                     {% endif %}
@@ -218,18 +305,37 @@
       <div class="card-content">
         <div class="table-wrap" role="region" aria-label="Completed and cancelled slots" tabindex="0">
           <table class="table table-hoverable">
-            <thead><tr><th>When</th><th>Student</th><th>Tutor</th><th>Status</th></tr></thead>
+            <thead><tr><th>When</th><th>Student</th><th>Number</th><th>Tutor</th><th>Class done?</th><th></th></tr></thead>
             <tbody>
               {% for s in other_slots %}
                 <tr>
                   <td style="white-space: nowrap;">{{ fmt_datetime(s.starts_at) }}</td>
                   <td>{{ s.student_name or "—" }}</td>
+                  <td style="white-space: nowrap;">
+                    {% if s.student_phone %}
+                      <a class="cm-link" style="color: var(--text-brand);" href="tel:{{ s.student_phone }}">{{ s.student_phone }}</a>
+                    {% else %}
+                      <span style="color: var(--text-tertiary);">—</span>
+                    {% endif %}
+                  </td>
                   <td>{{ s.tutor_name or "—" }}</td>
                   <td>
                     {% if "cancel" in s.status %}
-                      <span class="badge badge-error">{{ s.status }}</span>
+                      <span class="badge badge-error">Didn&rsquo;t happen</span>
                     {% else %}
-                      <span class="badge badge-neutral-strong">{{ s.status }}</span>
+                      <span class="badge badge-success">Done</span>
+                    {% endif %}
+                  </td>
+                  <td class="cell-right">
+                    {% if can_write and s.tutor_id %}
+                      <form method="post" action="/admin/class-slots/{{ s.id }}/outcome" class="outcome-actions">
+                        <input type="hidden" name="_csrf" value="{{ csrf }}">
+                        <input type="hidden" name="back" value="{{ back_url }}">
+                        {% if "cancel" in s.status %}
+                          <button class="btn btn-sm btn-primary" type="submit" name="outcome" value="done">Mark done</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-secondary" type="submit" name="outcome" value="pending">Undo</button>
+                      </form>
                     {% endif %}
                   </td>
                 </tr>
@@ -296,7 +402,7 @@
               slot. Leave it on “Any” and every coach can take it.</div>
           </div>
           <div class="grid">
-            <div class="col-6 col-sm-12">
+            <div class="col-4 col-sm-12">
               <div class="cm-field">
                 <div class="cm-field-wrap">
                   <input name="student_name" type="text" placeholder=" ">
@@ -306,7 +412,17 @@
                 <div class="cm-field-helper">e.g. Aarav Mehta</div>
               </div>
             </div>
-            <div class="col-6 col-sm-12">
+            <div class="col-4 col-sm-12">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input name="student_phone" type="tel" placeholder=" ">
+                  <label class="cm-field-label">Student&rsquo;s number</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Student&rsquo;s number</span></legend></fieldset>
+                </div>
+                <div class="cm-field-helper">With country code, e.g. +91 98765 43210</div>
+              </div>
+            </div>
+            <div class="col-4 col-sm-12">
               <div class="cm-field">
                 <div class="cm-field-wrap">
                   <input name="grade_subject" type="text" placeholder=" ">

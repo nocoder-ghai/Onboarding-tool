@@ -93,10 +93,11 @@
                   {% if not s.coach_email and not s.coach_phone %}<span class="sc-note">—</span>{% endif %}
                 </td>
                 <td>{{ s.student_name or "—" }}
-                  {% if s.grade_subject %}<div class="type-body-sm sc-note">{{ s.grade_subject }}</div>{% endif %}
-                  <!-- Whoever schedules the session calls this number, so make
-                       it tappable rather than something to copy out by hand. -->
+                  <!-- Whoever schedules the session calls this number, so it sits
+                       straight under the child's name, above the grade, and is
+                       tappable rather than something to copy out by hand. -->
                   {% if s.student_phone %}<div class="type-body-sm"><a class="sc-tel" href="tel:{{ s.student_phone }}">{{ s.student_phone }}</a></div>{% endif %}
+                  {% if s.grade_subject %}<div class="type-body-sm sc-note">{{ s.grade_subject }}</div>{% endif %}
                 </td>
                 <td class="type-body-sm">{{ s.cohort_name or "Any grade" }}</td>
                 <td class="type-body-sm">{{ s.region_name or "Any region" }}</td>

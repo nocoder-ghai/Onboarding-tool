@@ -30,7 +30,24 @@
     background: var(--bg-inverse-secondary);
     border-color: color-mix(in srgb, var(--text-on-inverse) 60%, transparent);
   }
+  /* Shown only while an admin is viewing as this candidate. */
+  .tt-preview {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-12); flex-wrap: wrap;
+    padding: var(--space-8) var(--space-16);
+    background: var(--bg-brand); color: var(--bg-inverse);
+  }
+  .tt-preview .btn { background: var(--bg-inverse); color: var(--text-on-inverse); }
 </style>
+{% if preview_admin %}
+<div class="tt-preview type-body-sm" role="status">
+  <span>Viewing as <strong>{{ user.name }}</strong> — this is exactly what they see. Nothing you click here is saved.</span>
+  <form method="post" action="/admin/view-as/exit" class="inline-form">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <button type="submit" class="btn btn-sm">Exit — back to admin</button>
+  </form>
+</div>
+{% endif %}
 <nav class="nav-header tt-bar" aria-label="Main navigation">
   <a href="/home" class="nav-header-brand" aria-label="{{ brand }} — home">
     <span class="tt-logo" aria-hidden="true">{% include "partials/_wordmark.svg" %}</span>
@@ -42,9 +59,11 @@
   </div>
   <div class="nav-header-actions">
     <span class="type-body-sm tt-account">{{ user.email or user.phone }}</span>
+    {% if not preview_admin %}
     <form method="post" action="/logout" class="inline-form">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
       <button type="submit" class="btn btn-sm tt-signout">Sign out</button>
     </form>
+    {% endif %}
   </div>
 </nav>

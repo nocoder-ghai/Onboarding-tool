@@ -137,13 +137,22 @@ def component_state(user, comp, pmap, cache=None):
         rule = "self_marked"
 
     row = pmap.get(("component", comp.id))
+    # Fall back to every step when none are marked mandatory, otherwise a
+    # component whose steps are all optional could never be completed.
+    gating = [s for s in states if s.is_mandatory] or states
+    by_steps = bool(states) and all(s.done for s in gating)
+    marked = bool(row and row.status == DONE)
     if rule == "sub_items":
-        # Fall back to every step when none are marked mandatory, otherwise a
-        # component whose steps are all optional could never be completed.
-        gating = [s for s in states if s.is_mandatory] or states
-        complete = bool(states) and all(s.done for s in gating)
+        complete = by_steps
+    elif rule == "self_marked":
+        # The tutor's own tick is enough. A self-marked component that also
+        # carries a checklist still completes itself once every mandatory step
+        # is done, so the button is a shortcut through it and never the only
+        # way — components with no steps at all are unaffected, by_steps being
+        # False for them.
+        complete = marked or by_steps
     else:
-        complete = bool(row and row.status == DONE)
+        complete = marked
 
     done_units = sum(1 for s in states if s.done)
     total_units = len(states)
@@ -156,6 +165,9 @@ def component_state(user, comp, pmap, cache=None):
     state.effective_rule = rule
     state.sub_item_states = states
     state.complete = complete
+    # True when the checklist alone settles it — the tutor's tick would be
+    # redundant, and reopening it by hand would not stick.
+    state.complete_by_steps = by_steps
     state.done_units = done_units
     state.total_units = total_units
     state.percent = util.pct(done_units, total_units)
@@ -272,11 +284,13 @@ def sync(user, cache=None, notifications=True):
 
     for state in states:
         for comp in state.components:
-            if comp.effective_rule == "sub_items" and comp.complete:
+            # self_marked is in here too now: such a component can complete
+            # itself off its checklist, with no tick of its own to persist.
+            if comp.effective_rule in ("sub_items", "self_marked") and comp.complete:
                 existing = get_progress(user["id"], "component", comp.id)
                 if not existing or existing.status != DONE:
                     set_progress(user["id"], "component", comp.id, DONE)
-            elif comp.effective_rule == "sub_items" and not comp.complete:
+            elif comp.effective_rule in ("sub_items", "self_marked") and not comp.complete:
                 existing = get_progress(user["id"], "component", comp.id)
                 if existing and existing.status == DONE:
                     set_progress(user["id"], "component", comp.id, "in_progress")
@@ -703,6 +717,10 @@ def invite_to_orientation(user, session_id):
                (user["id"], session_id, db.now()))
     session = wrap(db.one("SELECT * FROM orientation_sessions WHERE id = ?",
                           (session_id,)))
+    if not done and state.complete_by_steps:
+        raise ValidationError(
+            "Every step here is ticked off, so this stays complete. Reopen a "
+            "step if you need to change that.")
     if session:
         notify.notify(user, "orientation_invite", url="/dashboard", kind="unlock",
                       when=util.fmt_datetime(session.starts_at),

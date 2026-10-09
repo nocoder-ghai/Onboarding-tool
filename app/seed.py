@@ -108,7 +108,36 @@ def ensure_new_content():
     if stage2 and not known:
         _seed_teach_with_cuemath(stage2)
         created.append("Teach with Cuemath (2 social steps)")
+    created.extend(_ensure_first_class_self_mark())
     return created
+
+
+def _ensure_first_class_self_mark():
+    """Give every First Class component its own "mark done" button.
+
+    The full seed is the only thing that rewrites an existing row, and it is
+    off by default on a hosted database, so this carries the change across on
+    its own. The setting makes it a one-time move: an admin who afterwards
+    puts a component back on its checklist keeps that choice through the next
+    restart, rather than having it quietly undone on every boot."""
+    if db.setting("first_class_self_mark_applied") == "1":
+        return []
+    stage_first = db.scalar("SELECT id FROM stages WHERE key = ?",
+                            ("first_class",), None)
+    if not stage_first:
+        return []
+    moved = db.scalar(
+        "SELECT COUNT(*) FROM components WHERE stage_id = ? "
+        "AND archived_at IS NULL AND completion_rule = 'sub_items'",
+        (stage_first,), 0)
+    if moved:
+        db.execute(
+            "UPDATE components SET completion_rule = 'self_marked', "
+            "updated_at = ? WHERE stage_id = ? AND archived_at IS NULL "
+            "AND completion_rule = 'sub_items'", (db.now(), stage_first))
+    db.set_setting("first_class_self_mark_applied", "1",
+                   "First Class components switched to tutor-ticks.")
+    return ["Mark done on %d First Class component(s)" % moved] if moved else []
 
 
 def _agenda(stage_id, title, description, order):
@@ -672,7 +701,7 @@ def seed(verbose=True, demo=False):
         title="First class readiness",
         description="What a Cuemath class actually looks like, and how to be "
                     "set up before the student joins.",
-        sort_order=10, is_mandatory=1, completion_rule="sub_items",
+        sort_order=10, is_mandatory=1, completion_rule="self_marked",
         region_id=None, archived_at=None)
     READINESS_STEPS = [
         ("fc_walkthrough", "Watch a first class, end to end",
@@ -719,7 +748,7 @@ def seed(verbose=True, demo=False):
         "compliance_essentials", stage_id=stage_first,
         title="Compliance essentials",
         description="What gets tracked once you're teaching, and how it adds up.",
-        sort_order=20, is_mandatory=1, completion_rule="sub_items",
+        sort_order=20, is_mandatory=1, completion_rule="self_marked",
         region_id=None, archived_at=None)
     _item("fc_what_we_track", component_id=compliance_comp, parent_id=None,
           title="What we track, and why",
@@ -775,7 +804,7 @@ def seed(verbose=True, demo=False):
         title="Cuemath policies",
         description="Read each one and acknowledge it. We record the date, and "
                     "the exact version you read.",
-        sort_order=30, is_mandatory=1, completion_rule="sub_items",
+        sort_order=30, is_mandatory=1, completion_rule="self_marked",
         region_id=None, archived_at=None)
     _policy_group(cuemath_policy_comp, CUEMATH_POLICIES)
     say("Stage 3 · First Class seeded (readiness, compliance, %d policies)."

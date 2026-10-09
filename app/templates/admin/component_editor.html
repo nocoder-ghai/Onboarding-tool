@@ -65,7 +65,7 @@
               <div class="cm-field-wrap">
                 <select id="completion_rule" name="completion_rule">
                   <option value="sub_items"{% if comp.completion_rule == "sub_items" %} selected{% endif %}>All mandatory steps done</option>
-                  <option value="self_marked"{% if comp.completion_rule == "self_marked" %} selected{% endif %}>Tutor ticks the component</option>
+                  <option value="self_marked"{% if comp.completion_rule == "self_marked" %} selected{% endif %}>Tutor ticks it (steps also complete it)</option>
                   <option value="admin_marked"{% if comp.completion_rule == "admin_marked" %} selected{% endif %}>Mentor/admin marks it</option>
                 </select>
                 <span class="cm-field-label">Completion</span>
