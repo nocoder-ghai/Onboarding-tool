@@ -31,6 +31,27 @@
     /* The progress bar reads fine at a modest width — stretched across a wide
        card it just becomes a long rule. */
     .ts-stage-progress { max-width: 420px; }
+    .ts-policy-list { border: 1px solid var(--border-tertiary); border-radius: var(--radius-md); overflow: hidden; }
+    .ts-policy + .ts-policy { border-top: 1px solid var(--border-tertiary); }
+    .ts-policy-row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-16); cursor: pointer; list-style: none; }
+    .ts-policy-row::-webkit-details-marker { display: none; }
+    .ts-policy-row:hover { background: var(--bg-secondary); }
+    .ts-policy-toggle { flex-shrink: 0; width: 20px; height: 20px; color: var(--text-secondary); }
+    .ts-policy-toggle svg { width: 20px; height: 20px; }
+    .ts-policy .ts-policy-toggle .icon-minus { display: none; }
+    .ts-policy[open] .ts-policy-toggle .icon-minus { display: block; }
+    .ts-policy[open] .ts-policy-toggle .icon-plus { display: none; }
+    .ts-policy-n {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--radius-full);
+      background: var(--bg-brand-1); color: var(--text-brand); display: flex;
+      align-items: center; justify-content: center;
+    }
+    .ts-policy.is-done .ts-policy-n { background: var(--bg-success-2); color: var(--text-success); }
+    .ts-policy-body { padding: 0 var(--space-16) var(--space-16) calc(var(--space-16) + 28px + var(--space-12)); }
+    .ts-policy-frame { border: 1px solid var(--border-tertiary); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-primary); }
+    .ts-policy-frame iframe { display: block; width: 100%; height: 70vh; min-height: 420px; border: 0; }
+    .ts-policy-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-16); margin-top: var(--space-16); }
+    @media (max-width: 640px) { .ts-policy-body { padding-left: var(--space-16); } .ts-policy-frame iframe { height: 60vh; } }
     .ts-agenda-n {
       flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--radius-full);
       background: var(--bg-brand-1); color: var(--text-brand); display: flex;
@@ -97,8 +118,62 @@
       <!-- A stage can carry its own visual. _doc_link.html shows images inline
            and videos in a player, and falls back to a file link for everything
            else — the same treatment components and steps already get. -->
+      {% set stage_policies = [d for d in stage.documents if d.get("ackable")] %}
+      {% set next_policy = next((d for d in stage_policies if not d.acknowledgement), None) %}
+      {% if stage_policies %}
+        <!-- One row per policy, built from the stage's documents, so a policy
+             added in the admin joins the list with no other change. Only the
+             next one to read starts open; read ones fold away. -->
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-24);">
+          <h2 class="type-heading-sm" style="color: var(--text-primary); margin: 0;">Policies</h2>
+          <span class="type-body-sm" style="color: var(--text-tertiary);">{{ len(stage_policies) - len([d for d in stage_policies if not d.acknowledgement]) }} of {{ len(stage_policies) }} acknowledged</span>
+        </div>
+        <div class="ts-policy-list" style="margin-top: var(--space-12);">
+          {% for i, doc in enumerate(stage_policies, 1) %}
+            {% set is_next = next_policy is not None and doc.id == next_policy.id %}
+            <details id="policy-{{ doc.id }}" class="ts-policy{% if doc.acknowledgement %} is-done{% endif %}"{% if is_next %} open{% endif %}>
+              <summary class="ts-policy-row">
+                <span class="ts-policy-n type-label-sm">{% if doc.acknowledgement %}✓{% else %}{{ i }}{% endif %}</span>
+                <span class="type-body-lg" style="flex: 1; min-width: 0; color: var(--text-primary);">{{ doc.title }}</span>
+                {% if doc.acknowledgement %}<span class="type-body-sm" style="color: var(--text-success);">Acknowledged {{ fmt_date(doc.acknowledgement.acknowledged_at) }}</span>
+                {% elif is_next %}<span class="badge badge-info">Read next</span>
+                {% else %}<span class="badge">To read</span>{% endif %}
+                <span class="cm-icon ts-policy-toggle" aria-hidden="true">
+                  <svg class="icon-plus" data-icon="add" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.9004 4V11.0996H20V12.9004H12.9004V20H11.0996V12.9004H4V11.0996H11.0996V4H12.9004Z" fill="currentColor"/></svg>
+                  <svg class="icon-minus" data-icon="minus" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 11.0996V12.9004L4.5 12.9004V11.0996L19.5 11.0996Z" fill="currentColor"/></svg>
+                </span>
+              </summary>
+              <div class="ts-policy-body">
+                {% if doc.drive_url and drive_file_id(doc.drive_url) %}
+                  <div class="ts-policy-frame"><iframe src="{{ drive_embed_src(doc.drive_url) }}" title="{{ doc.title }}" loading="lazy"></iframe></div>
+                  {% set open_href = doc.drive_url %}
+                {% elif doc.current and doc.current.mime_type.startswith("image/") %}
+                  <div class="cm-media"><img src="/file/document/{{ doc.current.id }}" alt="{{ doc.title }}" loading="lazy"></div>
+                  {% set open_href = "/file/document/%d" % doc.current.id %}
+                {% elif doc.current %}
+                  <div class="ts-policy-frame"><iframe src="/file/document/{{ doc.current.id }}#view=FitH&navpanes=0" title="{{ doc.title }}" loading="lazy"></iframe></div>
+                  {% set open_href = "/file/document/%d" % doc.current.id %}
+                {% else %}
+                  {% set open_href = None %}
+                  <p class="type-body-sm" style="color: var(--text-tertiary);">This policy isn't uploaded yet — check back soon.</p>
+                {% endif %}
+                <div class="ts-policy-actions">
+                  {% if not doc.acknowledgement and open_href %}
+                    <form method="post" action="/document/{{ doc.id }}/acknowledge">
+                      <input type="hidden" name="_csrf" value="{{ csrf }}">
+                      <input type="hidden" name="back" value="{{ path }}#policy-{{ doc.id }}">
+                      <button class="btn btn-md btn-primary" type="submit">I've read this — acknowledge</button>
+                    </form>
+                  {% endif %}
+                  {% if open_href %}<a class="cm-link cm-link-sm" href="{{ open_href }}" target="_blank" rel="noopener">Open in a new tab ↗</a>{% endif %}
+                </div>
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      {% endif %}
       {% for doc in stage.documents %}
-        {% if doc.current %}
+        {% if doc.current and not doc.get("ackable") %}
           <div style="margin-top: var(--space-16);">{% include "partials/_doc_link.html" %}</div>
         {% endif %}
       {% endfor %}

@@ -90,6 +90,7 @@ class ContentCache:
         self._stages = None
         self._components = {}
         self._leaves = {}
+        self._stage_policies = {}
 
     def stages(self):
         if self._stages is None:
@@ -102,6 +103,15 @@ class ContentCache:
             self._components[key] = content.components(stage_id, region_id,
                                                         grade_cohort_id)
         return self._components[key]
+
+    def stage_policies(self, stage_id, region_id, grade_cohort_id):
+        key = (stage_id, region_id, grade_cohort_id)
+        if key not in self._stage_policies:
+            self._stage_policies[key] = [
+                d for d in content.documents_for("stage", stage_id, region_id,
+                                                 grade_cohort_id)
+                if d.kind == "policy"]
+        return self._stage_policies[key]
 
     def leaves(self, component_id, region_id, grade_cohort_id):
         key = (component_id, region_id, grade_cohort_id)
@@ -183,6 +193,9 @@ def stage_states(user, cache=None, pmap=None):
     cache = cache or ContentCache()
     pmap = progress_map(user["id"]) if pmap is None else pmap
     stages = cache.stages()
+    acked = {r["document_id"] for r in db.query(
+        "SELECT document_id FROM document_acknowledgements WHERE user_id = ?",
+        (user["id"],))}
 
     computed = []
     for st in stages:
@@ -192,6 +205,17 @@ def stage_states(user, cache=None, pmap=None):
         if st.completion_rule == "admin_marked":
             complete = bool(row and row.status == DONE)
             done_units, total_units = (1 if complete else 0), 1
+        elif not comp_states and cache.stage_policies(
+                st.id, user["region_id"], user["grade_cohort_id"]):
+            # A stage that is nothing but policy documents — each one is a unit
+            # and the stage is done once every one is acknowledged. Only for
+            # stages without components, so a policy attached to an existing
+            # stage can't reopen it for coaches who already finished.
+            policies = cache.stage_policies(st.id, user["region_id"],
+                                            user["grade_cohort_id"])
+            done_units = sum(1 for d in policies if d.id in acked)
+            total_units = len(policies)
+            complete = done_units == total_units
         else:
             # Same fallback as component level: a stage built only from
             # non-mandatory components must still be able to finish, or it
