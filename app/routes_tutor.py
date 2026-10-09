@@ -147,6 +147,24 @@ def register(app):
             return redirect(back)
         return Response("ok")
 
+    # ------------------------------------------ policy document: acknowledge #
+    @app.route("/document/<int:document_id>/acknowledge", methods=["POST"])
+    @tutor_post
+    def document_ack(request, document_id):
+        doc = content.document(document_id)
+        back = request.get("back", "")
+        if not back.startswith("/"):
+            back = "/dashboard"
+        if doc is None:
+            raise HttpError(404, "Unknown document.")
+        try:
+            progress.acknowledge_document(request.user, doc, request.client_ip)
+        except (progress.ValidationError, progress.LockedError) as exc:
+            request.flash(str(exc), "error")
+            return redirect(back)
+        request.flash("Thanks for reading “%s” — acknowledged." % doc.title, "ok")
+        return redirect(back)
+
     # --------------------------------------------------- policy: read & ack #
     @app.route("/policy/<int:item_id>")
     @tutor_required
@@ -331,6 +349,10 @@ def register(app):
         user = request.user
         if request.method == "POST":
             request.verify_csrf()
+            if is_previewing(request):
+                request.flash("You're viewing as this candidate — nothing was "
+                              "saved.", "error")
+                return redirect("/profile")
             from . import security
             name = request.get("name", "").strip()
             values = {}
@@ -349,10 +371,6 @@ def register(app):
                              "Updated own profile")
                 request.flash("Saved.", "ok")
             return redirect("/profile")
-            if is_previewing(request):
-                request.flash("You're viewing as this candidate — nothing was "
-                              "saved.", "error")
-                return redirect("/profile")
         return app.render(request, "tutor/profile.html",
                           region=content.region(user["region_id"]),
                           grade_cohort=content.grade_cohort(user["grade_cohort_id"]),

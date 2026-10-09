@@ -335,14 +335,14 @@ def stage_detail(user, stage_id, states=None):
     grade_cohort_id = user["grade_cohort_id"]
     state.agenda = content.agenda_items(state.id)
     state.links = content.links_for("stage", state.id, region_id, grade_cohort_id)
-    state.documents = content.documents_for("stage", state.id, region_id,
-                                            grade_cohort_id)
+    state.documents = _attach_doc_acks(user, content.documents_for(
+        "stage", state.id, region_id, grade_cohort_id))
     state.session = orientation_session_for(user)
     for comp in state.components:
         comp.links = content.links_for("component", comp.id, region_id,
                                        grade_cohort_id)
-        comp.documents = content.documents_for("component", comp.id, region_id,
-                                               grade_cohort_id)
+        comp.documents = _attach_doc_acks(user, content.documents_for(
+            "component", comp.id, region_id, grade_cohort_id))
         comp.tree = _hydrate_tree(user, comp, region_id, grade_cohort_id)
         comp.current_item_id = _first_incomplete_leaf_id(comp.tree)
         comp.done_leaves = _done_leaves(comp.tree)
@@ -373,6 +373,20 @@ def stage_detail(user, stage_id, states=None):
         if comp.key != CLASS_SLOT_COMPONENT_KEY:
             previous_passed = comp.complete
     return state
+
+
+def _attach_doc_acks(user, docs):
+    """Flag the policy documents on a stage or component as ones the tutor
+    acknowledges right under the document, and attach any acknowledgement
+    already on record. Policy *steps* keep their own read & acknowledge page."""
+    for doc in docs:
+        doc.ackable = doc.kind == "policy"
+        doc.acknowledgement = None
+        if doc.ackable:
+            doc.acknowledgement = wrap(db.one(
+                "SELECT * FROM document_acknowledgements "
+                "WHERE user_id = ? AND document_id = ?", (user["id"], doc.id)))
+    return docs
 
 
 def _done_leaves(tree):
@@ -578,6 +592,44 @@ def acknowledge_policy(user, item, ip_address=""):
     sync(user)
 
 
+def acknowledge_document(user, doc, ip_address=""):
+    """Record that the tutor read a policy document attached to a stage or a
+    component. When that leaves nothing unacknowledged on a component the
+    tutor ticks off themselves, the component completes too, so the next one
+    opens without a second button press."""
+    if doc is None or doc.kind != "policy" or doc.archived_at or not doc.is_active:
+        raise ValidationError("That document isn't a policy to acknowledge.")
+    if doc.region_id and doc.region_id != user["region_id"]:
+        raise ValidationError("That policy isn't part of your region's training.")
+    if doc.grade_cohort_id and doc.grade_cohort_id != user["grade_cohort_id"]:
+        raise ValidationError("That policy isn't part of your training.")
+    comp = content.component(doc.component_id) if doc.component_id else None
+    stage_id = comp.stage_id if comp else doc.stage_id
+    if not stage_id:
+        raise ValidationError("That policy isn't attached to your journey.")
+    assert_stage_open(user, stage_id)
+    current = content.current_version(doc.id)
+    db.execute(
+        "INSERT INTO document_acknowledgements "
+        "(user_id, document_id, document_version_id, acknowledged_at, ip_address) "
+        "VALUES (?,?,?,?,?) ON CONFLICT (user_id, document_id) DO NOTHING",
+        (user["id"], doc.id, current.id if current else None, db.now(),
+         ip_address))
+    touch_activity(user["id"])
+    if comp:
+        docs = content.documents_for("component", comp.id, user["region_id"],
+                                     user["grade_cohort_id"])
+        pending = [d for d in docs if d.kind == "policy" and not db.one(
+            "SELECT 1 FROM document_acknowledgements "
+            "WHERE user_id = ? AND document_id = ?", (user["id"], d.id))]
+        state = component_state(user, comp, progress_map(user["id"]))
+        if not pending and state.effective_rule == "self_marked" \
+                and not state.complete:
+            set_progress(user["id"], "component", comp.id, DONE)
+    sync(user)
+    return stage_id
+
+
 def submit_quiz(user, item, answers):
     """CFU quiz for a policy. `answers` maps str(question_id) -> str(choice_id).
     Passes only when every question is answered correctly; reattempts are fine."""
@@ -665,6 +717,10 @@ def mark_component(user, comp, done=True):
         raise ValidationError(
             "Finish the checklist first: %s."
             % ", ".join(p.title for p in state.pending_items[:4]))
+    if not done and state.complete_by_steps:
+        raise ValidationError(
+            "Every step here is ticked off, so this stays complete. Reopen a "
+            "step if you need to change that.")
     set_progress(user["id"], "component", comp.id, DONE if done else "in_progress")
     touch_activity(user["id"])
     sync(user)
@@ -717,10 +773,6 @@ def invite_to_orientation(user, session_id):
                (user["id"], session_id, db.now()))
     session = wrap(db.one("SELECT * FROM orientation_sessions WHERE id = ?",
                           (session_id,)))
-    if not done and state.complete_by_steps:
-        raise ValidationError(
-            "Every step here is ticked off, so this stays complete. Reopen a "
-            "step if you need to change that.")
     if session:
         notify.notify(user, "orientation_invite", url="/dashboard", kind="unlock",
                       when=util.fmt_datetime(session.starts_at),
@@ -1008,6 +1060,10 @@ def admin_reset(actor, tutor, target_type, target_id):
         db.execute("UPDATE submissions SET superseded_at = ? WHERE user_id = ? "
                    "AND sub_item_id = ? AND superseded_at IS NULL",
                    (db.now(), tutor["id"], target_id))
+    elif target_type == "component":
+        db.execute("DELETE FROM document_acknowledgements WHERE user_id = ? "
+                   "AND document_id IN (SELECT id FROM documents "
+                   "WHERE component_id = ?)", (tutor["id"], target_id))
     if target_type == "stage":
         stage = content.stage(target_id)
         if stage and stage.completion_rule == "admin_marked":
@@ -1138,6 +1194,15 @@ def acknowledgements_for(user_id):
         "JOIN sub_items si ON si.id = a.sub_item_id "
         "LEFT JOIN document_versions dv ON dv.id = a.document_version_id "
         "LEFT JOIN documents d ON d.id = dv.document_id "
+        "WHERE a.user_id = ? ORDER BY a.acknowledged_at DESC", (user_id,)))
+
+
+def document_acknowledgements_for(user_id):
+    return wrap_all(db.query(
+        "SELECT a.*, d.title AS doc_title, dv.version_no, dv.filename "
+        "FROM document_acknowledgements a "
+        "JOIN documents d ON d.id = a.document_id "
+        "LEFT JOIN document_versions dv ON dv.id = a.document_version_id "
         "WHERE a.user_id = ? ORDER BY a.acknowledged_at DESC", (user_id,)))
 
 

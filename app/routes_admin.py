@@ -1826,6 +1826,7 @@ def register(app):
                       captain_label=content.captain_name(tutor.captain_id),
                       captains_all=content.captains(),
                       acks=progress.acknowledgements_for(user_id),
+                      doc_acks=progress.document_acknowledgements_for(user_id),
                       submissions=progress.submissions_for(user_id,
                                                            include_superseded=True),
                       notifications=notify.for_user(user_id, 15),

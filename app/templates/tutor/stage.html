@@ -311,14 +311,17 @@
                 {% endfor %}
               </div>
 
-              {% if comp.effective_rule == "self_marked" and not comp.complete %}
+              <!-- A policy document's own "I acknowledge" completes it, so a
+                   second button here would only ask the same thing twice. -->
+              {% set comp_has_ack = any(d.get("ackable") for d in comp.documents) %}
+              {% if comp.effective_rule == "self_marked" and not comp.complete and not comp_has_ack %}
                 <form method="post" action="/component/{{ comp.id }}/complete" style="margin-top: var(--space-16);">
                   <input type="hidden" name="_csrf" value="{{ csrf }}">
                   <input type="hidden" name="back" value="/stage/{{ stage.id }}">
                   <input type="hidden" name="done" value="1">
                   <button class="btn btn-sm btn-success" type="submit">Mark “{{ comp.title }}” complete</button>
                 </form>
-              {% elif comp.effective_rule == "self_marked" and comp.complete and not comp.complete_by_steps %}
+              {% elif comp.effective_rule == "self_marked" and comp.complete and not comp.complete_by_steps and not comp_has_ack %}
                 <form method="post" action="/component/{{ comp.id }}/complete" style="margin-top: var(--space-16);">
                   <input type="hidden" name="_csrf" value="{{ csrf }}">
                   <input type="hidden" name="back" value="/stage/{{ stage.id }}">

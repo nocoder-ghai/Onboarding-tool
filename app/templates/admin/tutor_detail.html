@@ -415,7 +415,7 @@
   <div class="card" style="margin-bottom: var(--space-16);">
     <div class="card-header"><div class="card-header-text"><div class="card-title">Policy acknowledgements</div></div></div>
     <div class="card-content">
-      {% if acks %}
+      {% if acks or doc_acks %}
         <div class="table-wrap" role="region" aria-label="Policy acknowledgements" tabindex="0">
           <table class="table table-hoverable">
             <thead><tr><th>Policy</th><th>Document version</th><th>When</th><th>IP</th></tr></thead>
@@ -424,6 +424,14 @@
                 <tr>
                   <td>{{ ack.item_title }}</td>
                   <td class="type-body-sm">{% if ack.version_no %}v{{ ack.version_no }} &middot; {{ ack.filename }}{% else %}—{% endif %}</td>
+                  <td class="type-body-sm" style="white-space: nowrap;">{{ fmt_datetime(ack.acknowledged_at) }}</td>
+                  <td class="type-body-sm" style="color: var(--text-tertiary);">{{ ack.ip_address }}</td>
+                </tr>
+              {% endfor %}
+              {% for ack in doc_acks %}
+                <tr>
+                  <td>{{ ack.doc_title }}</td>
+                  <td class="type-body-sm">{% if ack.version_no %}v{{ ack.version_no }} &middot; {{ ack.filename }}{% else %}Google Drive{% endif %}</td>
                   <td class="type-body-sm" style="white-space: nowrap;">{{ fmt_datetime(ack.acknowledged_at) }}</td>
                   <td class="type-body-sm" style="color: var(--text-tertiary);">{{ ack.ip_address }}</td>
                 </tr>

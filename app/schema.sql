@@ -397,6 +397,21 @@ CREATE TABLE IF NOT EXISTS policy_acknowledgements (
 
 CREATE INDEX IF NOT EXISTS idx_ack_user ON policy_acknowledgements(user_id);
 
+-- The same proof for a policy document attached straight to a stage or a
+-- component rather than to a 'policy' step. A Google Drive document has no
+-- uploaded version, so document_version_id is empty for those.
+CREATE TABLE IF NOT EXISTS document_acknowledgements (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    document_id         INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    document_version_id INTEGER REFERENCES document_versions(id),
+    acknowledged_at     TEXT NOT NULL,
+    ip_address          TEXT NOT NULL DEFAULT '',
+    UNIQUE (user_id, document_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_ack_user ON document_acknowledgements(user_id);
+
 -- A tutor watching a video document to completion. Task/link steps whose
 -- video hasn't been watched yet can't be marked done (see toggle_sub_item).
 CREATE TABLE IF NOT EXISTS video_views (
