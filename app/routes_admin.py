@@ -1051,7 +1051,7 @@ def register(app):
             "LEFT JOIN users u ON u.id = cs.tutor_id "
             "LEFT JOIN grade_cohorts tg ON tg.id = u.grade_cohort_id "
             "ORDER BY (cs.status = 'cancelled'), cs.starts_at"))
-        norm = lambda text: re.sub(r"[\s\-‐-―_/]+", "", str(text or "")).lower()
+        norm = util.grade_key
         for slot in slots:
             slot.region_label = content.region_name(slot.region_id)
             slot.grade_cohort_label = (
@@ -1341,13 +1341,13 @@ def register(app):
     def _slot_cohort_matches():
         """Slots with no grade group whose free-text grade names one — from a
         sheet with a single 'grade' column, imported before that was read."""
-        cohorts = [(re.sub(r"[\s\-‐-―_/]+", "", g.name).lower(), g.id, g.name)
+        cohorts = [(util.grade_key(g.name), g.id, g.name)
                    for g in content.grade_cohorts(active_only=False)]
         out = []
         for slot in wrap_all(db.query(
                 "SELECT id, grade_subject FROM class_slots "
                 "WHERE grade_cohort_id IS NULL AND grade_subject != ''")):
-            key = re.sub(r"[\s\-‐-―_/]+", "", slot.grade_subject or "").lower()
+            key = util.grade_key(slot.grade_subject)
             for cohort_key, cohort_id, cohort_name in cohorts:
                 if key == cohort_key:
                     out.append((slot.id, cohort_id, cohort_name))
@@ -1488,11 +1488,7 @@ def register(app):
         region_by_name = {r.name.strip().lower(): r.id
                          for r in content.regions(active_only=False)}
 
-        def cohort_key(text):
-            """'3 - 8', '3–8', 'K–5', 'k 5' all mean the cohort written '3-8'
-            or 'K-5' — sheets are typed by hand and dashes get spaced out or
-            turned into en-dashes by autocorrect."""
-            return re.sub(r"[\s\-‐-―_/]+", "", str(text or "")).lower()
+        cohort_key = util.grade_key
 
         cohort_by_name = {cohort_key(g.name): g.id
                           for g in content.grade_cohorts(active_only=False)}
@@ -1742,7 +1738,8 @@ def register(app):
 
         region_by_name = {r.name.strip().lower(): r.id
                           for r in content.regions(active_only=False)}
-        grade_cohort_by_name = {g.name.strip().lower(): g.id
+        # 'K - 5' finds the group named 'K-5' (see util.grade_key).
+        grade_cohort_by_name = {util.grade_key(g.name): g.id
                                 for g in content.grade_cohorts(active_only=False)}
 
         created, skipped = [], []
@@ -1776,7 +1773,7 @@ def register(app):
                 skipped.append("%s — account already exists" % label)
             elif db.one("SELECT 1 FROM users WHERE phone = ?", (phone,)):
                 skipped.append("%s — account already exists" % label)
-            elif grade_name and grade_name.lower() not in grade_cohort_by_name:
+            elif grade_name and util.grade_key(grade_name) not in grade_cohort_by_name:
                 skipped.append("%s — unknown grade cohort “%s”" % (label, grade_name))
             elif db_id and db.one("SELECT 1 FROM users WHERE db_id = ?", (db_id,)):
                 skipped.append("%s — DB ID “%s” is already assigned to another "
@@ -1789,7 +1786,7 @@ def register(app):
             else:
                 region_id = (region_by_name.get(region_name.lower())
                             if region_name else None)
-                grade_cohort_id = (grade_cohort_by_name.get(grade_name.lower())
+                grade_cohort_id = (grade_cohort_by_name.get(util.grade_key(grade_name))
                                    if grade_name else None)
                 password = security.generate_password(phone)
                 user_id = db.insert("users", {

@@ -1,6 +1,7 @@
 """Small shared helpers, including the dict wrapper templates render against."""
 
 import datetime
+import re
 
 from . import db
 
@@ -80,6 +81,14 @@ def pct(done, total):
 
 def plural(count, singular, many=None):
     return "%d %s" % (count, singular if count == 1 else (many or singular + "s"))
+
+
+def grade_key(text):
+    """'K-5', 'K - 5', 'k–5' and 'K 5' all name the same grade group, as do
+    '3-8' / '3 - 8' and '9-12' / '9 - 12'. Sheets are typed by hand, so
+    spaces, case and the kind of dash (autocorrect turns '-' into '–') are
+    ignored when a grade group is looked up by name."""
+    return re.sub(r"[\s\-\u2010-\u2015_/]+", "", str(text or "")).lower()
 
 
 def truncate(text, limit=90):
