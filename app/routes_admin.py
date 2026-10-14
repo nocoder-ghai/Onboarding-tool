@@ -2144,6 +2144,55 @@ def register(app):
         request.flash("C2C referral details saved.", "ok")
         return back_to(request, "/admin/tutors/%d" % user_id)
 
+    @app.route("/admin/tutors/<int:user_id>/login", methods=["POST"])
+    @writes
+    def tutor_login(request, user_id):
+        """Overwrite a tutor's login email/phone, optionally resetting the password
+        to the bulk-create default (Cue@ + phone digits) for the new number."""
+        tutor = wrap(db.one("SELECT * FROM users WHERE id = ? AND role_key = 'tutor'",
+                            (user_id,)))
+        if tutor is None:
+            raise HttpError(404, "Unknown tutor.")
+        back = "/admin/tutors/%d" % user_id
+        email = security.normalise_email(request.get("email", "")) or None
+        phone = security.normalise_phone(request.get("phone", "")) or None
+        if not email and not phone:
+            request.flash("A login needs an email or a phone number.", "error")
+            return back_to(request, back)
+        if email and not security.EMAIL_RE.match(email):
+            request.flash("“%s” doesn't look like an email address." % email, "error")
+            return back_to(request, back)
+        if phone and len(re.sub(r"\D", "", phone)) < 8:
+            request.flash("“%s” doesn't look like a phone number." % phone, "error")
+            return back_to(request, back)
+        for field, value in (("email", email), ("phone", phone)):
+            clash = value and db.one(
+                "SELECT name FROM users WHERE %s = ? AND id != ?" % field,
+                (value, user_id))
+            if clash:
+                request.flash("%s is already %s's login." % (value, clash["name"]),
+                              "error")
+                return back_to(request, back)
+        values = {"email": email, "phone": phone}
+        reset = request.checked("reset_password")
+        if reset:
+            if not phone:
+                request.flash("Add a phone number to reset the password from it.",
+                              "error")
+                return back_to(request, back)
+            values["password_hash"] = security.hash_password(
+                security.generate_password(phone))
+        db.update("users", user_id, values)
+        audit.record(request, "tutor.login", "user", user_id,
+                     "Login set to %s / %s%s" % (email or "no email", phone or "no phone",
+                                                  ", password reset" if reset else ""),
+                     before={"email": tutor.email, "phone": tutor.phone},
+                     after={"email": email, "phone": phone})
+        request.flash("Login details saved%s." % (
+            " — new password is %s" % security.generate_password(phone)
+            if reset else ""), "ok")
+        return back_to(request, back)
+
     def _c2c_code_owner(code, user_id):
         """Another tutor already holding this code, if any. Matched without
         case so C2C-AB12 and c2c-ab12 can't end up on two coaches."""

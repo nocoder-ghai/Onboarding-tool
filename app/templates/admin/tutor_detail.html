@@ -185,6 +185,42 @@
           </div>
         </div>
       </div>
+
+      <div class="col-4 col-md-12">
+        <div class="card">
+          <div class="card-header"><div class="card-header-text"><div class="card-title">Login details</div></div></div>
+          <div class="card-content">
+            <form method="post" action="/admin/tutors/{{ tutor.id }}/login" style="display: flex; flex-direction: column; gap: var(--space-12);">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="back" value="/admin/tutors/{{ tutor.id }}">
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input id="login_email" name="email" type="email" placeholder=" " value="{{ tutor.email or '' }}">
+                  <label for="login_email" class="cm-field-label">Email</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Email</span></legend></fieldset>
+                </div>
+                <div class="cm-field-helper"></div>
+              </div>
+              <div class="cm-field">
+                <div class="cm-field-wrap">
+                  <input id="login_phone" name="phone" type="tel" placeholder=" " value="{{ tutor.phone or '' }}">
+                  <label for="login_phone" class="cm-field-label">Phone</label>
+                  <fieldset class="cm-field-notch" aria-hidden="true"><legend><span>Phone</span></legend></fieldset>
+                </div>
+                <div class="cm-field-helper"></div>
+              </div>
+              <label class="type-body-sm" style="display: flex; gap: var(--space-8); align-items: center;">
+                <input type="checkbox" name="reset_password" value="1" checked>
+                Reset password to Cue@ + phone digits
+              </label>
+              <button class="btn btn-sm btn-primary" type="submit">Save login details</button>
+            </form>
+          </div>
+          <div class="card-footer card-footer-borderless">
+            <span class="type-body-sm" style="color: var(--text-tertiary);">They sign in with the new email or phone from now on.</span>
+          </div>
+        </div>
+      </div>
     </div>
   {% endif %}
 
