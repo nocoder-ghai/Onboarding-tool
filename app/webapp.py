@@ -60,7 +60,8 @@ def create_app():
                             status=status)
     app.error_handler = _error
 
-    from . import routes_auth, routes_tutor, routes_admin
+    from . import routes_api, routes_auth, routes_tutor, routes_admin
+    routes_api.register(app)
     routes_auth.register(app)
     routes_tutor.register(app)
     routes_admin.register(app)
